@@ -1,0 +1,7 @@
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/DESIGN.md",
+  "For story implementation that touches frontend UI, follow DESIGN.md as the source of truth for visual design, layout, component behavior, accessibility, and interaction patterns.",
+  "If a story conflicts with DESIGN.md, surface the conflict and choose the smallest implementation that preserves the design system unless the user explicitly approves a deviation.",
+]

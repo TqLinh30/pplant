@@ -1,0 +1,7 @@
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/DESIGN.md",
+  "Treat DESIGN.md as the source of truth for UX and UI direction, including visual principles, typography, colors, spacing, layout rules, component styling, accessibility expectations, and interaction patterns.",
+  "When creating UX specifications, translate DESIGN.md into concrete screen, state, component, and interaction requirements instead of introducing unrelated visual patterns.",
+]

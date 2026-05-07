@@ -1,0 +1,972 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pplant UX Design Directions</title>
+  <style>
+    :root {
+      --primary: #181d26;
+      --primary-active: #0d1218;
+      --ink: #181d26;
+      --body: #333840;
+      --muted: #41454d;
+      --hairline: #dddddd;
+      --border-strong: #9297a0;
+      --canvas: #ffffff;
+      --surface-soft: #f8fafc;
+      --surface-strong: #e0e2e6;
+      --surface-dark: #181d26;
+      --surface-dark-elevated: #1d1f25;
+      --coral: #aa2d00;
+      --forest: #0a2e0e;
+      --cream: #f5e9d4;
+      --peach: #fcab79;
+      --mint: #a8d8c4;
+      --yellow: #f4d35e;
+      --mustard: #d9a441;
+      --link: #1b61c9;
+      --success: #006400;
+      --radius-xs: 2px;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 12px;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-12: 48px;
+      --phone-radius: 32px;
+      --screen-radius: 24px;
+      --shadow-soft: 0 24px 64px rgba(24, 29, 38, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      letter-spacing: 0;
+    }
+
+    header {
+      padding: 56px 48px 32px;
+      border-bottom: 1px solid var(--hairline);
+      background: var(--canvas);
+    }
+
+    .eyebrow {
+      margin: 0 0 var(--space-3);
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.35;
+    }
+
+    h1 {
+      max-width: 880px;
+      margin: 0;
+      font-size: 48px;
+      line-height: 1.1;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    .intro {
+      max-width: 780px;
+      margin: 20px 0 0;
+      color: var(--body);
+      font-size: 16px;
+      line-height: 1.45;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-4) 48px;
+      background: rgba(255, 255, 255, 0.96);
+      border-bottom: 1px solid var(--hairline);
+      backdrop-filter: blur(10px);
+    }
+
+    button,
+    .toggle {
+      min-height: 44px;
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius-lg);
+      padding: 10px 14px;
+      background: var(--canvas);
+      color: var(--ink);
+      font: inherit;
+      font-size: 14px;
+      line-height: 1.25;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    button.active {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+    }
+
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-left: auto;
+      cursor: pointer;
+    }
+
+    .toggle input {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      accent-color: var(--primary);
+    }
+
+    main {
+      padding: var(--space-8) 48px 72px;
+    }
+
+    .decision-panel {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: var(--space-6);
+      margin: 0 0 var(--space-8);
+      padding: var(--space-6);
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius-lg);
+      background: var(--surface-soft);
+    }
+
+    .decision-panel h2 {
+      margin: 0 0 var(--space-3);
+      font-size: 24px;
+      line-height: 1.25;
+      font-weight: 500;
+    }
+
+    .decision-panel p,
+    .decision-panel li {
+      color: var(--body);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .decision-panel p {
+      margin: 0;
+    }
+
+    .decision-panel ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .directions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: var(--space-8);
+    }
+
+    .direction {
+      display: grid;
+      align-content: start;
+      gap: 20px;
+      padding: var(--space-6);
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius-lg);
+      background: var(--canvas);
+    }
+
+    .direction[data-focus="overview"] {
+      border-top: 6px solid var(--surface-dark);
+    }
+
+    .direction[data-focus="timeline"] {
+      border-top: 6px solid var(--peach);
+    }
+
+    .direction[data-focus="capture"] {
+      border-top: 6px solid var(--coral);
+    }
+
+    .direction[data-focus="review"] {
+      border-top: 6px solid var(--mustard);
+    }
+
+    .direction[data-focus="trust"] {
+      border-top: 6px solid var(--forest);
+    }
+
+    .direction[data-focus="dense"] {
+      border-top: 6px solid var(--ink);
+    }
+
+    .direction[data-focus="work"] {
+      border-top: 6px solid var(--mint);
+    }
+
+    .direction[data-focus="recovery"] {
+      border-top: 6px solid var(--yellow);
+    }
+
+    .direction-head {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .direction h2 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.25;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    .direction p {
+      margin: 0;
+      color: var(--body);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .shortlist {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-top: var(--space-3);
+      color: var(--body);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.3;
+    }
+
+    .shortlist input {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      accent-color: var(--primary);
+    }
+
+    .phone {
+      width: min(100%, 342px);
+      min-height: 668px;
+      margin: 0 auto;
+      padding: 18px;
+      border: 1px solid var(--hairline);
+      border-radius: var(--phone-radius);
+      background: var(--surface-soft);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .screen {
+      min-height: 628px;
+      overflow: hidden;
+      border: 1px solid var(--hairline);
+      border-radius: var(--screen-radius);
+      background: var(--canvas);
+    }
+
+    .screen-pad {
+      padding: 18px;
+    }
+
+    .topline {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin-bottom: 18px;
+    }
+
+    .screen-title {
+      color: var(--ink);
+      font-size: 24px;
+      font-weight: 500;
+      line-height: 1.14;
+      letter-spacing: 0;
+    }
+
+    .caption {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.3;
+    }
+
+    .label {
+      color: var(--body);
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.35;
+    }
+
+    .pill,
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+      padding: 6px 10px;
+      border: 1px solid var(--hairline);
+      border-radius: 9999px;
+      background: var(--canvas);
+      color: var(--body);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    .tag {
+      min-height: 28px;
+      font-size: 12px;
+    }
+
+    .primary-action {
+      width: 100%;
+      min-height: 48px;
+      border: 0;
+      border-radius: var(--radius-lg);
+      background: var(--primary);
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .secondary-action {
+      width: 100%;
+      min-height: 44px;
+      background: var(--canvas);
+    }
+
+    .module {
+      padding: 14px;
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius-md);
+      background: var(--canvas);
+    }
+
+    .module.soft {
+      background: var(--surface-soft);
+    }
+
+    .module.cream {
+      background: var(--cream);
+    }
+
+    .module.dark {
+      background: var(--surface-dark);
+      color: #ffffff;
+      border-color: var(--surface-dark);
+    }
+
+    .module.coral {
+      background: var(--coral);
+      color: #ffffff;
+      border-color: var(--coral);
+    }
+
+    .module.forest {
+      background: var(--forest);
+      color: #ffffff;
+      border-color: var(--forest);
+    }
+
+    .module.mint {
+      background: var(--mint);
+    }
+
+    .module.peach {
+      background: var(--peach);
+    }
+
+    .module.yellow {
+      background: var(--yellow);
+    }
+
+    .module.mustard {
+      background: var(--mustard);
+    }
+
+    .module.dark .caption,
+    .module.coral .caption,
+    .module.forest .caption {
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    .module.dark p,
+    .module.coral p,
+    .module.forest p {
+      color: rgba(255, 255, 255, 0.82);
+    }
+
+    .metric {
+      margin-top: 6px;
+      font-size: 30px;
+      line-height: 1.05;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    .metric.small {
+      font-size: 22px;
+      line-height: 1.15;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      min-height: 44px;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .row:last-child {
+      border-bottom: 0;
+    }
+
+    .row-main {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .row-title {
+      color: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.3;
+    }
+
+    .row-meta {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    .module.dark .row-meta,
+    .module.coral .row-meta,
+    .module.forest .row-meta {
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin: var(--space-3) 0 0;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 6px 9px;
+      border-radius: 9999px;
+      background: var(--surface-soft);
+      color: var(--body);
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 1.2;
+    }
+
+    .module.dark .chip,
+    .module.coral .chip,
+    .module.forest .chip {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: var(--space-3) 0;
+    }
+
+    .stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .timeline {
+      display: grid;
+      border-left: 2px solid var(--hairline);
+      margin-left: var(--space-2);
+      padding-left: 14px;
+    }
+
+    .timeline-item {
+      position: relative;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .timeline-item:last-child {
+      border-bottom: 0;
+    }
+
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      top: 17px;
+      left: -21px;
+      width: 10px;
+      height: 10px;
+      border-radius: 9999px;
+      background: var(--primary);
+    }
+
+    .sheet {
+      margin-top: var(--space-3);
+      padding: 14px;
+      border: 1px solid var(--hairline);
+      border-radius: 18px 18px 0 0;
+      background: var(--canvas);
+      box-shadow: 0 -18px 46px rgba(24, 29, 38, 0.1);
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-1);
+      padding: var(--space-1);
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius-lg);
+      background: var(--surface-soft);
+    }
+
+    .segmented span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      border-radius: var(--radius-sm);
+      color: var(--body);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .segmented .selected {
+      background: var(--canvas);
+      color: var(--ink);
+      border: 1px solid var(--hairline);
+    }
+
+    .bottom-nav {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid var(--hairline);
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    .bottom-nav b {
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .fine-print {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .body-compact .direction {
+      gap: var(--space-4);
+      padding: var(--space-4);
+    }
+
+    .body-compact .phone {
+      min-height: 612px;
+    }
+
+    .body-compact .screen {
+      min-height: 572px;
+    }
+
+    .body-compact .screen-pad {
+      padding: 14px;
+    }
+
+    .body-compact .module {
+      padding: 12px;
+    }
+
+    .body-compact .grid2,
+    .body-compact .chips,
+    .body-compact .sheet {
+      margin-top: var(--space-2);
+    }
+
+    .shortlisted-count {
+      color: var(--body);
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.3;
+    }
+
+    @media (max-width: 900px) {
+      .decision-panel {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      header,
+      .toolbar,
+      main {
+        padding-left: var(--space-4);
+        padding-right: var(--space-4);
+      }
+
+      header {
+        padding-top: 36px;
+      }
+
+      h1 {
+        font-size: 36px;
+      }
+
+      .toggle {
+        margin-left: 0;
+      }
+
+      .direction {
+        padding: var(--space-4);
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <p class="eyebrow">Pplant UX Design Directions</p>
+    <h1>Eight mobile directions for calm student-life planning.</h1>
+    <p class="intro">These explorations translate the validated PRD and DESIGN.md into concrete mobile approaches. Each uses white canvas, dark ink, restrained controls, hairline boundaries, and signature color only when it carries meaning.</p>
+  </header>
+
+  <nav class="toolbar" aria-label="Design direction filters">
+    <button class="active" data-filter="all" type="button">All</button>
+    <button data-filter="overview" type="button">Overview</button>
+    <button data-filter="timeline" type="button">Timeline</button>
+    <button data-filter="capture" type="button">Capture</button>
+    <button data-filter="trust" type="button">Trust</button>
+    <button data-filter="review" type="button">Review</button>
+    <button data-filter="dense" type="button">Dense</button>
+    <button data-filter="work" type="button">Work-time</button>
+    <button data-filter="recovery" type="button">Recovery</button>
+    <span class="shortlisted-count" id="shortlistedCount">0 shortlisted</span>
+    <label class="toggle">
+      <input id="densityToggle" type="checkbox" />
+      Compact density
+    </label>
+  </nav>
+
+  <main>
+    <section class="decision-panel" aria-label="Evaluation framework">
+      <div>
+        <h2>Recommended base direction</h2>
+        <p><strong>Direction 1, Calm Daily Checkpoint</strong>, should be the primary app direction. It best supports the product promise: one calm overview where students understand money, time, attention, reminders, and capture without opening separate dashboards.</p>
+      </div>
+      <div>
+        <h2>What to compare</h2>
+        <ul>
+          <li>Layout intuitiveness: does the screen answer what needs attention today?</li>
+          <li>Interaction style: can capture start quickly and recover gracefully?</li>
+          <li>Visual weight: does the interface feel mature without becoming heavy?</li>
+          <li>Brand alignment: are signature colors meaningful, sparse, and calm?</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="directions" aria-label="Design direction mockups">
+      <article class="direction" data-focus="overview">
+        <div class="direction-head">
+          <h2>1. Calm Daily Checkpoint</h2>
+          <p>The strongest default. A quiet Today screen anchors budget, tasks, reminders, savings, work, and capture actions in one student-life checkpoint.</p>
+          <label class="shortlist"><input type="checkbox" /> Shortlist</label>
+        </div>
+        <div class="phone">
+          <div class="screen screen-pad">
+            <div class="topline">
+              <div><div class="caption">Today</div><div class="screen-title">You still have room.</div></div>
+              <span class="pill">Thu 7</span>
+            </div>
+            <div class="module dark">
+              <div class="caption">Week context</div>
+              <div class="metric">$72 left</div>
+              <div class="chips"><span class="chip">2 tasks due</span><span class="chip">3.4h worked</span></div>
+            </div>
+            <div class="grid2">
+              <div class="module forest"><div class="caption">Savings</div><div class="metric">42%</div></div>
+              <div class="module cream"><div class="caption">Attention</div><div class="metric">2 done</div></div>
+            </div>
+            <button class="primary-action" type="button">Capture something</button>
+            <div class="module soft" style="margin-top:12px;">
+              <div class="row"><div class="row-main"><span class="row-title">Lunch</span><span class="row-meta">$6.50 equals 28m work</span></div><strong>$6.50</strong></div>
+              <div class="row"><div class="row-main"><span class="row-title">Study habit</span><span class="row-meta">Weekly recurring</span></div><span class="pill">Skip</span></div>
+              <div class="row"><div class="row-main"><span class="row-title">Budget review</span><span class="row-meta">Tonight at 8:00</span></div><span class="pill">Edit</span></div>
+            </div>
+            <div class="bottom-nav"><b>Today</b><span>Money</span><span>Tasks</span><span>Review</span></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="direction" data-focus="timeline">
+        <div class="direction-head">
+          <h2>2. Day Timeline Ledger</h2>
+          <p>A schedule-led model where money, work, tasks, receipts, and reminders appear in the same day rhythm.</p>
+          <label class="shortlist"><input type="checkbox" /> Shortlist</label>
+        </div>
+        <div class="phone">
+          <div class="screen screen-pad">
+            <div class="topline">
+              <div><div class="caption">Thursday</div><div class="screen-title">Your day in one line.</div></div>
+            </div>
+            <div class="timeline">
+              <div class="timeline-item"><div class="row-title">Class</div><div class="row-meta">9:00-11:00</div></div>
+              <div class="timeline-item"><div class="row-title">Cafe receipt</div><div class="row-meta">Needs review before saving</div></div>
+              <div class="timeline-item"><div class="row-title">Work shift</div><div class="row-meta">4:00-8:00, estimated $48</div></div>
+              <div class="timeline-item"><div class="row-title">Assignment reminder</div><div class="row-meta">Recoverable if missed</div></div>
+            </div>
+            <div class="sheet">
+              <div class="caption">Impact after lunch</div>
+              <div class="metric">$65.50 left</div>
+              <p class="fine-print">This purchase equals about 28 minutes of work. Context only, no judgment.</p>
+            </div>
+            <div class="bottom-nav"><b>Timeline</b><span>Capture</span><span>Review</span><span>Settings</span></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="direction" data-focus="capture">
+        <div class="direction-head">
+          <h2>3. Capture-First Bottom Sheet</h2>
+          <p>A speed-led direction where the central action opens a focused bottom sheet, then returns users to updated context.</p>
+          <label class="shortlist"><input type="checkbox" /> Shortlist</label>
+        </div>
+        <div class="phone">
+          <div class="screen screen-pad">
+            <div class="topline">
+              <div><div class="caption">Overview</div><div class="screen-title">What happened?</div></div>
+            </div>
+            <div class="grid2">
+              <button type="button">Expense</button><button type="button">Receipt</button><button type="button">Task</button><button type="button">Work</button>
+            </div>
+            <div class="module cream">
+              <div class="caption">Recent context</div>
+              <div class="row"><div class="row-main"><span class="row-title">Coffee</span><span class="row-meta">Food, Campus</span></div><span>$4.20</span></div>
+              <div class="row"><div class="row-main"><span class="row-title">Math review</span><span class="row-meta">Done today</span></div><span>Done</span></div>
+            </div>
+            <div class="sheet">
+              <div class="caption">Add expense</div>
+              <div class="module soft" style="margin:10px 0;">Amount, category, topic, note</div>
+              <button class="primary-action" type="button">Save and show impact</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="direction" data-focus="review">
+        <div class="direction-head">
+          <h2>4. Weekly Reflection Magazine</h2>
+          <p>A review-led direction where weekly and monthly summaries feel editorial, reflective, and non-shaming.</p>
+          <label class="shortlist"><input type="checkbox" /> Shortlist</label>
+        </div>
+        <div class="phone">
+          <div class="screen screen-pad">
+            <div class="topline">
+              <div><div class="caption">Weekly Review</div><div class="screen-title">A clearer week.</div></div>
+            </div>
+            <div class="module cream">
+              <div class="caption">Prompt 1 of 3</div>
+              <div class="metric small">What made this week easier?</div>
+              <p class="fine-print">Optional. No calculation needed.</p>
+            </div>
+            <div class="grid2">
+              <div class="module"><div class="caption">Spent</div><div class="metric">$84</div></div>
+              <div class="module"><div class="caption">Worked</div><div class="metric">11h</div></div>
+            </div>
+            <div class="module forest">
+              <div class="caption">Relationship shown</div>
+              <p>More work hours and snack spending appeared in the same period. Add your own note.</p>
+            </div>
+            <button class="primary-action" type="button">Save reflection</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="direction" data-focus="trust">
+        <div class="direction-head">
+          <h2>5. Trust-First Receipt Desk</h2>
+          <p>A correction-led direction that foregrounds parsed fields, confidence, source labels, drafts, and alternatives.</p>
+          <label class="shortlist"><input type="checkbox" /> Shortlist</label>
+        </div>
+        <div class="phone">
+          <div class="screen screen-pad">
+            <div class="topline">
+              <div><div class="caption">Receipt Review</div><div class="screen-title">Check two fields.</div></div>
+              <span class="pill">Draft saved</span>
+            </div>
+            <div class="module soft">
+              <div class="row"><div class="row-main"><span class="row-title">Merchant</span><span class="row-meta">Parsed, high confidence</span></div><span>Cafe 21</span></div>
+              <div class="row"><div class="row-main"><span class="row-title">Total</span><span class="row-meta">Low confidence</span></div><strong>$8.50</strong></div>
+              <div class="row"><div class="row-main"><span class="row-title">Category</span><span class="row-meta">Suggested</span></div><span>Food</span></div>
+            </div>
+            <div class="module peach" style="margin-top:12px;">
+              <div class="caption">Recovery</div>
+              <p>Edit the field, save total-only, or create manual expense. The photo stays attached until you decide.</p>
+            </div>
+            <button class="primary-action" type="button">Save corrected expense</button>
+            <button class="secondary-action" type="button" style="margin-top:8px;">Keep draft</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="direction" data-focus="dense">
+        <div class="direction-head">
+          <h2>6. Compact Student OS</h2>
+          <p>A density-led direction for power users, with restrained modules and small labels for repeated daily scanning.</p>
+          <label class="shortlist"><input type="checkbox" /> Shortlist</label>
+        </div>
+        <div class="phone">
+          <div class="screen screen-pad">
+            <div class="topline">
+              <div><div class="caption">Pplant</div><div class="screen-title">Money, time, attention.</div></div>
+            </div>
+            <div class="grid2">
+              <div class="module"><div class="caption">Budget</div><div class="metric">$72</div></div>
+              <div class="module"><div class="caption">Work</div><div class="metric">3.4h</div></div>
+              <div class="module"><div class="caption">Tasks</div><div class="metric">2/5</div></div>
+              <div class="module"><div class="caption">Save</div><div class="metric">42%</div></div>
+            </div>
+            <div class="module soft">
+              <div class="row"><div class="row-main"><span class="row-title">Receipt capture</span><span class="row-meta">Pending network processing</span></div><span class="pill">Retry</span></div>
+              <div class="row"><div class="row-main"><span class="row-title">Phone bill</span><span class="row-meta">Monthly recurring</span></div><span class="pill">Pause</span></div>
+              <div class="row"><div class="row-main"><span class="row-title">History</span><span class="row-meta">Search money, work, tasks</span></div><span class="pill">Open</span></div>
+            </div>
+            <div class="bottom-nav"><b>Home</b><span>Capture</span><span>History</span><span>Review</span></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="direction" data-focus="work">
+        <div class="direction-head">
+          <h2>7. Work-Time Lens</h2>
+          <p>A meaning-led direction that makes expenses understandable through hours worked, savings movement, and allowance context.</p>
+          <label class="shortlist"><input type="checkbox" /> Shortlist</label>
+        </div>
+        <div class="phone">
+          <div class="screen screen-pad">
+            <div class="topline">
+              <div><div class="caption">Money context</div><div class="screen-title">Spending in effort.</div></div>
+              <span class="pill">No advice</span>
+            </div>
+            <div class="module mint">
+              <div class="caption">Latest purchase</div>
+              <div class="metric">$12.40</div>
+              <p class="fine-print">About 52 minutes of work at your saved wage.</p>
+            </div>
+            <div class="grid2">
+              <div class="module"><div class="caption">Monthly budget</div><div class="metric">$218</div></div>
+              <div class="module"><div class="caption">Savings goal</div><div class="metric">+$8</div></div>
+            </div>
+            <div class="module soft">
+              <div class="row"><div class="row-main"><span class="row-title">Bus pass</span><span class="row-meta">Transport</span></div><span>31m</span></div>
+              <div class="row"><div class="row-main"><span class="row-title">Dinner</span><span class="row-meta">Food, Friends</span></div><span>44m</span></div>
+              <div class="row"><div class="row-main"><span class="row-title">Notebook</span><span class="row-meta">School</span></div><span>18m</span></div>
+            </div>
+            <button class="primary-action" type="button">Log next expense</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="direction" data-focus="recovery">
+        <div class="direction-head">
+          <h2>8. Recovery-First Planner</h2>
+          <p>A resilience-led direction focused on missed reminders, paused habits, offline drafts, failed receipt parsing, and calm next actions.</p>
+          <label class="shortlist"><input type="checkbox" /> Shortlist</label>
+        </div>
+        <div class="phone">
+          <div class="screen screen-pad">
+            <div class="topline">
+              <div><div class="caption">Recover</div><div class="screen-title">Nothing is stuck.</div></div>
+              <span class="pill">3 items</span>
+            </div>
+            <div class="segmented" aria-label="Recovery filter">
+              <span class="selected">Now</span><span>Later</span><span>Paused</span>
+            </div>
+            <div class="stack" style="margin-top:12px;">
+              <div class="module yellow">
+                <div class="caption">Missed reminder</div>
+                <div class="row"><div class="row-main"><span class="row-title">Pay club dues</span><span class="row-meta">Missed yesterday</span></div><span class="pill">Snooze</span></div>
+              </div>
+              <div class="module cream">
+                <div class="caption">Offline draft</div>
+                <div class="row"><div class="row-main"><span class="row-title">Grocery receipt</span><span class="row-meta">Photo saved locally</span></div><span class="pill">Retry</span></div>
+              </div>
+              <div class="module soft">
+                <div class="caption">Paused habit</div>
+                <div class="row"><div class="row-main"><span class="row-title">Vocabulary review</span><span class="row-meta">Resume next Monday</span></div><span class="pill">Edit</span></div>
+              </div>
+            </div>
+            <button class="primary-action" type="button" style="margin-top:12px;">Resolve selected</button>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const filterButtons = document.querySelectorAll("[data-filter]");
+    const directions = document.querySelectorAll(".direction");
+    const densityToggle = document.getElementById("densityToggle");
+    const shortlistBoxes = document.querySelectorAll(".shortlist input");
+    const shortlistedCount = document.getElementById("shortlistedCount");
+
+    filterButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        filterButtons.forEach((item) => item.classList.remove("active"));
+        button.classList.add("active");
+
+        const filter = button.dataset.filter;
+        directions.forEach((direction) => {
+          const matches = filter === "all" || direction.dataset.focus === filter;
+          direction.style.display = matches ? "grid" : "none";
+        });
+      });
+    });
+
+    densityToggle.addEventListener("change", () => {
+      document.body.classList.toggle("body-compact", densityToggle.checked);
+    });
+
+    function updateShortlistCount() {
+      const count = Array.from(shortlistBoxes).filter((box) => box.checked).length;
+      shortlistedCount.textContent = count === 1 ? "1 shortlisted" : count + " shortlisted";
+    }
+
+    shortlistBoxes.forEach((box) => box.addEventListener("change", updateShortlistCount));
+  </script>
+</body>
+</html>

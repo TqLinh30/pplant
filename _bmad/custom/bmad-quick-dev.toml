@@ -1,0 +1,7 @@
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/DESIGN.md",
+  "When implementing or modifying frontend UI, follow DESIGN.md as the source of truth before introducing any new visual pattern.",
+  "Preserve the typography, color palette, spacing, layout behavior, component styling, and interaction principles defined in DESIGN.md; call out any necessary deviation before implementing it.",
+]

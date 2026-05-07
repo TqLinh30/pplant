@@ -1,0 +1,24 @@
+# BMad workflow status
+# Created during UX design workflow completion.
+workflow_status:
+  create-ux-design: "_bmad-output/planning-artifacts/ux-design-specification.md"
+  create-architecture: "_bmad-output/planning-artifacts/architecture.md"
+  create-epics-and-stories: "_bmad-output/planning-artifacts/epics.md"
+  check-implementation-readiness: "_bmad-output/planning-artifacts/implementation-readiness-report-2026-05-07.md"
+  correct-course: "_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-07.md"
+  sprint-planning: "_bmad-output/implementation-artifacts/sprint-status.yaml"
+workflow_state:
+  create-ux-design: complete
+  create-architecture: complete
+  create-epics-and-stories: complete
+  check-implementation-readiness: complete
+  correct-course: complete
+  sprint-planning: complete
+completion_timestamps:
+  create-ux-design: "2026-05-07T21:45:40+08:00"
+  create-architecture: "2026-05-07T22:00:08+08:00"
+  create-epics-and-stories: "2026-05-07T22:25:43+08:00"
+  check-implementation-readiness: "2026-05-07T22:54:43+08:00"
+  correct-course: "2026-05-07T22:46:42+08:00"
+  sprint-planning: "2026-05-07T22:57:05+08:00"
+last_updated: "2026-05-07T22:57:05+08:00"

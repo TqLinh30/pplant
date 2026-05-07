@@ -1,0 +1,41 @@
+import { StyleSheet, Text, View } from 'react-native';
+
+import { colors } from '@/ui/tokens/colors';
+import { radius } from '@/ui/tokens/radius';
+import { spacing } from '@/ui/tokens/spacing';
+import { typography } from '@/ui/tokens/typography';
+
+type ChipProps = {
+  label: string;
+  tone?: 'neutral' | 'success' | 'warning';
+};
+
+export function Chip({ label, tone = 'neutral' }: ChipProps) {
+  return (
+    <View style={[styles.chip, styles[tone]]}>
+      <Text style={styles.label}>{label}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  chip: {
+    alignSelf: 'flex-start',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  label: {
+    ...typography.caption,
+    color: colors.ink,
+  },
+  neutral: {
+    backgroundColor: colors.surfaceSoft,
+  },
+  success: {
+    backgroundColor: colors.signatureMint,
+  },
+  warning: {
+    backgroundColor: colors.signatureCream,
+  },
+});
