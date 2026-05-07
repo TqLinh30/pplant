@@ -1,4 +1,5 @@
 import {
+  categoryTopicMigrationId,
   migrateDatabase,
   preferencesMigrationId,
   workspaceMigrationId,
@@ -51,8 +52,8 @@ describe('local database migrations', () => {
     expect(firstRun).toEqual({
       ok: true,
       value: {
-        applied: 2,
-        appliedMigrations: [workspaceMigrationId, preferencesMigrationId],
+        applied: 3,
+        appliedMigrations: [workspaceMigrationId, preferencesMigrationId, categoryTopicMigrationId],
       },
     });
     expect(secondRun).toEqual({
@@ -64,8 +65,13 @@ describe('local database migrations', () => {
     });
     expect(client.appliedMigrations.has(workspaceMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(preferencesMigrationId)).toBe(true);
+    expect(client.appliedMigrations.has(categoryTopicMigrationId)).toBe(true);
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS workspaces');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS user_preferences');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS categories');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS topics');
+    expect(client.executedSql.join('\n')).toContain('idx_categories_workspace_active_order');
+    expect(client.executedSql.join('\n')).toContain('idx_topics_workspace_active_order');
     expect(client.executedSql.join('\n')).not.toContain('DROP TABLE');
   });
 
@@ -78,12 +84,13 @@ describe('local database migrations', () => {
     expect(result).toEqual({
       ok: true,
       value: {
-        applied: 1,
-        appliedMigrations: [preferencesMigrationId],
+        applied: 2,
+        appliedMigrations: [preferencesMigrationId, categoryTopicMigrationId],
       },
     });
     expect(client.executedSql.join('\n')).not.toContain('CREATE TABLE IF NOT EXISTS workspaces');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS user_preferences');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS categories');
   });
 
   it('returns a retryable local error when migration setup fails', async () => {

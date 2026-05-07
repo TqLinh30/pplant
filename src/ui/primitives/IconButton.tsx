@@ -10,12 +10,13 @@ type IconButtonProps = PressableProps & {
   label: string;
 };
 
-export function IconButton({ icon, label, ...pressableProps }: IconButtonProps) {
+export function IconButton({ icon, label, disabled, ...pressableProps }: IconButtonProps) {
   return (
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="button"
-      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+      disabled={disabled}
+      style={({ pressed }) => [styles.button, pressed && styles.pressed, disabled && styles.disabled]}
       {...pressableProps}>
       <Text style={styles.icon}>{icon}</Text>
     </Pressable>
@@ -32,6 +33,9 @@ const styles = StyleSheet.create({
     height: 44,
     justifyContent: 'center',
     width: 44,
+  },
+  disabled: {
+    opacity: 0.5,
   },
   icon: {
     ...typography.label,

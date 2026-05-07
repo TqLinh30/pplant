@@ -21,6 +21,7 @@ export type OpenMigrationDatabase = () => MigrationDatabase;
 
 export const workspaceMigrationId = '001_create_local_workspace';
 export const preferencesMigrationId = '002_create_user_preferences';
+export const categoryTopicMigrationId = '003_create_categories_topics';
 
 const createMigrationTrackingTableSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -51,6 +52,40 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 );
 `;
 
+const categoryTopicMigrationSql = `
+CREATE TABLE IF NOT EXISTS categories (
+  id TEXT PRIMARY KEY NOT NULL,
+  workspace_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  sort_order INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  archived_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_categories_workspace_active_order
+  ON categories (workspace_id, archived_at, sort_order);
+
+CREATE INDEX IF NOT EXISTS idx_categories_workspace_name_active
+  ON categories (workspace_id, archived_at, name);
+
+CREATE TABLE IF NOT EXISTS topics (
+  id TEXT PRIMARY KEY NOT NULL,
+  workspace_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  sort_order INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  archived_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_topics_workspace_active_order
+  ON topics (workspace_id, archived_at, sort_order);
+
+CREATE INDEX IF NOT EXISTS idx_topics_workspace_name_active
+  ON topics (workspace_id, archived_at, name);
+`;
+
 const migrations = [
   {
     id: workspaceMigrationId,
@@ -59,6 +94,10 @@ const migrations = [
   {
     id: preferencesMigrationId,
     sql: preferencesMigrationSql,
+  },
+  {
+    id: categoryTopicMigrationId,
+    sql: categoryTopicMigrationSql,
   },
 ] as const;
 

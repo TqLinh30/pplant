@@ -23,8 +23,30 @@ export const userPreferences = sqliteTable('user_preferences', {
   updatedAt: text('updated_at').notNull(),
 });
 
+export const categories = sqliteTable('categories', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  name: text('name').notNull(),
+  sortOrder: integer('sort_order').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  archivedAt: text('archived_at'),
+});
+
+export const topics = sqliteTable('topics', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  name: text('name').notNull(),
+  sortOrder: integer('sort_order').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  archivedAt: text('archived_at'),
+});
+
 export const schema = {
+  categories,
   schemaMigrations,
+  topics,
   userPreferences,
   workspaces,
 };
