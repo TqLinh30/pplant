@@ -11,9 +11,10 @@ type ListRowProps = {
   meta?: string;
   right?: ReactNode;
   onPress?: () => void;
+  accessibilityLabel?: string;
 };
 
-export function ListRow({ title, description, meta, right, onPress }: ListRowProps) {
+export function ListRow({ title, description, meta, right, onPress, accessibilityLabel }: ListRowProps) {
   const content = (
     <>
       <View style={styles.textGroup}>
@@ -29,7 +30,7 @@ export function ListRow({ title, description, meta, right, onPress }: ListRowPro
     return (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={title}
+        accessibilityLabel={accessibilityLabel ?? title}
         style={({ pressed }) => [styles.row, pressed && styles.pressed]}
         onPress={onPress}>
         {content}

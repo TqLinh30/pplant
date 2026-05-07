@@ -5,6 +5,7 @@ import { calculateSavingsGoalProgress } from '@/domain/budgets/schemas';
 import type { SavingsGoal } from '@/domain/budgets/types';
 import type { CategoryTopicItem, CategoryTopicKind } from '@/domain/categories/types';
 import { formatMinorUnitsForInput } from '@/domain/common/money';
+import type { PrivacySettingArea } from '@/domain/privacy/privacy-settings';
 import { BottomSheet } from '@/ui/primitives/BottomSheet';
 import { Button } from '@/ui/primitives/Button';
 import { IconButton } from '@/ui/primitives/IconButton';
@@ -19,6 +20,7 @@ import { typography } from '@/ui/tokens/typography';
 import { useBudgetPlanningSettings } from './useBudgetPlanningSettings';
 import { useCategoryTopicSettings } from './useCategoryTopicSettings';
 import { usePreferenceSettings } from './usePreferenceSettings';
+import { usePrivacySettings } from './usePrivacySettings';
 
 const organizationOptions: { label: string; value: CategoryTopicKind }[] = [
   { label: 'Categories', value: 'category' },
@@ -28,6 +30,7 @@ const organizationOptions: { label: string; value: CategoryTopicKind }[] = [
 export function SettingsScreen() {
   const budgetPlanning = useBudgetPlanningSettings();
   const categoryTopics = useCategoryTopicSettings();
+  const privacySettings = usePrivacySettings();
   const { reload, save, state, updateField } = usePreferenceSettings();
 
   if (state.status === 'loading') {
@@ -71,6 +74,7 @@ export function SettingsScreen() {
   );
   const budgetSaving = budgetPlanning.state.status === 'saving';
   const budgetPreferences = budgetPlanning.state.preferences;
+  const selectedPrivacyArea = privacySettings.selectedArea;
 
   const formatBudgetAmount = (amountMinor: number) => {
     if (!budgetPreferences) {
@@ -219,6 +223,17 @@ export function SettingsScreen() {
       </View>
     );
   };
+
+  const renderPrivacyArea = (area: PrivacySettingArea) => (
+    <ListRow
+      key={area.id}
+      accessibilityLabel={`Open ${area.title} privacy details`}
+      title={area.title}
+      description={area.summary}
+      meta={area.statusLabel}
+      onPress={() => privacySettings.openDetail(area.id)}
+    />
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -518,6 +533,25 @@ export function SettingsScreen() {
             </>
           ) : null}
         </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.section}>
+          <View style={styles.header}>
+            <Text style={styles.eyebrow}>Privacy</Text>
+            <Text style={styles.sectionTitle}>Privacy controls</Text>
+            <Text style={styles.description}>
+              Review how Pplant handles local data, receipt photos, parsing, notifications, and diagnostics.
+            </Text>
+          </View>
+
+          <StatusBanner
+            title="Local-first by default"
+            description="These controls explain current behavior. This screen does not upload, delete, enable diagnostics, or start notification scheduling."
+          />
+
+          <View style={styles.listGroup}>{privacySettings.areas.map((area) => renderPrivacyArea(area))}</View>
+        </View>
       </ScrollView>
 
       <BottomSheet
@@ -568,6 +602,39 @@ export function SettingsScreen() {
           </>
         ) : null}
       </BottomSheet>
+
+      <BottomSheet
+        title={selectedPrivacyArea ? selectedPrivacyArea.title : 'Privacy detail'}
+        visible={Boolean(selectedPrivacyArea)}
+        onClose={privacySettings.closeDetail}>
+        {selectedPrivacyArea ? (
+          <>
+            <Text style={styles.description}>{selectedPrivacyArea.currentBehavior}</Text>
+
+            <View style={styles.detailGroup}>
+              <Text style={styles.label}>Affected data categories</Text>
+              {selectedPrivacyArea.affectedDataCategories.map((category) => (
+                <Text key={category} style={styles.detailLine}>
+                  - {category}
+                </Text>
+              ))}
+            </View>
+
+            {selectedPrivacyArea.beforeEnablementDisclosure ? (
+              <StatusBanner
+                title="Before enablement"
+                description={selectedPrivacyArea.beforeEnablementDisclosure}
+              />
+            ) : null}
+
+            {selectedPrivacyArea.manualAlternative ? (
+              <StatusBanner title="Manual alternative" description={selectedPrivacyArea.manualAlternative} />
+            ) : null}
+
+            <Button label="Done" onPress={privacySettings.closeDetail} variant="secondary" />
+          </>
+        ) : null}
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -595,6 +662,13 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   description: {
+    ...typography.body,
+    color: colors.body,
+  },
+  detailGroup: {
+    gap: spacing.xs,
+  },
+  detailLine: {
     ...typography.body,
     color: colors.body,
   },
