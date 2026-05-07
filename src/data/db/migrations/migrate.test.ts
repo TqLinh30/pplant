@@ -2,6 +2,7 @@ import {
   budgetPlanningMigrationId,
   categoryTopicMigrationId,
   migrateDatabase,
+  moneyRecordsMigrationId,
   preferencesMigrationId,
   workspaceMigrationId,
   type MigrationClient,
@@ -53,12 +54,13 @@ describe('local database migrations', () => {
     expect(firstRun).toEqual({
       ok: true,
       value: {
-        applied: 4,
+        applied: 5,
         appliedMigrations: [
           workspaceMigrationId,
           preferencesMigrationId,
           categoryTopicMigrationId,
           budgetPlanningMigrationId,
+          moneyRecordsMigrationId,
         ],
       },
     });
@@ -73,15 +75,20 @@ describe('local database migrations', () => {
     expect(client.appliedMigrations.has(preferencesMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(categoryTopicMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(budgetPlanningMigrationId)).toBe(true);
+    expect(client.appliedMigrations.has(moneyRecordsMigrationId)).toBe(true);
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS workspaces');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS user_preferences');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS categories');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS topics');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS budgets');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS savings_goals');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS money_records');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS money_record_topics');
     expect(client.executedSql.join('\n')).toContain('idx_categories_workspace_active_order');
     expect(client.executedSql.join('\n')).toContain('idx_topics_workspace_active_order');
     expect(client.executedSql.join('\n')).toContain('idx_savings_goals_workspace_active_target_date');
+    expect(client.executedSql.join('\n')).toContain('idx_money_records_workspace_date_kind');
+    expect(client.executedSql.join('\n')).toContain('idx_money_record_topics_workspace_topic');
     expect(client.executedSql.join('\n')).not.toContain('DROP TABLE');
   });
 
@@ -94,14 +101,20 @@ describe('local database migrations', () => {
     expect(result).toEqual({
       ok: true,
       value: {
-        applied: 3,
-        appliedMigrations: [preferencesMigrationId, categoryTopicMigrationId, budgetPlanningMigrationId],
+        applied: 4,
+        appliedMigrations: [
+          preferencesMigrationId,
+          categoryTopicMigrationId,
+          budgetPlanningMigrationId,
+          moneyRecordsMigrationId,
+        ],
       },
     });
     expect(client.executedSql.join('\n')).not.toContain('CREATE TABLE IF NOT EXISTS workspaces');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS user_preferences');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS categories');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS budgets');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS money_records');
   });
 
   it('returns a retryable local error when migration setup fails', async () => {

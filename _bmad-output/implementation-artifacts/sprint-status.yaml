@@ -35,14 +35,14 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-05-07T22:57:05+08:00"
-last_updated: "2026-05-08T02:18:22+08:00"
+last_updated: "2026-05-08T02:37:13+08:00"
 project: "Pplant"
 project_key: "NOKEY"
 tracking_system: "file-system"
 story_location: "_bmad-output/implementation-artifacts"
 
 development_status:
-  epic-1: in-progress
+  epic-1: done
   1-1-initialize-mobile-app-foundation: done
   1-2-create-single-user-local-workspace: done
   1-3-configure-locale-currency-budget-reset-and-wage-defaults: done
@@ -50,8 +50,8 @@ development_status:
   1-5-set-monthly-budget-rules-and-savings-goals: done
   1-6-view-privacy-relevant-settings: done
   epic-1-retrospective: optional
-  epic-2: backlog
-  2-1-create-manual-expense-and-income-records: backlog
+  epic-2: in-progress
+  2-1-create-manual-expense-and-income-records: done
   2-2-edit-and-delete-money-records-with-summary-recalculation: backlog
   2-3-search-filter-sort-and-review-money-history: backlog
   2-4-manage-recurring-expenses-and-income: backlog

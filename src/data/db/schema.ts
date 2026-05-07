@@ -67,9 +67,35 @@ export const savingsGoals = sqliteTable('savings_goals', {
   archivedAt: text('archived_at'),
 });
 
+export const moneyRecords = sqliteTable('money_records', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  kind: text('kind').notNull(),
+  amountMinor: integer('amount_minor').notNull(),
+  currencyCode: text('currency_code').notNull(),
+  localDate: text('local_date').notNull(),
+  categoryId: text('category_id'),
+  merchantOrSource: text('merchant_or_source'),
+  note: text('note'),
+  source: text('source').notNull(),
+  sourceOfTruth: text('source_of_truth').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+});
+
+export const moneyRecordTopics = sqliteTable('money_record_topics', {
+  moneyRecordId: text('money_record_id').notNull(),
+  topicId: text('topic_id').notNull(),
+  workspaceId: text('workspace_id').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
 export const schema = {
   budgets,
   categories,
+  moneyRecords,
+  moneyRecordTopics,
   savingsGoals,
   schemaMigrations,
   topics,

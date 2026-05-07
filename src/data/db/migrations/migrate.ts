@@ -23,6 +23,7 @@ export const workspaceMigrationId = '001_create_local_workspace';
 export const preferencesMigrationId = '002_create_user_preferences';
 export const categoryTopicMigrationId = '003_create_categories_topics';
 export const budgetPlanningMigrationId = '004_create_budgets_savings_goals';
+export const moneyRecordsMigrationId = '005_create_money_records';
 
 const createMigrationTrackingTableSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -119,6 +120,45 @@ CREATE INDEX IF NOT EXISTS idx_savings_goals_workspace_active_name
   ON savings_goals (workspace_id, archived_at, name);
 `;
 
+const moneyRecordsMigrationSql = `
+CREATE TABLE IF NOT EXISTS money_records (
+  id TEXT PRIMARY KEY NOT NULL,
+  workspace_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  amount_minor INTEGER NOT NULL,
+  currency_code TEXT NOT NULL,
+  local_date TEXT NOT NULL,
+  category_id TEXT,
+  merchant_or_source TEXT,
+  note TEXT,
+  source TEXT NOT NULL,
+  source_of_truth TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_money_records_workspace_date_kind
+  ON money_records (workspace_id, deleted_at, local_date, kind);
+
+CREATE INDEX IF NOT EXISTS idx_money_records_workspace_category_date
+  ON money_records (workspace_id, category_id, deleted_at, local_date);
+
+CREATE TABLE IF NOT EXISTS money_record_topics (
+  money_record_id TEXT NOT NULL,
+  topic_id TEXT NOT NULL,
+  workspace_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (money_record_id, topic_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_money_record_topics_workspace_topic
+  ON money_record_topics (workspace_id, topic_id);
+
+CREATE INDEX IF NOT EXISTS idx_money_record_topics_record
+  ON money_record_topics (money_record_id);
+`;
+
 const migrations = [
   {
     id: workspaceMigrationId,
@@ -135,6 +175,10 @@ const migrations = [
   {
     id: budgetPlanningMigrationId,
     sql: budgetPlanningMigrationSql,
+  },
+  {
+    id: moneyRecordsMigrationId,
+    sql: moneyRecordsMigrationSql,
   },
 ] as const;
 
