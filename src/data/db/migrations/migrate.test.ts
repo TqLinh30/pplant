@@ -1,4 +1,9 @@
-import { migrateDatabase, workspaceMigrationId, type MigrationClient } from './migrate';
+import {
+  migrateDatabase,
+  preferencesMigrationId,
+  workspaceMigrationId,
+  type MigrationClient,
+} from './migrate';
 
 class FakeMigrationClient implements MigrationClient {
   readonly executedSql: string[] = [];
@@ -36,8 +41,8 @@ class FakeMigrationClient implements MigrationClient {
 
 const fixedNow = new Date('2026-05-08T00:00:00.000Z');
 
-describe('workspace migrations', () => {
-  it('applies the workspace migration once and tracks it', async () => {
+describe('local database migrations', () => {
+  it('applies local migrations once and tracks them', async () => {
     const client = new FakeMigrationClient();
 
     const firstRun = await migrateDatabase({ $client: client }, fixedNow);
@@ -46,8 +51,8 @@ describe('workspace migrations', () => {
     expect(firstRun).toEqual({
       ok: true,
       value: {
-        applied: 1,
-        appliedMigrations: [workspaceMigrationId],
+        applied: 2,
+        appliedMigrations: [workspaceMigrationId, preferencesMigrationId],
       },
     });
     expect(secondRun).toEqual({
@@ -58,7 +63,27 @@ describe('workspace migrations', () => {
       },
     });
     expect(client.appliedMigrations.has(workspaceMigrationId)).toBe(true);
+    expect(client.appliedMigrations.has(preferencesMigrationId)).toBe(true);
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS workspaces');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS user_preferences');
+    expect(client.executedSql.join('\n')).not.toContain('DROP TABLE');
+  });
+
+  it('preserves already applied migrations and only runs missing ones', async () => {
+    const client = new FakeMigrationClient();
+    client.appliedMigrations.add(workspaceMigrationId);
+
+    const result = await migrateDatabase({ $client: client }, fixedNow);
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        applied: 1,
+        appliedMigrations: [preferencesMigrationId],
+      },
+    });
+    expect(client.executedSql.join('\n')).not.toContain('CREATE TABLE IF NOT EXISTS workspaces');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS user_preferences');
   });
 
   it('returns a retryable local error when migration setup fails', async () => {

@@ -7,19 +7,24 @@ import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
 type TextFieldProps = TextInputProps & {
+  errorText?: string;
+  helperText?: string;
   label: string;
 };
 
-export function TextField({ label, ...inputProps }: TextFieldProps) {
+export function TextField({ errorText, helperText, label, ...inputProps }: TextFieldProps) {
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
         accessibilityLabel={inputProps.accessibilityLabel ?? label}
+        accessibilityHint={errorText ?? inputProps.accessibilityHint}
         placeholderTextColor={colors.muted}
-        style={styles.input}
+        style={[styles.input, errorText && styles.inputError]}
         {...inputProps}
       />
+      {errorText ? <Text style={styles.error}>{errorText}</Text> : null}
+      {!errorText && helperText ? <Text style={styles.helper}>{helperText}</Text> : null}
     </View>
   );
 }
@@ -38,6 +43,18 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+  },
+  inputError: {
+    borderColor: colors.signatureCoral,
+    borderWidth: 1,
+  },
+  error: {
+    ...typography.caption,
+    color: colors.signatureCoral,
+  },
+  helper: {
+    ...typography.caption,
+    color: colors.muted,
   },
   label: {
     ...typography.caption,

@@ -20,6 +20,7 @@ export type MigrationDatabase = {
 export type OpenMigrationDatabase = () => MigrationDatabase;
 
 export const workspaceMigrationId = '001_create_local_workspace';
+export const preferencesMigrationId = '002_create_user_preferences';
 
 const createMigrationTrackingTableSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -37,10 +38,27 @@ CREATE TABLE IF NOT EXISTS workspaces (
 );
 `;
 
+const preferencesMigrationSql = `
+CREATE TABLE IF NOT EXISTS user_preferences (
+  workspace_id TEXT PRIMARY KEY NOT NULL,
+  currency_code TEXT NOT NULL,
+  locale TEXT NOT NULL,
+  monthly_budget_reset_day INTEGER NOT NULL,
+  default_hourly_wage_minor INTEGER NOT NULL,
+  default_hourly_wage_currency_code TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+`;
+
 const migrations = [
   {
     id: workspaceMigrationId,
     sql: workspaceMigrationSql,
+  },
+  {
+    id: preferencesMigrationId,
+    sql: preferencesMigrationSql,
   },
 ] as const;
 
