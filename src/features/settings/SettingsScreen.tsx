@@ -1,7 +1,10 @@
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { calculateSavingsGoalProgress } from '@/domain/budgets/schemas';
+import type { SavingsGoal } from '@/domain/budgets/types';
 import type { CategoryTopicItem, CategoryTopicKind } from '@/domain/categories/types';
+import { formatMinorUnitsForInput } from '@/domain/common/money';
 import { BottomSheet } from '@/ui/primitives/BottomSheet';
 import { Button } from '@/ui/primitives/Button';
 import { IconButton } from '@/ui/primitives/IconButton';
@@ -13,6 +16,7 @@ import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
+import { useBudgetPlanningSettings } from './useBudgetPlanningSettings';
 import { useCategoryTopicSettings } from './useCategoryTopicSettings';
 import { usePreferenceSettings } from './usePreferenceSettings';
 
@@ -22,6 +26,7 @@ const organizationOptions: { label: string; value: CategoryTopicKind }[] = [
 ];
 
 export function SettingsScreen() {
+  const budgetPlanning = useBudgetPlanningSettings();
   const categoryTopics = useCategoryTopicSettings();
   const { reload, save, state, updateField } = usePreferenceSettings();
 
@@ -64,6 +69,20 @@ export function SettingsScreen() {
   const selectedReplacement = replacementOptions.find(
     (item) => item.id === categoryTopics.state.reassignTargetId,
   );
+  const budgetSaving = budgetPlanning.state.status === 'saving';
+  const budgetPreferences = budgetPlanning.state.preferences;
+
+  const formatBudgetAmount = (amountMinor: number) => {
+    if (!budgetPreferences) {
+      return `${amountMinor}`;
+    }
+
+    const formatted = formatMinorUnitsForInput(amountMinor, budgetPreferences.currencyCode, {
+      locale: budgetPreferences.locale,
+    });
+
+    return `${formatted.ok ? formatted.value : amountMinor} ${budgetPreferences.currencyCode}`;
+  };
 
   const renderOrganizationItem = (item: CategoryTopicItem, index: number) => {
     const editing = categoryTopics.state.editingId === item.id;
@@ -122,6 +141,76 @@ export function SettingsScreen() {
                 disabled={organizationSaving}
                 label="Save"
                 onPress={categoryTopics.saveEdit}
+                style={styles.buttonFlex}
+              />
+            </View>
+          </View>
+        ) : null}
+      </View>
+    );
+  };
+
+  const renderSavingsGoal = (goal: SavingsGoal) => {
+    const editing = budgetPlanning.state.editingGoalId === goal.id;
+    const progress = calculateSavingsGoalProgress({
+      currentAmountMinor: goal.currentAmountMinor,
+      targetAmountMinor: goal.targetAmountMinor,
+    });
+    const progressPercent = Math.floor(progress.progressBasisPoints / 100);
+
+    return (
+      <View key={goal.id} style={styles.itemGroup}>
+        <ListRow
+          title={goal.name}
+          description={`${formatBudgetAmount(goal.currentAmountMinor)} saved of ${formatBudgetAmount(goal.targetAmountMinor)}`}
+          meta={`${progressPercent}% progress · ${goal.targetDate ?? 'No target date'}`}
+          onPress={() => budgetPlanning.startGoalEdit(goal)}
+        />
+
+        {editing ? (
+          <View style={styles.inlineForm}>
+            <TextField
+              autoCapitalize="sentences"
+              errorText={budgetPlanning.state.fieldErrors.name}
+              label="Goal name"
+              onChangeText={(value) => budgetPlanning.updateEditGoalDraft('name', value)}
+              value={budgetPlanning.state.editGoalDraft.name}
+            />
+            <TextField
+              errorText={budgetPlanning.state.fieldErrors.targetAmount}
+              keyboardType="decimal-pad"
+              label="Target amount"
+              onChangeText={(value) => budgetPlanning.updateEditGoalDraft('targetAmount', value)}
+              value={budgetPlanning.state.editGoalDraft.targetAmount}
+            />
+            <TextField
+              errorText={budgetPlanning.state.fieldErrors.currentAmount}
+              helperText="Manual progress for now; money records can update this later."
+              keyboardType="decimal-pad"
+              label="Current saved"
+              onChangeText={(value) => budgetPlanning.updateEditGoalDraft('currentAmount', value)}
+              value={budgetPlanning.state.editGoalDraft.currentAmount}
+            />
+            <TextField
+              autoCapitalize="none"
+              errorText={budgetPlanning.state.fieldErrors.targetDate}
+              helperText="Optional, YYYY-MM-DD."
+              label="Target date"
+              onChangeText={(value) => budgetPlanning.updateEditGoalDraft('targetDate', value)}
+              value={budgetPlanning.state.editGoalDraft.targetDate}
+            />
+            <View style={styles.buttonRow}>
+              <Button
+                disabled={budgetSaving}
+                label="Cancel"
+                onPress={budgetPlanning.cancelGoalEdit}
+                style={styles.buttonFlex}
+                variant="secondary"
+              />
+              <Button
+                disabled={budgetSaving}
+                label="Save goal"
+                onPress={budgetPlanning.saveGoalEdit}
                 style={styles.buttonFlex}
               />
             </View>
@@ -294,6 +383,140 @@ export function SettingsScreen() {
           <View style={styles.listGroup}>
             {categoryTopics.selectedItems.map((item, index) => renderOrganizationItem(item, index))}
           </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.section}>
+          <View style={styles.header}>
+            <Text style={styles.eyebrow}>Budget planning</Text>
+            <Text style={styles.sectionTitle}>Budget and savings</Text>
+            <Text style={styles.description}>
+              Set a monthly limit and basic savings goals for later Today and Review summaries.
+            </Text>
+          </View>
+
+          {budgetPlanning.state.status === 'loading' ? (
+            <StatusBanner
+              title="Loading budget planning"
+              description="Pplant is opening your local budget and savings settings."
+            />
+          ) : null}
+
+          {budgetPlanning.state.status === 'preferences_needed' ? (
+            <StatusBanner
+              title="Save preferences first"
+              description="Budget planning uses your saved currency and monthly reset day."
+              tone="warning"
+            />
+          ) : null}
+
+          {budgetPlanning.state.status === 'failed' ? (
+            <View style={styles.inlineForm}>
+              <StatusBanner
+                title="Budget planning could not load"
+                description="Your local data is unchanged. Try loading it again."
+                tone="warning"
+              />
+              <Button label="Retry budget planning" onPress={budgetPlanning.reload} variant="secondary" />
+            </View>
+          ) : null}
+
+          {budgetPlanning.state.status === 'saved' ? (
+            <StatusBanner
+              title="Budget planning saved"
+              description="Budget rules and savings goals are ready for future summaries."
+              tone="success"
+            />
+          ) : null}
+
+          {budgetPlanning.state.actionError ? (
+            <StatusBanner
+              title="Budget planning was not saved"
+              description="Try the action again. Current edits are still on screen."
+              tone="warning"
+            />
+          ) : null}
+
+          {budgetPreferences ? (
+            <>
+              <View style={styles.inlineForm}>
+                <TextField
+                  errorText={budgetPlanning.state.fieldErrors.budgetAmount}
+                  helperText={`Uses ${budgetPreferences.currencyCode}; reset day ${budgetPreferences.monthlyBudgetResetDay} comes from Preferences.`}
+                  keyboardType="decimal-pad"
+                  label="Monthly budget"
+                  onChangeText={budgetPlanning.updateBudgetAmount}
+                  value={budgetPlanning.state.budgetAmount}
+                />
+                <StatusBanner
+                  title="No rollover to next month"
+                  description="Positive remaining budget becomes savings-fund context. Over-budget months can show a negative remaining amount without blocking expense entry."
+                />
+                <Button
+                  disabled={budgetSaving}
+                  label={budgetSaving ? 'Saving budget' : 'Save budget'}
+                  onPress={budgetPlanning.saveBudgetAmount}
+                />
+              </View>
+
+              <View style={styles.inlineForm}>
+                <Text style={styles.label}>Savings goals</Text>
+                <TextField
+                  autoCapitalize="sentences"
+                  errorText={budgetPlanning.state.editingGoalId ? undefined : budgetPlanning.state.fieldErrors.name}
+                  label="Goal name"
+                  onChangeText={(value) => budgetPlanning.updateGoalDraft('name', value)}
+                  value={budgetPlanning.state.goalDraft.name}
+                />
+                <TextField
+                  errorText={
+                    budgetPlanning.state.editingGoalId ? undefined : budgetPlanning.state.fieldErrors.targetAmount
+                  }
+                  keyboardType="decimal-pad"
+                  label="Target amount"
+                  onChangeText={(value) => budgetPlanning.updateGoalDraft('targetAmount', value)}
+                  value={budgetPlanning.state.goalDraft.targetAmount}
+                />
+                <TextField
+                  errorText={
+                    budgetPlanning.state.editingGoalId ? undefined : budgetPlanning.state.fieldErrors.currentAmount
+                  }
+                  helperText="Manual progress for now; money records can update this later."
+                  keyboardType="decimal-pad"
+                  label="Current saved"
+                  onChangeText={(value) => budgetPlanning.updateGoalDraft('currentAmount', value)}
+                  value={budgetPlanning.state.goalDraft.currentAmount}
+                />
+                <TextField
+                  autoCapitalize="none"
+                  errorText={
+                    budgetPlanning.state.editingGoalId ? undefined : budgetPlanning.state.fieldErrors.targetDate
+                  }
+                  helperText="Optional, YYYY-MM-DD."
+                  label="Target date"
+                  onChangeText={(value) => budgetPlanning.updateGoalDraft('targetDate', value)}
+                  value={budgetPlanning.state.goalDraft.targetDate}
+                />
+                <Button
+                  disabled={budgetSaving}
+                  label={budgetSaving ? 'Saving goal' : 'Add savings goal'}
+                  onPress={budgetPlanning.createGoalFromDraft}
+                />
+              </View>
+
+              {budgetPlanning.state.savingsGoals.length === 0 ? (
+                <StatusBanner
+                  title="No savings goals yet"
+                  description="Create a goal above to make it available for later budget and review summaries."
+                />
+              ) : null}
+
+              <View style={styles.listGroup}>
+                {budgetPlanning.state.savingsGoals.map((goal) => renderSavingsGoal(goal))}
+              </View>
+            </>
+          ) : null}
         </View>
       </ScrollView>
 

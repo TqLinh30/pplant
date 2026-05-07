@@ -22,6 +22,7 @@ export type OpenMigrationDatabase = () => MigrationDatabase;
 export const workspaceMigrationId = '001_create_local_workspace';
 export const preferencesMigrationId = '002_create_user_preferences';
 export const categoryTopicMigrationId = '003_create_categories_topics';
+export const budgetPlanningMigrationId = '004_create_budgets_savings_goals';
 
 const createMigrationTrackingTableSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -86,6 +87,38 @@ CREATE INDEX IF NOT EXISTS idx_topics_workspace_name_active
   ON topics (workspace_id, archived_at, name);
 `;
 
+const budgetPlanningMigrationSql = `
+CREATE TABLE IF NOT EXISTS budgets (
+  workspace_id TEXT PRIMARY KEY NOT NULL,
+  monthly_budget_amount_minor INTEGER NOT NULL,
+  currency_code TEXT NOT NULL,
+  reset_day_source TEXT NOT NULL,
+  rollover_policy TEXT NOT NULL,
+  over_budget_behavior TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS savings_goals (
+  id TEXT PRIMARY KEY NOT NULL,
+  workspace_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  target_amount_minor INTEGER NOT NULL,
+  current_amount_minor INTEGER NOT NULL,
+  currency_code TEXT NOT NULL,
+  target_date TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  archived_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_savings_goals_workspace_active_target_date
+  ON savings_goals (workspace_id, archived_at, target_date);
+
+CREATE INDEX IF NOT EXISTS idx_savings_goals_workspace_active_name
+  ON savings_goals (workspace_id, archived_at, name);
+`;
+
 const migrations = [
   {
     id: workspaceMigrationId,
@@ -98,6 +131,10 @@ const migrations = [
   {
     id: categoryTopicMigrationId,
     sql: categoryTopicMigrationSql,
+  },
+  {
+    id: budgetPlanningMigrationId,
+    sql: budgetPlanningMigrationSql,
   },
 ] as const;
 
