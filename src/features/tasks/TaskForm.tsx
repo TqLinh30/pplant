@@ -10,6 +10,7 @@ import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
+import { ReminderForm } from '../reminders/ReminderForm';
 import { useTaskCapture } from './useTaskCapture';
 import { TaskRecurrenceForm } from './TaskRecurrenceForm';
 
@@ -207,6 +208,10 @@ export function TaskForm() {
       <View style={styles.divider} />
 
       <TaskRecurrenceForm />
+
+      <View style={styles.divider} />
+
+      <ReminderForm />
     </View>
   );
 }

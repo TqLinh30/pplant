@@ -1,21 +1,28 @@
-import { useLocalSearchParams } from 'expo-router';
+import { ScrollView, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { FeaturePlaceholderScreen } from '@/ui/components/FeaturePlaceholderScreen';
+import { colors } from '@/ui/tokens/colors';
+import { spacing } from '@/ui/tokens/spacing';
+
+import { ReminderForm } from './ReminderForm';
 
 export function ReminderRouteScreen() {
-  const { reminderId } = useLocalSearchParams<{ reminderId: string }>();
-
   return (
-    <FeaturePlaceholderScreen
-      title="Reminder"
-      eyebrow="Recovery controls"
-      description="Reminder details will expose snooze, reschedule, pause, disable, and recovery states without shaming copy."
-      sections={[
-        {
-          title: 'Reminder reference',
-          description: reminderId ? `Reminder: ${reminderId}` : 'Reminder id is not available yet.',
-        },
-      ]}
-    />
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ReminderForm />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  content: {
+    gap: spacing.lg,
+    padding: spacing.lg,
+  },
+  safeArea: {
+    backgroundColor: colors.canvas,
+    flex: 1,
+  },
+});

@@ -1,6 +1,6 @@
 # Story 3.3: Create Deadline And Repeat Reminders
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -16,85 +16,85 @@ so that Pplant can help me remember tasks without demanding attention at the wro
 
 ## Tasks / Subtasks
 
-- [ ] Add reminder domain contracts and validation. (AC: 1, 2, 3)
-  - [ ] Add reminder types under `src/domain/reminders`, extending the existing placeholder instead of creating a parallel reminder domain elsewhere.
-  - [ ] Support reminder owner kinds: `standalone`, `task`, and `task_recurrence`.
-  - [ ] Support frequencies: `once`, `daily`, `weekly`, and `monthly`.
-  - [ ] Validate title, optional notes, owner ids, local start date, local reminder time, optional end date, skip dates, permission/schedule state, notification ids, and timestamps.
-  - [ ] Reuse `generateRecurrenceOccurrences` for daily, weekly, and monthly occurrence dates; do not write another calendar stepper.
-  - [ ] Add helpers for combining `YYYY-MM-DD` local dates and `HH:mm` local times into schedule requests without storing timezone-shifted dates as the source of truth.
+- [x] Add reminder domain contracts and validation. (AC: 1, 2, 3)
+  - [x] Add reminder types under `src/domain/reminders`, extending the existing placeholder instead of creating a parallel reminder domain elsewhere.
+  - [x] Support reminder owner kinds: `standalone`, `task`, and `task_recurrence`.
+  - [x] Support frequencies: `once`, `daily`, `weekly`, and `monthly`.
+  - [x] Validate title, optional notes, owner ids, local start date, local reminder time, optional end date, skip dates, permission/schedule state, notification ids, and timestamps.
+  - [x] Reuse `generateRecurrenceOccurrences` for daily, weekly, and monthly occurrence dates; do not write another calendar stepper.
+  - [x] Add helpers for combining `YYYY-MM-DD` local dates and `HH:mm` local times into schedule requests without storing timezone-shifted dates as the source of truth.
 
-- [ ] Add additive reminder persistence. (AC: 1, 2, 3)
-  - [ ] Add migration 011 with reminder-specific tables.
-  - [ ] Do not alter `recurrence_rules`, `task_recurrence_rules`, money recurrence behavior, or task recurrence behavior.
-  - [ ] Add `reminders` for reminder rules and one-time reminders:
+- [x] Add additive reminder persistence. (AC: 1, 2, 3)
+  - [x] Add migration 011 with reminder-specific tables.
+  - [x] Do not alter `recurrence_rules`, `task_recurrence_rules`, money recurrence behavior, or task recurrence behavior.
+  - [x] Add `reminders` for reminder rules and one-time reminders:
     - `id`, `workspace_id`, `owner_kind`, `task_id`, `task_recurrence_rule_id`
     - `title`, `notes`, `frequency`, `starts_on_local_date`, `reminder_local_time`, `ends_on_local_date`
     - `source`, `source_of_truth`, `permission_status`, `schedule_state`
     - `created_at`, `updated_at`, `deleted_at`
-  - [ ] Add `reminder_exceptions` for skipped repeat reminder occurrences:
+  - [x] Add `reminder_exceptions` for skipped repeat reminder occurrences:
     - `id`, `reminder_id`, `workspace_id`, `occurrence_local_date`, `action`, `created_at`, `updated_at`
     - Unique index on `(workspace_id, reminder_id, occurrence_local_date, action)`.
-  - [ ] Add `reminder_scheduled_notifications` for platform schedule ids:
+  - [x] Add `reminder_scheduled_notifications` for platform schedule ids:
     - `id`, `reminder_id`, `workspace_id`, `occurrence_local_date`, `fire_at_local`, `scheduled_notification_id`
     - `delivery_state`, `schedule_attempted_at`, `schedule_error_category`, `created_at`, `updated_at`, `deleted_at`
     - Unique active lookup by `(workspace_id, reminder_id, occurrence_local_date)`.
-  - [ ] Add `diagnostic_events` only if no reusable diagnostics repository already exists by implementation time; keep payload redacted and bounded to allowed non-sensitive metadata.
-  - [ ] Add Drizzle schema mappings and migration tests proving migration 011 is additive.
+  - [x] Add `diagnostic_events` only if no reusable diagnostics repository already exists by implementation time; keep payload redacted and bounded to allowed non-sensitive metadata.
+  - [x] Add Drizzle schema mappings and migration tests proving migration 011 is additive.
 
-- [ ] Implement reminder repository behavior. (AC: 1, 2, 3)
-  - [ ] Create one-time and repeat reminder rules.
-  - [ ] Get and list active reminders for the local workspace.
-  - [ ] Soft-delete reminders without deleting task or task recurrence data.
-  - [ ] Store skip exceptions idempotently for repeat reminder occurrences.
-  - [ ] Store, replace, and soft-delete scheduled notification ids by reminder occurrence.
-  - [ ] Return typed `AppResult` errors and never log reminder title, notes, task title, or occurrence details.
+- [x] Implement reminder repository behavior. (AC: 1, 2, 3)
+  - [x] Create one-time and repeat reminder rules.
+  - [x] Get and list active reminders for the local workspace.
+  - [x] Soft-delete reminders without deleting task or task recurrence data.
+  - [x] Store skip exceptions idempotently for repeat reminder occurrences.
+  - [x] Store, replace, and soft-delete scheduled notification ids by reminder occurrence.
+  - [x] Return typed `AppResult` errors and never log reminder title, notes, task title, or occurrence details.
 
-- [ ] Implement notification scheduler port and Expo adapter. (AC: 1, 2, 3)
-  - [ ] Add `expo-notifications` using `npx expo install expo-notifications`; do not hand-edit incompatible dependency versions.
-  - [ ] Expand `src/services/notifications/notification-scheduler.port.ts` to include:
+- [x] Implement notification scheduler port and Expo adapter. (AC: 1, 2, 3)
+  - [x] Add `expo-notifications` using `npx expo install expo-notifications`; do not hand-edit incompatible dependency versions.
+  - [x] Expand `src/services/notifications/notification-scheduler.port.ts` to include:
     - permission read/request operations,
     - schedule operation returning platform notification id,
     - cancel by platform notification id,
     - scheduled notification inspection where useful for tests or recovery.
-  - [ ] Implement `src/services/notifications/expo-notification-scheduler.ts` with `expo-notifications`.
-  - [ ] Request notification permission only after the user enables or saves a reminder, never during app startup.
-  - [ ] Configure an Android notification channel before requesting Android permission.
-  - [ ] Treat local notification delivery as best effort; unsupported platform, denied permission, or native schedule failure should return typed recoverable errors.
-  - [ ] Keep the adapter dependency-injectable so service tests do not need native notification APIs.
+  - [x] Implement `src/services/notifications/expo-notification-scheduler.ts` with `expo-notifications`.
+  - [x] Request notification permission only after the user enables or saves a reminder, never during app startup.
+  - [x] Configure an Android notification channel before requesting Android permission.
+  - [x] Treat local notification delivery as best effort; unsupported platform, denied permission, or native schedule failure should return typed recoverable errors.
+  - [x] Keep the adapter dependency-injectable so service tests do not need native notification APIs.
 
-- [ ] Implement reminder service orchestration. (AC: 1, 2, 3)
-  - [ ] Follow the same dependency-injection pattern used by task and task recurrence services: open database, run migrations, create repositories, use local workspace id.
-  - [ ] Validate owner references:
+- [x] Implement reminder service orchestration. (AC: 1, 2, 3)
+  - [x] Follow the same dependency-injection pattern used by task and task recurrence services: open database, run migrations, create repositories, use local workspace id.
+  - [x] Validate owner references:
     - `standalone` reminders have no task owner.
     - `task` reminders reference an active `tasks` row.
     - `task_recurrence` reminders reference an active `task_recurrence_rules` row.
-  - [ ] Generate bounded virtual reminder occurrences from start date, frequency, optional end date, skip exceptions, and local time.
-  - [ ] Schedule only a bounded upcoming window of concrete occurrences so optional end dates and skip exceptions remain enforceable.
-  - [ ] Persist platform notification ids after successful scheduling and cancel/rewrite stale scheduled ids when a reminder is replaced during creation flow.
-  - [ ] If permission is denied, save the reminder as local-only with `schedule_state = "permission_denied"` and show manual recovery copy.
-  - [ ] If scheduling fails or is unavailable, save a recoverable in-app state, record a redacted `reminder_scheduling_failed` diagnostic event, and do not lose the reminder.
-  - [ ] Do not implement snooze, reschedule, pause, disable, delete controls beyond basic soft-delete support needed for data safety; those belong to Story 3.4.
-  - [ ] Do not implement missed-delivery recovery beyond schedule failure/unavailable states; missed reminder recovery belongs to Story 3.5.
+  - [x] Generate bounded virtual reminder occurrences from start date, frequency, optional end date, skip exceptions, and local time.
+  - [x] Schedule only a bounded upcoming window of concrete occurrences so optional end dates and skip exceptions remain enforceable.
+  - [x] Persist platform notification ids after successful scheduling and cancel/rewrite stale scheduled ids when a reminder is replaced during creation flow.
+  - [x] If permission is denied, save the reminder as local-only with `schedule_state = "permission_denied"` and show manual recovery copy.
+  - [x] If scheduling fails or is unavailable, save a recoverable in-app state, record a redacted `reminder_scheduling_failed` diagnostic event, and do not lose the reminder.
+  - [x] Do not implement snooze, reschedule, pause, disable, delete controls beyond basic soft-delete support needed for data safety; those belong to Story 3.4.
+  - [x] Do not implement missed-delivery recovery beyond schedule failure/unavailable states; missed reminder recovery belongs to Story 3.5.
 
-- [ ] Add reminder UI surfaces. (AC: 1, 2, 3)
-  - [ ] Replace the current placeholder `ReminderRouteScreen` with a usable reminder creation surface.
-  - [ ] Add a task-linked reminder section to the existing task surface or task detail flow without breaking manual task capture.
-  - [ ] Use existing primitives: `Button`, `ListRow`, `SegmentedControl`, `StatusBanner`, and `TextField`.
-  - [ ] Provide controls for title, notes, owner context, frequency, start date, local reminder time, optional end date, skip occurrence, save, and save local-only when permission is denied.
-  - [ ] Show scheduled, permission-denied, unavailable, and local-only recovery states with explicit text, not color alone.
-  - [ ] Use neutral copy such as "Reminder saved locally", "Notifications are off", "Scheduling is unavailable right now", and "You can still use this reminder in Pplant."
-  - [ ] Keep this story scoped to create/schedule flows; do not expose snooze, reschedule, pause, disable, reminder fatigue controls, Today overview integration, Review summaries, or draft persistence.
+- [x] Add reminder UI surfaces. (AC: 1, 2, 3)
+  - [x] Replace the current placeholder `ReminderRouteScreen` with a usable reminder creation surface.
+  - [x] Add a task-linked reminder section to the existing task surface or task detail flow without breaking manual task capture.
+  - [x] Use existing primitives: `Button`, `ListRow`, `SegmentedControl`, `StatusBanner`, and `TextField`.
+  - [x] Provide controls for title, notes, owner context, frequency, start date, local reminder time, optional end date, skip occurrence, save, and save local-only when permission is denied.
+  - [x] Show scheduled, permission-denied, unavailable, and local-only recovery states with explicit text, not color alone.
+  - [x] Use neutral copy such as "Reminder saved locally", "Notifications are off", "Scheduling is unavailable right now", and "You can still use this reminder in Pplant."
+  - [x] Keep this story scoped to create/schedule flows; do not expose snooze, reschedule, pause, disable, reminder fatigue controls, Today overview integration, Review summaries, or draft persistence.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Test reminder validation for owner kind, title, notes, frequency, start/end dates, local time, skip dates, and schedule state.
-  - [ ] Test recurrence generation for one-time, daily, weekly, monthly clamp, leap day, optional end date, skipped date, and bounded schedule windows.
-  - [ ] Test migration 011 is additive and does not change money or task recurrence tables.
-  - [ ] Test repository create/list/delete/skip/scheduled-notification replacement behavior.
-  - [ ] Test service behavior with fake notification scheduler for granted, denied, unavailable, schedule failure, and cancellation/rewrite paths.
-  - [ ] Test diagnostic redaction for reminder scheduling failures.
-  - [ ] Test hook/reducer validation and state transitions for create, permission denied, unavailable scheduling, retry/reload, and local-only recovery.
-  - [ ] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Test reminder validation for owner kind, title, notes, frequency, start/end dates, local time, skip dates, and schedule state.
+  - [x] Test recurrence generation for one-time, daily, weekly, monthly clamp, leap day, optional end date, skipped date, and bounded schedule windows.
+  - [x] Test migration 011 is additive and does not change money or task recurrence tables.
+  - [x] Test repository create/list/delete/skip/scheduled-notification replacement behavior.
+  - [x] Test service behavior with fake notification scheduler for granted, denied, unavailable, schedule failure, and cancellation/rewrite paths.
+  - [x] Test diagnostic redaction for reminder scheduling failures.
+  - [x] Test hook/reducer validation and state transitions for create, permission denied, unavailable scheduling, retry/reload, and local-only recovery.
+  - [x] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -233,16 +233,50 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Pending.
+- 2026-05-08: Confirmed branch `auto/codex-overnight-1`; initial worktree only had unrelated untracked `.claude/worktrees/`.
+- 2026-05-08: Installed `expo-notifications` via `npx expo install expo-notifications`.
+- 2026-05-08: Ran focused Story 3.3 Jest suite for domain, migration, repository, service, diagnostics, and hook coverage.
+- 2026-05-08: Ran final verification gates: `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ### Completion Notes List
 
-- Pending.
+- Implemented additive migration 011 with reminder, exception, scheduled-notification, and diagnostic-event tables; migration tests verify no destructive table changes.
+- Added reminder domain validation and pure occurrence generation using shared recurrence rules for daily, weekly, and monthly schedules.
+- Added reminder repository/service orchestration with local workspace scoping, owner validation, bounded scheduling window of 60 days / 30 occurrences, permission-denied local fallback, unavailable/failure recovery states, platform id replacement, and redacted diagnostics.
+- Added Expo notification adapter behind a dependency-injectable port with lazy default loading so service/hook tests use fakes without native notification APIs.
+- Replaced reminder placeholder route and added reminder capture to the task surface with existing UI primitives and explicit non-color-only recovery copy.
+- Added focused tests for validation, occurrence generation, migration 011, repository behavior, service scheduling paths, diagnostic redaction, and hook reducer states.
 
 ### File List
 
-- Pending.
+- `_bmad-output/implementation-artifacts/3-3-create-deadline-and-repeat-reminders.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-3.3-review.md`
+- `package.json`
+- `package-lock.json`
+- `src/data/db/migrations/migrate.test.ts`
+- `src/data/db/migrations/migrate.ts`
+- `src/data/db/schema.ts`
+- `src/data/repositories/diagnostics.repository.ts`
+- `src/data/repositories/index.ts`
+- `src/data/repositories/reminders.repository.test.ts`
+- `src/data/repositories/reminders.repository.ts`
+- `src/diagnostics/redact.test.ts`
+- `src/domain/reminders/reminder-occurrences.ts`
+- `src/domain/reminders/reminders.test.ts`
+- `src/domain/reminders/schemas.ts`
+- `src/domain/reminders/types.ts`
+- `src/features/reminders/ReminderForm.tsx`
+- `src/features/reminders/ReminderRouteScreen.tsx`
+- `src/features/reminders/useReminderCapture.test.ts`
+- `src/features/reminders/useReminderCapture.ts`
+- `src/features/tasks/TaskForm.tsx`
+- `src/services/notifications/expo-notification-scheduler.ts`
+- `src/services/notifications/notification-scheduler.port.ts`
+- `src/services/reminders/reminder.service.test.ts`
+- `src/services/reminders/reminder.service.ts`
 
 ## Change Log
 
 - 2026-05-08: Created Story 3.3 from Epic 3 reminder requirements and current codebase placeholders.
+- 2026-05-08: Implemented Story 3.3 reminder domain, persistence, scheduling service, UI surfaces, tests, review report, and final verification.

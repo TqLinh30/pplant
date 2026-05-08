@@ -242,14 +242,74 @@ export const taskRecurrenceCompletions = sqliteTable('task_recurrence_completion
   deletedAt: text('deleted_at'),
 });
 
+export const reminders = sqliteTable('reminders', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  ownerKind: text('owner_kind').notNull(),
+  taskId: text('task_id'),
+  taskRecurrenceRuleId: text('task_recurrence_rule_id'),
+  title: text('title').notNull(),
+  notes: text('notes'),
+  frequency: text('frequency').notNull(),
+  startsOnLocalDate: text('starts_on_local_date').notNull(),
+  reminderLocalTime: text('reminder_local_time').notNull(),
+  endsOnLocalDate: text('ends_on_local_date'),
+  source: text('source').notNull(),
+  sourceOfTruth: text('source_of_truth').notNull(),
+  permissionStatus: text('permission_status').notNull(),
+  scheduleState: text('schedule_state').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+});
+
+export const reminderExceptions = sqliteTable('reminder_exceptions', {
+  id: text('id').primaryKey(),
+  reminderId: text('reminder_id').notNull(),
+  workspaceId: text('workspace_id').notNull(),
+  occurrenceLocalDate: text('occurrence_local_date').notNull(),
+  action: text('action').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const reminderScheduledNotifications = sqliteTable('reminder_scheduled_notifications', {
+  id: text('id').primaryKey(),
+  reminderId: text('reminder_id').notNull(),
+  workspaceId: text('workspace_id').notNull(),
+  occurrenceLocalDate: text('occurrence_local_date').notNull(),
+  fireAtLocal: text('fire_at_local').notNull(),
+  scheduledNotificationId: text('scheduled_notification_id').notNull(),
+  deliveryState: text('delivery_state').notNull(),
+  scheduleAttemptedAt: text('schedule_attempted_at').notNull(),
+  scheduleErrorCategory: text('schedule_error_category'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+});
+
+export const diagnosticEvents = sqliteTable('diagnostic_events', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  occurredAt: text('occurred_at').notNull(),
+  appVersion: text('app_version').notNull(),
+  errorCategory: text('error_category').notNull(),
+  metadataJson: text('metadata_json'),
+  createdAt: text('created_at').notNull(),
+});
+
 export const schema = {
   budgets,
   categories,
+  diagnosticEvents,
   moneyRecords,
   moneyRecordTopics,
   recurrenceExceptions,
   recurrenceRules,
   recurrenceRuleTopics,
+  reminderExceptions,
+  reminders,
+  reminderScheduledNotifications,
   savingsGoals,
   schemaMigrations,
   taskRecurrenceCompletions,

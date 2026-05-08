@@ -29,6 +29,7 @@ export const recurringMoneyMigrationId = '007_create_recurring_money_rules';
 export const workEntriesMigrationId = '008_create_work_entries';
 export const tasksMigrationId = '009_create_tasks';
 export const taskRecurrenceMigrationId = '010_create_task_recurrence';
+export const remindersMigrationId = '011_create_reminders';
 
 const createMigrationTrackingTableSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -388,6 +389,83 @@ CREATE INDEX IF NOT EXISTS idx_task_recurrence_completions_rule_active
   ON task_recurrence_completions (rule_id, deleted_at, occurrence_local_date);
 `;
 
+const remindersMigrationSql = `
+CREATE TABLE IF NOT EXISTS reminders (
+  id TEXT PRIMARY KEY NOT NULL,
+  workspace_id TEXT NOT NULL,
+  owner_kind TEXT NOT NULL,
+  task_id TEXT,
+  task_recurrence_rule_id TEXT,
+  title TEXT NOT NULL,
+  notes TEXT,
+  frequency TEXT NOT NULL,
+  starts_on_local_date TEXT NOT NULL,
+  reminder_local_time TEXT NOT NULL,
+  ends_on_local_date TEXT,
+  source TEXT NOT NULL,
+  source_of_truth TEXT NOT NULL,
+  permission_status TEXT NOT NULL,
+  schedule_state TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_reminders_workspace_active_start
+  ON reminders (workspace_id, deleted_at, starts_on_local_date, reminder_local_time);
+
+CREATE INDEX IF NOT EXISTS idx_reminders_workspace_owner
+  ON reminders (workspace_id, deleted_at, owner_kind, task_id, task_recurrence_rule_id);
+
+CREATE TABLE IF NOT EXISTS reminder_exceptions (
+  id TEXT PRIMARY KEY NOT NULL,
+  reminder_id TEXT NOT NULL,
+  workspace_id TEXT NOT NULL,
+  occurrence_local_date TEXT NOT NULL,
+  action TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reminder_exceptions_reminder_date_action
+  ON reminder_exceptions (workspace_id, reminder_id, occurrence_local_date, action);
+
+CREATE TABLE IF NOT EXISTS reminder_scheduled_notifications (
+  id TEXT PRIMARY KEY NOT NULL,
+  reminder_id TEXT NOT NULL,
+  workspace_id TEXT NOT NULL,
+  occurrence_local_date TEXT NOT NULL,
+  fire_at_local TEXT NOT NULL,
+  scheduled_notification_id TEXT NOT NULL,
+  delivery_state TEXT NOT NULL,
+  schedule_attempted_at TEXT NOT NULL,
+  schedule_error_category TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reminder_notifications_active_occurrence
+  ON reminder_scheduled_notifications (workspace_id, reminder_id, occurrence_local_date)
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_reminder_notifications_delivery_state
+  ON reminder_scheduled_notifications (workspace_id, deleted_at, delivery_state, fire_at_local);
+
+CREATE TABLE IF NOT EXISTS diagnostic_events (
+  id TEXT PRIMARY KEY NOT NULL,
+  name TEXT NOT NULL,
+  occurred_at TEXT NOT NULL,
+  app_version TEXT NOT NULL,
+  error_category TEXT NOT NULL,
+  metadata_json TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_diagnostic_events_name_time
+  ON diagnostic_events (name, occurred_at);
+`;
+
 const migrations = [
   {
     id: workspaceMigrationId,
@@ -428,6 +506,10 @@ const migrations = [
   {
     id: taskRecurrenceMigrationId,
     sql: taskRecurrenceMigrationSql,
+  },
+  {
+    id: remindersMigrationId,
+    sql: remindersMigrationSql,
   },
 ] as const;
 

@@ -64,4 +64,34 @@ describe('diagnostic redaction', () => {
 
     expect(redactDiagnosticEvent(event)).toEqual(baseEvent);
   });
+
+  it('keeps only safe reminder scheduling failure metadata', () => {
+    const event = {
+      appVersion: '1.0.0',
+      errorCategory: 'unavailable',
+      metadata: {
+        deliveryState: 'unavailable',
+        permissionStatus: 'denied',
+        offline: false,
+        reminderTitle: 'Study biology',
+        reminderNotes: 'Bring workbook',
+        scheduledNotificationId: 'platform-secret',
+        occurrenceLocalDate: '2026-05-08',
+      },
+      name: 'reminder_scheduling_failed',
+      occurredAt: '2026-05-08T00:00:00.000Z',
+    } as unknown as DiagnosticEvent;
+
+    expect(redactDiagnosticEvent(event)).toEqual({
+      appVersion: '1.0.0',
+      errorCategory: 'unavailable',
+      metadata: {
+        deliveryState: 'unavailable',
+        offline: false,
+        permissionStatus: 'denied',
+      },
+      name: 'reminder_scheduling_failed',
+      occurredAt: '2026-05-08T00:00:00.000Z',
+    });
+  });
 });
