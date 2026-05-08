@@ -1,6 +1,6 @@
 # Story 7.5: Add Redacted Diagnostics And Standard Test Fixtures
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -18,45 +18,45 @@ so that the app can be tested and improved without exposing my personal informat
 
 ## Tasks / Subtasks
 
-- [ ] Formalize safe diagnostic event contracts. (AC: 1)
-  - [ ] Keep the existing diagnostic event names for receipt parsing failure, receipt recovery failure, reminder scheduling failure, migration failure, summary recalculation failure, and receipt retry exhaustion.
-  - [ ] Add or tighten Zod validation for diagnostic events and allowlisted metadata values.
-  - [ ] Ensure every diagnostic event shape includes `name`, `occurredAt`, `appVersion`, and `errorCategory`.
-  - [ ] Preserve explicit allowlisted metadata keys only: retry/job state, delivery/permission state, migration step, summary period, offline/timed-out flags, retry limits, and action id.
+- [x] Formalize safe diagnostic event contracts. (AC: 1)
+  - [x] Keep the existing diagnostic event names for receipt parsing failure, receipt recovery failure, reminder scheduling failure, migration failure, summary recalculation failure, and receipt retry exhaustion.
+  - [x] Add or tighten Zod validation for diagnostic events and allowlisted metadata values.
+  - [x] Ensure every diagnostic event shape includes `name`, `occurredAt`, `appVersion`, and `errorCategory`.
+  - [x] Preserve explicit allowlisted metadata keys only: retry/job state, delivery/permission state, migration step, summary period, offline/timed-out flags, retry limits, and action id.
 
-- [ ] Add reusable diagnostic recording helpers for required failure classes. (AC: 1, 3)
-  - [ ] Keep receipt recovery diagnostics working and add helpers where missing for receipt parsing failures/retry exhaustion, reminder scheduling failures, migration failures, and summary recalculation failures.
-  - [ ] Helpers must accept domain errors/states and emit only safe categories/states, not source payloads.
-  - [ ] Repository persistence must continue to store redacted metadata JSON only.
-  - [ ] If a recording attempt fails, return a typed `AppResult` without throwing and without adding sensitive cause text to the saved event.
+- [x] Add reusable diagnostic recording helpers for required failure classes. (AC: 1, 3)
+  - [x] Keep receipt recovery diagnostics working and add helpers where missing for receipt parsing failures/retry exhaustion, reminder scheduling failures, migration failures, and summary recalculation failures.
+  - [x] Helpers must accept domain errors/states and emit only safe categories/states, not source payloads.
+  - [x] Repository persistence must continue to store redacted metadata JSON only.
+  - [x] If a recording attempt fails, return a typed `AppResult` without throwing and without adding sensitive cause text to the saved event.
 
-- [ ] Strengthen redaction and persistence tests. (AC: 1, 3)
-  - [ ] Test all required diagnostic event names with malicious metadata containing receipt image URI, OCR text, merchant/source, amount, income, task title, reminder title, reflection text, payload JSON, path-like values, and raw error messages.
-  - [ ] Test diagnostics repository persistence stores only redacted metadata.
-  - [ ] Test diagnostic event validation rejects invalid event names, invalid timestamps, unsupported metadata keys, oversized strings, and unsafe values.
+- [x] Strengthen redaction and persistence tests. (AC: 1, 3)
+  - [x] Test all required diagnostic event names with malicious metadata containing receipt image URI, OCR text, merchant/source, amount, income, task title, reminder title, reflection text, payload JSON, path-like values, and raw error messages.
+  - [x] Test diagnostics repository persistence stores only redacted metadata.
+  - [x] Test diagnostic event validation rejects invalid event names, invalid timestamps, unsupported metadata keys, oversized strings, and unsafe values.
 
-- [ ] Generate a non-sensitive standard MVP dataset fixture. (AC: 2, 3)
-  - [ ] Extend `src/data/fixtures/standard-mvp-dataset.ts` beyond counts with deterministic fixture generation functions.
-  - [ ] Generate at least the required counts for expenses, receipt-based expenses, income entries, work shifts, tasks, reminders, savings goal events, and reflections.
-  - [ ] Use synthetic labels/ids only, not realistic personal names, real merchants, free-form personal notes, raw receipt text, image URIs, or reflection content that could look user-derived.
-  - [ ] Keep the fixture lightweight enough for normal Jest execution; prefer deterministic generated arrays over checked-in large JSON files.
+- [x] Generate a non-sensitive standard MVP dataset fixture. (AC: 2, 3)
+  - [x] Extend `src/data/fixtures/standard-mvp-dataset.ts` beyond counts with deterministic fixture generation functions.
+  - [x] Generate at least the required counts for expenses, receipt-based expenses, income entries, work shifts, tasks, reminders, savings goal events, and reflections.
+  - [x] Use synthetic labels/ids only, not realistic personal names, real merchants, free-form personal notes, raw receipt text, image URIs, or reflection content that could look user-derived.
+  - [x] Keep the fixture lightweight enough for normal Jest execution; prefer deterministic generated arrays over checked-in large JSON files.
 
-- [ ] Add fixture ownership and smoke tests. (AC: 2, 3)
-  - [ ] Add tests proving fixture counts meet or exceed PRD requirements.
-  - [ ] Add tests proving generated fixture values are non-sensitive and do not include paths, URIs, OCR text, spending details in diagnostics, personal task/reminder text, or reflection answers.
-  - [ ] Add smoke tests that run summary, recurrence, parsing normalization, migration, and repository-oriented logic without mobile UI dependencies.
+- [x] Add fixture ownership and smoke tests. (AC: 2, 3)
+  - [x] Add tests proving fixture counts meet or exceed PRD requirements.
+  - [x] Add tests proving generated fixture values are non-sensitive and do not include paths, URIs, OCR text, spending details in diagnostics, personal task/reminder text, or reflection answers.
+  - [x] Add smoke tests that run summary, recurrence, parsing normalization, migration, and repository-oriented logic without mobile UI dependencies.
 
-- [ ] Preserve privacy, architecture, and story boundaries. (AC: 1, 2, 3)
-  - [ ] Do not add external crash reporting, analytics SDKs, backend APIs, cloud sync, auth, or OCR providers.
-  - [ ] Do not collect or export diagnostics outside local app storage.
-  - [ ] Do not modify user-facing privacy deletion behavior except tests/fakes if needed.
-  - [ ] Do not add a large static fixture file.
+- [x] Preserve privacy, architecture, and story boundaries. (AC: 1, 2, 3)
+  - [x] Do not add external crash reporting, analytics SDKs, backend APIs, cloud sync, auth, or OCR providers.
+  - [x] Do not collect or export diagnostics outside local app storage.
+  - [x] Do not modify user-facing privacy deletion behavior except tests/fakes if needed.
+  - [x] Do not add a large static fixture file.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Add diagnostics event/redaction/repository tests.
-  - [ ] Add standard fixture generator/count/sensitivity tests.
-  - [ ] Add no-mobile-UI smoke tests for the fixture-backed domain paths where reasonable.
-  - [ ] Run `npm run typecheck -- --pretty false`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Add diagnostics event/redaction/repository tests.
+  - [x] Add standard fixture generator/count/sensitivity tests.
+  - [x] Add no-mobile-UI smoke tests for the fixture-backed domain paths where reasonable.
+  - [x] Run `npm run typecheck -- --pretty false`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -167,16 +167,35 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-09: Created Story 7.5 ready-for-dev from Epic 7, PRD observability/performance requirements, architecture diagnostics/fixture guidance, and current diagnostics/fixture implementation.
+- 2026-05-09: Started implementation. Plan: add diagnostic schemas/helpers/repository tests, extend standard MVP fixture generation, add fixture smoke tests, then run full verification.
+- 2026-05-09: Completed implementation and verification. Focused diagnostics/fixture suites, full Jest, typecheck, lint, Expo dependency check, build-if-present, and whitespace check passed.
 
 ### Completion Notes List
 
-- Pending implementation.
+- Added Zod validation for diagnostic event names, required fields, timestamps, and allowlisted metadata.
+- Added reusable diagnostic helpers for receipt parsing failures, receipt retry exhaustion, reminder scheduling failures, migration failures, and summary recalculation failures.
+- Updated diagnostics persistence to redact and validate only diagnostic payload fields before storing metadata JSON.
+- Extended the standard MVP fixture module with deterministic generated records for expenses, receipt-based expenses, income entries, work shifts, tasks, reminders, savings goal events, reflections, and receipt parse results.
+- Added fixture smoke tests for counts, synthetic/non-sensitive strings, summary calculation, reminder recurrence, parse normalization, migration, and money row parsing without mobile UI.
+- No external telemetry, analytics SDK, backend, auth, cloud sync, OCR provider, diagnostics export, or large static fixture file was added.
+- Full verification passed: typecheck, lint, Jest, Expo install check, build-if-present, and `git diff --check`.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/7-5-add-redacted-diagnostics-and-standard-test-fixtures.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-7.5-review.md`
+- `src/data/fixtures/standard-mvp-dataset.test.ts`
+- `src/data/fixtures/standard-mvp-dataset.ts`
+- `src/data/repositories/diagnostics.repository.test.ts`
+- `src/data/repositories/diagnostics.repository.ts`
+- `src/diagnostics/diagnostics.service.test.ts`
+- `src/diagnostics/diagnostics.service.ts`
+- `src/diagnostics/events.test.ts`
+- `src/diagnostics/events.ts`
 
 ## Change Log
 
 - 2026-05-09: Created Story 7.5 ready-for-dev.
+- 2026-05-09: Started implementation.
+- 2026-05-09: Completed redacted diagnostics and standard fixture hardening and marked story done.
