@@ -10,6 +10,7 @@ export { createMoneyRecordRepository, type MoneyRecordRepository } from './money
 export { createPreferencesRepository, type PreferencesRepository } from './preferences.repository';
 export { createRecurrenceRuleRepository, type RecurrenceRuleRepository } from './recurrence-rules.repository';
 export { createRecoveryRepository, type RecoveryRepository } from './recovery.repository';
+export { createReceiptParseJobRepository, type ReceiptParseJobRepository } from './receipt-parse-jobs.repository';
 export { createReminderRepository, type ReminderRepository } from './reminders.repository';
 export { createTaskRepository, type TaskRepository } from './tasks.repository';
 export { createTaskRecurrenceRepository, type TaskRecurrenceRepository } from './task-recurrence.repository';

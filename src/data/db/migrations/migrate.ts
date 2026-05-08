@@ -32,6 +32,7 @@ export const taskRecurrenceMigrationId = '010_create_task_recurrence';
 export const remindersMigrationId = '011_create_reminders';
 export const recoveryEventsMigrationId = '012_create_recovery_events';
 export const captureDraftsMigrationId = '013_create_capture_drafts';
+export const receiptParseJobsMigrationId = '014_create_receipt_parse_jobs';
 
 const createMigrationTrackingTableSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -514,6 +515,31 @@ CREATE INDEX IF NOT EXISTS idx_capture_drafts_saved_record
   ON capture_drafts (workspace_id, saved_record_kind, saved_record_id);
 `;
 
+const receiptParseJobsMigrationSql = `
+CREATE TABLE IF NOT EXISTS receipt_parse_jobs (
+  id TEXT PRIMARY KEY NOT NULL,
+  workspace_id TEXT NOT NULL,
+  receipt_draft_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  attempt_count INTEGER NOT NULL,
+  retry_window_started_at TEXT,
+  requested_at TEXT NOT NULL,
+  started_at TEXT,
+  completed_at TEXT,
+  last_error_category TEXT,
+  result_json TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_receipt_parse_jobs_draft_latest
+  ON receipt_parse_jobs (workspace_id, receipt_draft_id, deleted_at, updated_at);
+
+CREATE INDEX IF NOT EXISTS idx_receipt_parse_jobs_pending_retry
+  ON receipt_parse_jobs (workspace_id, deleted_at, status, updated_at);
+`;
+
 const migrations = [
   {
     id: workspaceMigrationId,
@@ -566,6 +592,10 @@ const migrations = [
   {
     id: captureDraftsMigrationId,
     sql: captureDraftsMigrationSql,
+  },
+  {
+    id: receiptParseJobsMigrationId,
+    sql: receiptParseJobsMigrationSql,
   },
 ] as const;
 

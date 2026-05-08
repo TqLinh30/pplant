@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { AppError } from '@/domain/common/app-error';
 import type { CaptureDraft } from '@/domain/capture-drafts/types';
+import type { ReceiptParseJob } from '@/domain/receipts/types';
 import {
   isReceiptCaptureDraftPayload,
   parseReceiptCaptureDraftPayload,
@@ -15,18 +16,30 @@ import {
   keepCaptureDraft,
   listActiveCaptureDrafts,
 } from '@/services/capture-drafts/capture-draft.service';
+import {
+  getLatestReceiptParseJobForDraft,
+  runReceiptParseJob,
+  startReceiptParseJob,
+} from '@/services/receipt-parsing/receipt-parse-job.service';
 import { Button } from '@/ui/primitives/Button';
 import { StatusBanner } from '@/ui/primitives/StatusBanner';
 import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
+import { receiptParseNoticeFor, receiptProposalRows } from './receipt-parse-state';
+
 type ReceiptDraftViewState =
   | { error: AppError; status: 'failed' }
   | { status: 'discarded' }
   | { status: 'loading' }
   | { status: 'missing' }
-  | { draft: CaptureDraft; payload: ReceiptCaptureDraftPayload; status: 'ready' };
+  | {
+      draft: CaptureDraft;
+      payload: ReceiptCaptureDraftPayload;
+      parseJob: ReceiptParseJob | null;
+      status: 'ready';
+    };
 
 function routeParam(value: string | string[] | undefined): string | null {
   if (Array.isArray(value)) {
@@ -55,6 +68,7 @@ function formatSize(sizeBytes: number | null): string {
 export function ReceiptRouteScreen() {
   const { receiptDraftId } = useLocalSearchParams<{ receiptDraftId: string }>();
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [parseActionRunning, setParseActionRunning] = useState(false);
   const [viewState, setViewState] = useState<ReceiptDraftViewState>({ status: 'loading' });
   const draftId = routeParam(receiptDraftId);
 
@@ -65,7 +79,9 @@ export function ReceiptRouteScreen() {
     }
 
     setViewState({ status: 'loading' });
-    void listActiveCaptureDrafts().then((result) => {
+    void (async () => {
+      const result = await listActiveCaptureDrafts();
+
       if (!result.ok) {
         setViewState({ error: result.error, status: 'failed' });
         return;
@@ -85,12 +101,22 @@ export function ReceiptRouteScreen() {
         return;
       }
 
+      const latestJob = await getLatestReceiptParseJobForDraft({
+        receiptDraftId: draft.id,
+      });
+
+      if (!latestJob.ok) {
+        setViewState({ error: latestJob.error, status: 'failed' });
+        return;
+      }
+
       setViewState({
         draft,
+        parseJob: latestJob.value,
         payload: payload.value,
         status: 'ready',
       });
-    });
+    })();
   }, [draftId]);
 
   useEffect(() => {
@@ -128,6 +154,80 @@ export function ReceiptRouteScreen() {
       loadDraft();
     });
   };
+
+  const updateParseJob = (parseJob: ReceiptParseJob) => {
+    setViewState((current) => {
+      if (current.status !== 'ready') {
+        return current;
+      }
+
+      return {
+        ...current,
+        parseJob,
+      };
+    });
+  };
+
+  const runExistingParseJob = (parseJob: ReceiptParseJob, userInitiated = false) => {
+    setParseActionRunning(true);
+    setActionMessage(userInitiated ? 'Manual parse retry started.' : 'Receipt parsing started.');
+
+    void runReceiptParseJob({
+      jobId: parseJob.id,
+      userInitiated,
+    }).then((result) => {
+      setParseActionRunning(false);
+
+      if (!result.ok) {
+        setViewState({ error: result.error, status: 'failed' });
+        return;
+      }
+
+      updateParseJob(result.value);
+      setActionMessage(
+        result.value.status === 'parsed' || result.value.status === 'low_confidence'
+          ? 'Receipt parsing finished. Review proposed fields before saving.'
+          : 'Receipt parsing state updated. Manual expense remains available.',
+      );
+    });
+  };
+
+  const startParsing = () => {
+    if (viewState.status !== 'ready' || parseActionRunning) {
+      return;
+    }
+
+    setParseActionRunning(true);
+    setActionMessage('Receipt parsing queued. You can still enter the expense manually.');
+
+    void startReceiptParseJob({
+      receiptDraftId: viewState.draft.id,
+    }).then((result) => {
+      setParseActionRunning(false);
+
+      if (!result.ok) {
+        setViewState({ error: result.error, status: 'failed' });
+        return;
+      }
+
+      updateParseJob(result.value);
+      runExistingParseJob(result.value);
+    });
+  };
+
+  const retryParsing = () => {
+    if (viewState.status !== 'ready' || !viewState.parseJob || parseActionRunning) {
+      return;
+    }
+
+    runExistingParseJob(viewState.parseJob, viewState.parseJob.status === 'retry_exhausted');
+  };
+
+  const parseNotice = viewState.status === 'ready' ? receiptParseNoticeFor(viewState.parseJob) : null;
+  const proposalRows =
+    viewState.status === 'ready' && viewState.parseJob?.normalizedResult
+      ? receiptProposalRows(viewState.parseJob.normalizedResult)
+      : [];
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -174,8 +274,15 @@ export function ReceiptRouteScreen() {
           <>
             <StatusBanner
               title="Receipt photo saved privately"
-              description="The image reference is stored in the local expense draft. No OCR or upload has started."
+              description="The image reference is stored in the local expense draft. Parsing is optional and no expense is saved automatically."
             />
+            {parseNotice ? (
+              <StatusBanner
+                title={parseNotice.title}
+                description={parseNotice.description}
+                tone={parseNotice.tone}
+              />
+            ) : null}
             <View style={styles.metadata}>
               <Text style={styles.label}>Captured</Text>
               <Text style={styles.value}>{viewState.payload.receipt.capturedAt}</Text>
@@ -188,8 +295,27 @@ export function ReceiptRouteScreen() {
               <Text style={styles.label}>Retention</Text>
               <Text style={styles.value}>Keep until saved or discarded</Text>
             </View>
+            {proposalRows.length > 0 ? (
+              <View style={styles.proposals} accessibilityRole="summary">
+                <Text style={styles.sectionTitle}>Proposed fields</Text>
+                {proposalRows.map((row) => (
+                  <View key={row.label} style={styles.proposalRow}>
+                    <Text style={styles.label}>{row.label}</Text>
+                    <Text style={styles.value}>{row.value}</Text>
+                    <Text style={styles.helper}>{row.confidenceLabel}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
             {actionMessage ? <StatusBanner title="Draft updated" description={actionMessage} /> : null}
             <View style={styles.actions}>
+              {parseNotice?.actionLabel ? (
+                <Button
+                  label={parseNotice.actionLabel}
+                  onPress={viewState.parseJob ? retryParsing : startParsing}
+                  disabled={parseActionRunning}
+                />
+              ) : null}
               <Button label="Manual expense" onPress={goToManualExpense} />
               <Button label="Keep draft" onPress={keepDraft} variant="secondary" />
               <Button label="Discard draft" onPress={discardDraft} variant="danger" />
@@ -249,9 +375,24 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     padding: spacing.md,
   },
+  proposalRow: {
+    gap: spacing.xs,
+  },
+  proposals: {
+    backgroundColor: colors.surfaceSoft,
+    borderColor: colors.hairline,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: spacing.md,
+    padding: spacing.md,
+  },
   safeArea: {
     backgroundColor: colors.canvas,
     flex: 1,
+  },
+  sectionTitle: {
+    ...typography.label,
+    color: colors.ink,
   },
   title: {
     ...typography.screenTitle,

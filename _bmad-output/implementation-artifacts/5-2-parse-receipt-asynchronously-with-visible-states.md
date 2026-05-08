@@ -1,6 +1,6 @@
 # Story 5.2: Parse Receipt Asynchronously With Visible States
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -16,45 +16,45 @@ so that I can keep control while automation helps.
 
 ## Tasks / Subtasks
 
-- [ ] Add receipt parse job domain and persistence. (AC: 1, 2, 3)
-  - [ ] Add a non-destructive migration for `receipt_parse_jobs`; do not modify or delete `capture_drafts`.
-  - [ ] Add schema ownership in `src/data/db/schema.ts` and migration tests proving existing data survives.
-  - [ ] Add domain types/schemas for parse job status, attempts, timestamps, error category, normalized result JSON, and retry exhaustion.
-  - [ ] Add repository methods for create pending job, load active/latest job by draft, mark running, mark parsed, mark failed, and list pending/retryable jobs.
-  - [ ] Keep job records local and linked to the existing receipt expense draft id.
+- [x] Add receipt parse job domain and persistence. (AC: 1, 2, 3)
+  - [x] Add a non-destructive migration for `receipt_parse_jobs`; do not modify or delete `capture_drafts`.
+  - [x] Add schema ownership in `src/data/db/schema.ts` and migration tests proving existing data survives.
+  - [x] Add domain types/schemas for parse job status, attempts, timestamps, error category, normalized result JSON, and retry exhaustion.
+  - [x] Add repository methods for create pending job, load active/latest job by draft, mark running, mark parsed, mark failed, and list pending/retryable jobs.
+  - [x] Keep job records local and linked to the existing receipt expense draft id.
 
-- [ ] Implement parsing service orchestration through the existing port. (AC: 1, 2, 3)
-  - [ ] Use `ReceiptParsingPort`; parser output must never create a final expense record.
-  - [ ] Keep `noopReceiptParser` as the default/manual-fallback parser when OCR is not configured.
-  - [ ] Normalize and validate parser output before storing it on the job.
-  - [ ] Store proposed fields and confidence/unknown states as result JSON, not as final money records.
-  - [ ] Return typed `AppResult` failures with recovery paths and redacted messages.
+- [x] Implement parsing service orchestration through the existing port. (AC: 1, 2, 3)
+  - [x] Use `ReceiptParsingPort`; parser output must never create a final expense record.
+  - [x] Keep `noopReceiptParser` as the default/manual-fallback parser when OCR is not configured.
+  - [x] Normalize and validate parser output before storing it on the job.
+  - [x] Store proposed fields and confidence/unknown states as result JSON, not as final money records.
+  - [x] Return typed `AppResult` failures with recovery paths and redacted messages.
 
-- [ ] Implement retry policy. (AC: 3)
-  - [ ] Enforce no more than 3 automatic attempts within a 24-hour window per receipt parse job.
-  - [ ] Mark jobs `retry_exhausted` after the final automatic failure.
-  - [ ] Require explicit user action to create/run another attempt after retry exhaustion.
-  - [ ] Add deterministic tests around attempt counts, 24-hour windows, and final failure.
+- [x] Implement retry policy. (AC: 3)
+  - [x] Enforce no more than 3 automatic attempts within a 24-hour window per receipt parse job.
+  - [x] Mark jobs `retry_exhausted` after the final automatic failure.
+  - [x] Require explicit user action to create/run another attempt after retry exhaustion.
+  - [x] Add deterministic tests around attempt counts, 24-hour windows, and final failure.
 
-- [ ] Surface visible receipt parsing states without blocking manual entry. (AC: 1, 2, 3)
-  - [ ] Update receipt draft screen to show draft, pending/running, parsed, low-confidence, failed, and retry-exhausted states where supported.
-  - [ ] Provide actions for start parsing, retry when allowed, manual expense, keep draft, and discard draft.
-  - [ ] Keep navigation away safe; parse jobs should remain recoverable from the receipt draft screen.
-  - [ ] Do not hide manual expense while parsing is pending, failed, or retry-exhausted.
-  - [ ] Label parsed/low-confidence/unknown fields with text, not color alone.
+- [x] Surface visible receipt parsing states without blocking manual entry. (AC: 1, 2, 3)
+  - [x] Update receipt draft screen to show draft, pending/running, parsed, low-confidence, failed, and retry-exhausted states where supported.
+  - [x] Provide actions for start parsing, retry when allowed, manual expense, keep draft, and discard draft.
+  - [x] Keep navigation away safe; parse jobs should remain recoverable from the receipt draft screen.
+  - [x] Do not hide manual expense while parsing is pending, failed, or retry-exhausted.
+  - [x] Label parsed/low-confidence/unknown fields with text, not color alone.
 
-- [ ] Preserve privacy, architecture, and scope boundaries. (AC: 1, 2, 3)
-  - [ ] Do not send receipt images to external services unless an injected parser is explicitly supplied in tests.
-  - [ ] Do not add real OCR credentials, environment secrets, third-party AI calls, duplicate detection, review correction save, line-item editing UI, or final expense creation.
-  - [ ] Do not log receipt image URI, OCR text, spending details, parsed totals, line items, or draft payloads to diagnostics.
-  - [ ] Do not change auth, cloud sync, public APIs, or unrelated capture flows.
+- [x] Preserve privacy, architecture, and scope boundaries. (AC: 1, 2, 3)
+  - [x] Do not send receipt images to external services unless an injected parser is explicitly supplied in tests.
+  - [x] Do not add real OCR credentials, environment secrets, third-party AI calls, duplicate detection, review correction save, line-item editing UI, or final expense creation.
+  - [x] Do not log receipt image URI, OCR text, spending details, parsed totals, line items, or draft payloads to diagnostics.
+  - [x] Do not change auth, cloud sync, public APIs, or unrelated capture flows.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Add migration/repository tests for parse job lifecycle.
-  - [ ] Add domain/retry-policy tests.
-  - [ ] Add parsing service tests for noop failure, success normalization, low confidence, retry exhaustion, and manual fallback availability.
-  - [ ] Add feature/UI helper tests for visible state descriptors and non-color-only labels.
-  - [ ] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Add migration/repository tests for parse job lifecycle.
+  - [x] Add domain/retry-policy tests.
+  - [x] Add parsing service tests for noop failure, success normalization, low confidence, retry exhaustion, and manual fallback availability.
+  - [x] Add feature/UI helper tests for visible state descriptors and non-color-only labels.
+  - [x] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -174,16 +174,45 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-08: Created Story 5.2 ready-for-dev from Epic 5, PRD, architecture, UX, Story 5.1 implementation context, and current receipt parsing placeholders.
+- 2026-05-08: Started Story 5.2 implementation.
+- 2026-05-08: Added non-destructive receipt parse job migration, schema, repository, domain validation, and retry policy.
+- 2026-05-08: Added parse job orchestration through `ReceiptParsingPort`, default noop/manual fallback handling, and visible receipt draft parse states.
+- 2026-05-08: Verification passed: focused tests, typecheck, lint, full test suite, Expo install check, build-if-present, and diff whitespace check.
 
 ### Completion Notes List
 
-- Pending implementation.
+- Added local `receipt_parse_jobs` persistence linked to existing receipt expense draft ids; `capture_drafts` remains the draft source of truth.
+- Added normalized parse result validation for merchant, date, total, line items, category, topics, unknown fields, confidence labels, and duplicate indicators.
+- Implemented retry policy with at most three automatic attempts in a 24-hour window and explicit user-initiated retry after exhaustion.
+- Wired receipt draft UI to start/resume/retry parsing while keeping manual expense, keep draft, and discard draft actions visible.
+- Kept the default parser as `noopReceiptParser`; no OCR credentials, external calls, duplicate detection, final expense save, auth, backend, or sync behavior was added.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/5-2-parse-receipt-asynchronously-with-visible-states.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-5.2-review.md`
+- `src/data/db/migrations/migrate.test.ts`
+- `src/data/db/migrations/migrate.ts`
+- `src/data/db/schema.ts`
+- `src/data/repositories/index.ts`
+- `src/data/repositories/receipt-parse-jobs.repository.test.ts`
+- `src/data/repositories/receipt-parse-jobs.repository.ts`
+- `src/domain/receipts/normalize-parse-result.ts`
+- `src/domain/receipts/receipts.test.ts`
+- `src/domain/receipts/retry-policy.test.ts`
+- `src/domain/receipts/retry-policy.ts`
+- `src/domain/receipts/schemas.ts`
+- `src/domain/receipts/types.ts`
+- `src/features/receipts/ReceiptRouteScreen.tsx`
+- `src/features/receipts/receipt-parse-state.test.ts`
+- `src/features/receipts/receipt-parse-state.ts`
+- `src/services/receipt-parsing/receipt-parse-job.service.test.ts`
+- `src/services/receipt-parsing/receipt-parse-job.service.ts`
+- `src/services/receipt-parsing/retry-policy.ts`
 
 ## Change Log
 
 - 2026-05-08: Created Story 5.2 ready-for-dev.
+- 2026-05-08: Started implementation.
+- 2026-05-08: Completed Story 5.2 implementation and self-review.

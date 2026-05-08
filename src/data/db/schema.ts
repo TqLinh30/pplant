@@ -324,6 +324,23 @@ export const captureDrafts = sqliteTable('capture_drafts', {
   discardedAt: text('discarded_at'),
 });
 
+export const receiptParseJobs = sqliteTable('receipt_parse_jobs', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  receiptDraftId: text('receipt_draft_id').notNull(),
+  status: text('status').notNull(),
+  attemptCount: integer('attempt_count').notNull(),
+  retryWindowStartedAt: text('retry_window_started_at'),
+  requestedAt: text('requested_at').notNull(),
+  startedAt: text('started_at'),
+  completedAt: text('completed_at'),
+  lastErrorCategory: text('last_error_category'),
+  resultJson: text('result_json'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+});
+
 export const schema = {
   budgets,
   captureDrafts,
@@ -335,6 +352,7 @@ export const schema = {
   recurrenceRules,
   recurrenceRuleTopics,
   recoveryEvents,
+  receiptParseJobs,
   reminderExceptions,
   reminders,
   reminderScheduledNotifications,

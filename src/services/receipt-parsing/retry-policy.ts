@@ -1,4 +1,1 @@
-export const receiptParsingRetryPolicy = {
-  maxAutomaticRetries: 3,
-  windowHours: 24,
-} as const;
+export { receiptParsingRetryPolicy } from '@/domain/receipts/retry-policy';
