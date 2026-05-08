@@ -1,5 +1,6 @@
 export type DiagnosticEventName =
   | 'receipt_parsing_failed'
+  | 'receipt_recovery_action_failed'
   | 'reminder_scheduling_failed'
   | 'migration_failed'
   | 'summary_recalculation_failed'
@@ -16,6 +17,7 @@ export const diagnosticMetadataKeys = [
   'permissionStatus',
   'offline',
   'timedOut',
+  'actionId',
 ] as const;
 
 export type DiagnosticMetadataKey = (typeof diagnosticMetadataKeys)[number];

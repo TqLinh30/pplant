@@ -28,6 +28,7 @@ import {
   runReceiptParseJob,
   startReceiptParseJob,
 } from '@/services/receipt-parsing/receipt-parse-job.service';
+import { recordReceiptRecoveryFailure } from '@/services/receipt-parsing/receipt-recovery-diagnostics.service';
 import {
   loadReceiptReviewData,
   saveCorrectedReceiptExpense,
@@ -42,6 +43,10 @@ import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
 import { receiptParseNoticeFor, receiptProposalRows } from './receipt-parse-state';
+import {
+  receiptRecoveryStateFor,
+  type ReceiptRecoveryActionId,
+} from './receipt-recovery-actions';
 
 type ReceiptDraftViewState =
   | { error: AppError; status: 'failed' }
@@ -179,6 +184,14 @@ export function ReceiptRouteScreen() {
     loadDraft();
   }, [loadDraft]);
 
+  const recordRecoveryFailure = (actionId: ReceiptRecoveryActionId, error: AppError) => {
+    void recordReceiptRecoveryFailure({
+      actionId,
+      error,
+      parseJob: viewState.status === 'ready' ? viewState.parseJob : null,
+    });
+  };
+
   const discardDraft = () => {
     if (viewState.status !== 'ready') {
       return;
@@ -186,6 +199,7 @@ export function ReceiptRouteScreen() {
 
     void discardCaptureDraft({ id: viewState.draft.id }).then((result) => {
       if (!result.ok) {
+        recordRecoveryFailure('discard_draft', result.error);
         setViewState({ error: result.error, status: 'failed' });
         return;
       }
@@ -202,6 +216,7 @@ export function ReceiptRouteScreen() {
 
     void keepCaptureDraft({ id: viewState.draft.id }).then((result) => {
       if (!result.ok) {
+        recordRecoveryFailure('keep_draft', result.error);
         setViewState({ error: result.error, status: 'failed' });
         return;
       }
@@ -224,7 +239,11 @@ export function ReceiptRouteScreen() {
     });
   };
 
-  const runExistingParseJob = (parseJob: ReceiptParseJob, userInitiated = false) => {
+  const runExistingParseJob = (
+    parseJob: ReceiptParseJob,
+    userInitiated = false,
+    recoveryActionId: ReceiptRecoveryActionId = 'retry_parsing',
+  ) => {
     setParseActionRunning(true);
     setActionMessage(userInitiated ? 'Manual parse retry started.' : 'Receipt parsing started.');
 
@@ -235,6 +254,7 @@ export function ReceiptRouteScreen() {
       setParseActionRunning(false);
 
       if (!result.ok) {
+        recordRecoveryFailure(recoveryActionId, result.error);
         setViewState({ error: result.error, status: 'failed' });
         return;
       }
@@ -268,12 +288,13 @@ export function ReceiptRouteScreen() {
       setParseActionRunning(false);
 
       if (!result.ok) {
+        recordRecoveryFailure('start_parsing', result.error);
         setViewState({ error: result.error, status: 'failed' });
         return;
       }
 
       updateParseJob(result.value);
-      runExistingParseJob(result.value);
+      runExistingParseJob(result.value, false, 'start_parsing');
     });
   };
 
@@ -282,7 +303,33 @@ export function ReceiptRouteScreen() {
       return;
     }
 
-    runExistingParseJob(viewState.parseJob, viewState.parseJob.status === 'retry_exhausted');
+    runExistingParseJob(viewState.parseJob, viewState.parseJob.status === 'retry_exhausted', 'retry_parsing');
+  };
+
+  const handleRecoveryAction = (actionId: ReceiptRecoveryActionId) => {
+    switch (actionId) {
+      case 'start_parsing':
+        startParsing();
+        return;
+      case 'retry_parsing':
+        retryParsing();
+        return;
+      case 'edit_review':
+        setActionMessage('Receipt Review Desk is ready. Edit the fields before saving.');
+        return;
+      case 'edit_draft':
+      case 'manual_expense':
+        goToManualExpense();
+        return;
+      case 'keep_draft':
+        keepDraft();
+        return;
+      case 'discard_draft':
+        discardDraft();
+        return;
+      default:
+        actionId satisfies never;
+    }
   };
 
   const updateReviewDraft = (patch: Partial<ReceiptReviewDraft>) => {
@@ -388,6 +435,14 @@ export function ReceiptRouteScreen() {
           locale: reviewData.preferences.locale,
         })
       : [];
+  const recoveryState =
+    viewState.status === 'ready' && !savedRecord
+      ? receiptRecoveryStateFor({
+          parseActionRunning,
+          parseJob: viewState.parseJob,
+          reviewAvailable: Boolean(reviewData && reviewDraft && reviewData.parseJob.normalizedResult),
+        })
+      : null;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -471,6 +526,35 @@ export function ReceiptRouteScreen() {
                     <Text style={styles.helper}>{row.confidenceLabel}</Text>
                   </View>
                 ))}
+              </View>
+            ) : null}
+            {recoveryState ? (
+              <View style={styles.recoveryPanel} accessibilityLabel="Receipt recovery actions" accessibilityRole="summary">
+                <Text style={styles.sectionTitle}>{recoveryState.title}</Text>
+                <Text style={styles.helper}>{recoveryState.description}</Text>
+                <Text style={styles.helper}>State: {recoveryState.statusLabel}</Text>
+                {recoveryState.recommendedActionId ? (
+                  <Text style={styles.helper}>
+                    Next action:{' '}
+                    {
+                      recoveryState.actions.find((action) => action.id === recoveryState.recommendedActionId)
+                        ?.label
+                    }
+                  </Text>
+                ) : null}
+                <View style={styles.actions}>
+                  {recoveryState.actions.map((action) => (
+                    <View key={action.id} style={styles.recoveryAction}>
+                      <Button
+                        label={action.label}
+                        onPress={() => handleRecoveryAction(action.id)}
+                        disabled={action.disabled}
+                        variant={action.variant}
+                      />
+                      <Text style={styles.helper}>{action.description}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
             ) : null}
             {reviewData && reviewDraft && reviewData.parseJob.normalizedResult && !savedRecord ? (
@@ -602,16 +686,6 @@ export function ReceiptRouteScreen() {
             ) : null}
             {actionMessage ? <StatusBanner title="Draft updated" description={actionMessage} /> : null}
             <View style={styles.actions}>
-              {!savedRecord && parseNotice?.actionLabel ? (
-                <Button
-                  label={parseNotice.actionLabel}
-                  onPress={viewState.parseJob ? retryParsing : startParsing}
-                  disabled={parseActionRunning}
-                />
-              ) : null}
-              {!savedRecord ? <Button label="Manual expense" onPress={goToManualExpense} /> : null}
-              {!savedRecord ? <Button label="Keep draft" onPress={keepDraft} variant="secondary" /> : null}
-              {!savedRecord ? <Button label="Discard draft" onPress={discardDraft} variant="danger" /> : null}
               {savedRecord ? (
                 <Button label="Back to capture" onPress={() => router.push('/(tabs)/capture')} variant="secondary" />
               ) : null}
@@ -711,6 +785,17 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: spacing.xs,
     paddingTop: spacing.sm,
+  },
+  recoveryAction: {
+    gap: spacing.xs,
+  },
+  recoveryPanel: {
+    backgroundColor: colors.surfaceSoft,
+    borderColor: colors.hairline,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: spacing.md,
+    padding: spacing.md,
   },
   safeArea: {
     backgroundColor: colors.canvas,

@@ -184,4 +184,32 @@ describe('capture draft payload helpers', () => {
     expect(isMoneyCaptureDraftMeaningful(receipt, moneyDefault)).toBe(true);
     expect(parseReceiptCaptureDraftPayload({ captureMode: 'receipt' }).ok).toBe(false);
   });
+
+  it('hands receipt expense drafts to manual expense capture without requiring parsing', () => {
+    const moneyDefault = {
+      amount: '',
+      categoryId: null,
+      kind: 'expense' as const,
+      localDate: '2026-05-08',
+      merchantOrSource: '',
+      note: '',
+      topicIds: [],
+    };
+    const receipt = buildReceiptCaptureDraftPayload({
+      capturedAt: '2026-05-09T10:00:00.000Z',
+      localDate: '2026-05-09',
+      retainedImageUri: 'file:///app/documents/receipts/receipt-1.jpg',
+      source: 'camera',
+    });
+
+    expect(parseMoneyCaptureDraftPayload('expense', toCaptureDraftPayload(receipt), moneyDefault)).toEqual({
+      amount: '',
+      categoryId: null,
+      kind: 'expense',
+      localDate: '2026-05-09',
+      merchantOrSource: '',
+      note: '',
+      topicIds: [],
+    });
+  });
 });

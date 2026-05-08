@@ -1,6 +1,6 @@
 # Story 5.4: Provide Manual Fallback And Recovery For Receipt Failures
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -16,40 +16,40 @@ so that a failed scan does not block expense tracking.
 
 ## Tasks / Subtasks
 
-- [ ] Add receipt recovery action contracts. (AC: 1, 2, 3)
-  - [ ] Add a feature/domain helper that maps receipt parse states and review availability to explicit actions: retry, edit draft/review, manual expense, keep draft, discard draft, and unavailable fallback.
-  - [ ] Label failed, retry-exhausted, pending, incomplete, wrong/low-confidence, and manual fallback states with neutral text and a clear recommended next action.
-  - [ ] Ensure recovery labels are text-first and do not rely on color alone.
+- [x] Add receipt recovery action contracts. (AC: 1, 2, 3)
+  - [x] Add a feature/domain helper that maps receipt parse states and review availability to explicit actions: retry, edit draft/review, manual expense, keep draft, discard draft, and unavailable fallback.
+  - [x] Label failed, retry-exhausted, pending, incomplete, wrong/low-confidence, and manual fallback states with neutral text and a clear recommended next action.
+  - [x] Ensure recovery labels are text-first and do not rely on color alone.
 
-- [ ] Implement manual fallback handoff from receipt flow. (AC: 1, 2)
-  - [ ] Preserve the existing shared `capture_drafts` model: receipt capture remains an `expense` draft with `captureMode: receipt`.
-  - [ ] Route manual expense entry from the receipt screen using the existing active expense draft handoff where safe, so the receipt draft can be linked when the manual record is saved.
-  - [ ] Make the user's draft choice explicit: keep receipt draft, discard receipt draft, or continue manual entry linked to the receipt draft.
-  - [ ] Do not require network access, OCR configuration, or parsing success for manual expense creation.
+- [x] Implement manual fallback handoff from receipt flow. (AC: 1, 2)
+  - [x] Preserve the existing shared `capture_drafts` model: receipt capture remains an `expense` draft with `captureMode: receipt`.
+  - [x] Route manual expense entry from the receipt screen using the existing active expense draft handoff where safe, so the receipt draft can be linked when the manual record is saved.
+  - [x] Make the user's draft choice explicit: keep receipt draft, discard receipt draft, or continue manual entry linked to the receipt draft.
+  - [x] Do not require network access, OCR configuration, or parsing success for manual expense creation.
 
-- [ ] Add safe recovery diagnostics. (AC: 3)
-  - [ ] Record a redacted diagnostic event when a recovery action fails, using only safe event names, timestamps, app version placeholder/default, error category, retry count/job state/offline/timeout-style metadata where available.
-  - [ ] Do not include receipt image URI, OCR text, merchant/source, amount, line items, note, draft payload JSON, saved record id, or corrected values in diagnostic metadata or error messages.
-  - [ ] Extend diagnostic redaction tests if new diagnostic event names or metadata keys are added.
+- [x] Add safe recovery diagnostics. (AC: 3)
+  - [x] Record a redacted diagnostic event when a recovery action fails, using only safe event names, timestamps, app version placeholder/default, error category, retry count/job state/offline/timeout-style metadata where available.
+  - [x] Do not include receipt image URI, OCR text, merchant/source, amount, line items, note, draft payload JSON, saved record id, or corrected values in diagnostic metadata or error messages.
+  - [x] Extend diagnostic redaction tests if new diagnostic event names or metadata keys are added.
 
-- [ ] Update Receipt Review Desk recovery UI. (AC: 1, 2, 3)
-  - [ ] Update `ReceiptRouteScreen.tsx` so failed/unavailable/incomplete/wrong states show a dedicated recovery action surface with retry, manual expense, edit/review where applicable, keep, and discard.
-  - [ ] Keep manual expense visible while parsing is pending, failed, retry-exhausted, low-confidence, or unavailable.
-  - [ ] Show a calm status after keep/discard/manual handoff attempts and a safe error state if an action fails.
-  - [ ] Preserve Story 5.3 review/correction and saved-state behavior.
+- [x] Update Receipt Review Desk recovery UI. (AC: 1, 2, 3)
+  - [x] Update `ReceiptRouteScreen.tsx` so failed/unavailable/incomplete/wrong states show a dedicated recovery action surface with retry, manual expense, edit/review where applicable, keep, and discard.
+  - [x] Keep manual expense visible while parsing is pending, failed, retry-exhausted, low-confidence, or unavailable.
+  - [x] Show a calm status after keep/discard/manual handoff attempts and a safe error state if an action fails.
+  - [x] Preserve Story 5.3 review/correction and saved-state behavior.
 
-- [ ] Preserve privacy, data safety, and story boundaries. (AC: 1, 2, 3)
-  - [ ] Do not add real OCR credentials, external OCR/AI calls, duplicate warning logic, retention cleanup/image deletion, or backend/cloud sync behavior.
-  - [ ] Do not create final receipt expenses automatically from parser output.
-  - [ ] Do not delete parse jobs, receipt drafts, receipt files, money records, migrations, or stored parse results except through existing explicit discard behavior.
-  - [ ] Do not change auth, authorization, bank/payment, regulated-finance, or unrelated capture flows.
+- [x] Preserve privacy, data safety, and story boundaries. (AC: 1, 2, 3)
+  - [x] Do not add real OCR credentials, external OCR/AI calls, duplicate warning logic, retention cleanup/image deletion, or backend/cloud sync behavior.
+  - [x] Do not create final receipt expenses automatically from parser output.
+  - [x] Do not delete parse jobs, receipt drafts, receipt files, money records, migrations, or stored parse results except through existing explicit discard behavior.
+  - [x] Do not change auth, authorization, bank/payment, regulated-finance, or unrelated capture flows.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Add feature/helper tests for recovery action labels, recommended next action, manual fallback availability, retry-exhausted behavior, and total no-color-only labeling.
-  - [ ] Add service or integration-style tests for manual fallback handoff/linking behavior where existing capture draft services allow it.
-  - [ ] Add diagnostics tests proving recovery failures redact receipt URI, OCR text, merchant/source, amount, line items, notes, payloads, and record ids.
-  - [ ] Add screen/state tests around failure UI copy and action availability where reasonable.
-  - [ ] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Add feature/helper tests for recovery action labels, recommended next action, manual fallback availability, retry-exhausted behavior, and total no-color-only labeling.
+  - [x] Add service or integration-style tests for manual fallback handoff/linking behavior where existing capture draft services allow it.
+  - [x] Add diagnostics tests proving recovery failures redact receipt URI, OCR text, merchant/source, amount, line items, notes, payloads, and record ids.
+  - [x] Add screen/state tests around failure UI copy and action availability where reasonable.
+  - [x] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -148,16 +148,33 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-08: Created Story 5.4 ready-for-dev from Epic 5, PRD, architecture, UX, Story 5.2/5.3 implementation context, and current diagnostics/capture-draft patterns.
+- 2026-05-08: Started Story 5.4 implementation.
+- 2026-05-08: Added receipt recovery action helper, safe recovery diagnostics, manual fallback handoff coverage, and recovery panel UI.
+- 2026-05-08: Verification passed: focused Jest, typecheck, lint, full Jest, Expo install check, build-if-present, and git diff whitespace check.
 
 ### Completion Notes List
 
-- Pending implementation.
+- Implemented explicit receipt recovery action modeling for draft, pending, running, parsed, low-confidence, reviewed, failed, retry-exhausted, and saved states.
+- Updated receipt route UI with a dedicated recovery action surface that keeps retry, edit review/draft, manual expense, keep draft, and discard draft available where appropriate.
+- Added redacted receipt recovery failure diagnostics and tests proving sensitive receipt/spending fields are dropped.
+- Confirmed receipt draft payloads can hand off to manual expense capture without parsing or network availability.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/5-4-provide-manual-fallback-and-recovery-for-receipt-failures.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-5.4-review.md`
+- `src/diagnostics/events.ts`
+- `src/diagnostics/redact.test.ts`
+- `src/features/capture-drafts/captureDraftPayloads.test.ts`
+- `src/features/receipts/ReceiptRouteScreen.tsx`
+- `src/features/receipts/receipt-recovery-actions.test.ts`
+- `src/features/receipts/receipt-recovery-actions.ts`
+- `src/services/receipt-parsing/receipt-recovery-diagnostics.service.test.ts`
+- `src/services/receipt-parsing/receipt-recovery-diagnostics.service.ts`
 
 ## Change Log
 
 - 2026-05-08: Created Story 5.4 ready-for-dev.
+- 2026-05-08: Started implementation.
+- 2026-05-08: Completed receipt failure recovery/manual fallback flow and marked Story 5.4 done after verification.
