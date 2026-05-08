@@ -6,7 +6,7 @@
 
 ## Last Completed Story
 
-- Story 2.1: Create Manual Expense And Income Records
+- Story 2.3: Search, Filter, Sort, And Review Money History
 
 ## Stories Completed
 
@@ -15,18 +15,20 @@
 - Story 1.5: Set Monthly Budget Rules And Savings Goals. Commit: `b6dbd84 feat: complete story 1.5 - budget and savings setup`
 - Story 1.6: View Privacy-Relevant Settings. Commit: `63d8295 feat: complete story 1.6 - privacy settings overview`
 - Story 2.1: Create Manual Expense And Income Records. Commit: `4af289d feat: complete story 2.1 - manual money records`
+- Story 2.2: Edit And Delete Money Records With Summary Recalculation. Commit: `c1dac23 feat: complete story 2.2 - edit and delete money records`
+- Story 2.3: Search, Filter, Sort, And Review Money History. Commit: `acd1348 feat: complete story 2.3 - money history`
 
 ## Stories Skipped
 
-- None skipped.
-- Story 2.2 remains next in order: `2-2-edit-and-delete-money-records-with-summary-recalculation`.
+- Story 2.4 was not created or implemented because a hard stop condition was reached before schema/business-logic choices could be made safely.
+- Remaining backlog starts at `2-4-manage-recurring-expenses-and-income`.
 
 ## Stop Reason
 
-- Stopped before Story 2.2 due to hard stop condition #1.
-- Story 2.2 requires "budget remaining and savings progress recalculate" after money record edit/delete.
-- Budget recalculation is clear enough to derive from expense records, but savings progress is not yet safely defined. Story 1.5 stores savings goals with manual current amount, and the user clarified that future money records would update savings later. Story 2.2 appears to be the first story where that could happen, but the source docs do not define which money records count as savings progress or how edits/deletes should adjust a manual savings amount.
-- Choosing wrong here would affect business logic and user financial data, so automation stopped before creating or implementing Story 2.2.
+- Stopped before Story 2.4 due to hard stop condition #1.
+- Story 2.4 requires recurring money items that can be edited, paused, skipped once, stopped, deleted, and generated consistently across calendar boundaries.
+- The source docs do not yet define whether recurring money should immediately materialize future `money_records`, materialize only due occurrences, or remain projected until an explicit generation action.
+- This decision affects database schema, provenance fields, history visibility, summary recalculation, series edit semantics, skip/delete behavior, and user financial data, so automation stopped instead of guessing.
 
 ## Commits Created
 
@@ -36,54 +38,39 @@
 - `b6dbd84 feat: complete story 1.5 - budget and savings setup`
 - `63d8295 feat: complete story 1.6 - privacy settings overview`
 - `4af289d feat: complete story 2.1 - manual money records`
+- `7837f04 docs: update overnight automation summary`
+- `c1dac23 feat: complete story 2.2 - edit and delete money records`
+- `acd1348 feat: complete story 2.3 - money history`
 
 ## Commands Run
 
 - Git safety and publishing:
   - `git branch --show-current`
-  - `git status --short --branch`
+  - `git status --short`
   - `git push origin auto/codex-overnight-1`
   - `git log --oneline`
-- Story 1.5 verification:
-  - `npm test -- budgets.test.ts`
-  - `npm test -- migrate.test.ts`
-  - `npm test -- budget-planning.service.test.ts`
-  - `npm test -- budget-planning.repository.test.ts`
-  - `npm test -- useBudgetPlanningSettings.test.ts`
+- Story 2.2 verification:
   - `npm run typecheck`
   - `npm run lint`
   - `npm test`
   - `npx expo install --check`
   - `npm run build --if-present`
   - `git diff --check`
-- Story 1.6 verification:
-  - `npm test -- privacy-settings.test.ts usePrivacySettings.test.ts`
+- Story 2.3 verification:
+  - `npm test -- src/data/repositories/money-records.repository.test.ts`
   - `npm run typecheck`
   - `npm run lint`
   - `npm test`
   - `npx expo install --check`
   - `npm run build --if-present`
   - `git diff --check`
-- Story 2.1 verification:
-  - `npm test -- src/domain/money/money.test.ts`
-  - `npm test -- migrate.test.ts`
-  - `npm test -- money-records.repository.test.ts`
-  - `npm test -- money-record.service.test.ts`
-  - `npm test -- useManualMoneyCapture.test.ts`
-  - `npm run typecheck`
-  - `npm run lint`
-  - `npm test`
-  - `npx expo install --check`
-  - `npm run build --if-present`
-  - `git diff --check`
-- Review/safety scans:
-  - `Select-String` scans for destructive SQL, diagnostics logging, secrets, external network calls, upload behavior, and deletion behavior in changed areas.
+- Story 2.4 readiness analysis:
+  - Read `sprint-status.yaml`, `epics.md`, `prd.md`, `architecture.md`, `ux-design-specification.md`, Story 2.3, current schema, migration, repository, service, and date-rule files.
 
 ## Test Results
 
-- Story 1.5 final verification passed: 19 suites, 98 tests.
-- Story 1.6 final verification passed: 21 suites, 107 tests.
-- Story 2.1 final verification passed: 25 suites, 126 tests.
+- Story 2.2 final verification passed: 25 suites, 138 tests.
+- Story 2.3 final verification passed: 27 suites, 148 tests.
 - `npm run typecheck`: passed for each completed story.
 - `npm run lint`: passed for each completed story.
 - `npx expo install --check`: passed for each completed story.
@@ -95,12 +82,14 @@
 - Native Expo SQLite persistence was not manually tested on a device/emulator; repository/service behavior is covered with fakes.
 - Mobile visual and screen-reader behavior was not manually device-tested.
 - `.claude/worktrees/` remains untracked and was not committed.
-- Story 2.2 needs product clarification before implementation.
+- Story 2.4 needs product/architecture clarification before implementation because recurring money can affect persisted records and summaries.
 
 ## What To Do Next
 
-- Clarify Story 2.2 savings behavior before continuing:
-  - Should savings progress remain the manual `currentAmountMinor` until a dedicated savings-event story exists?
-  - If money records should update savings progress in Story 2.2, which records count: income, expenses, positive remaining budget, a new savings category, or a new record kind?
-  - When a money record is edited/deleted, should savings goal `currentAmountMinor` mutate, or should summaries calculate savings progress without changing the saved goal row?
-- After clarification, continue on `auto/codex-overnight-1` from Story 2.2.
+- Decide Story 2.4 recurring-money materialization rules:
+  - Should recurring money create real `money_records` automatically, only when occurrences become due, only when the user confirms generation, or never in this story?
+  - If real records are created, should `money_records` store `recurrence_rule_id` and `recurrence_occurrence_date`?
+  - Should generated recurring records use `source = "recurring"` with `sourceOfTruth = "manual"`, or should a new source-of-truth value be introduced?
+  - When a series is edited, should already materialized records remain unchanged, update only future occurrences, or ask the user?
+  - Should skip/delete one occurrence be stored as an exception row even before a `money_record` exists?
+- After clarification, continue on `auto/codex-overnight-1` from Story 2.4.
