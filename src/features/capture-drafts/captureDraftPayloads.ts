@@ -19,6 +19,12 @@ export type MoneyCaptureDraftPayload = {
 };
 
 export type ReceiptCaptureSource = 'camera' | 'library';
+export type ReceiptImageRetentionPolicy =
+  | 'delete_after_expense_saved'
+  | 'keep_until_saved_or_discarded'
+  | 'keep_until_user_deletes';
+export type ReceiptImageRetentionStatus = 'deleted' | 'retained';
+export type ReceiptImageRetentionDeletionReason = 'abandoned_cleanup' | 'saved_policy' | 'user_deleted';
 
 export type ReceiptCaptureDraftPayload = MoneyCaptureDraftPayload & {
   captureMode: 'receipt';
@@ -27,11 +33,14 @@ export type ReceiptCaptureDraftPayload = MoneyCaptureDraftPayload & {
   receipt: {
     capturedAt: string;
     contentType: string | null;
+    deletedAt: string | null;
+    deletionReason: ReceiptImageRetentionDeletionReason | null;
     originalFileName: string | null;
     parsingState: 'draft';
-    retainedImageUri: string;
+    retainedImageUri: string | null;
     retentionAnchor: 'capture_draft';
-    retentionPolicy: 'keep_until_saved_or_discarded';
+    retentionPolicy: ReceiptImageRetentionPolicy;
+    retentionStatus: ReceiptImageRetentionStatus;
     source: ReceiptCaptureSource;
     storageScope: 'app_private_documents';
     sizeBytes: number | null;
@@ -93,11 +102,16 @@ export const receiptCaptureDraftPayloadSchema = z.object({
   receipt: z.object({
     capturedAt: isoTimestampSchema,
     contentType: z.string().min(1).nullable(),
+    deletedAt: isoTimestampSchema.nullable().default(null),
+    deletionReason: z.enum(['abandoned_cleanup', 'saved_policy', 'user_deleted']).nullable().default(null),
     originalFileName: z.string().min(1).nullable(),
     parsingState: z.literal('draft'),
-    retainedImageUri: z.string().min(1),
+    retainedImageUri: z.string().min(1).nullable(),
     retentionAnchor: z.literal('capture_draft'),
-    retentionPolicy: z.literal('keep_until_saved_or_discarded'),
+    retentionPolicy: z
+      .enum(['delete_after_expense_saved', 'keep_until_saved_or_discarded', 'keep_until_user_deletes'])
+      .default('keep_until_user_deletes'),
+    retentionStatus: z.enum(['deleted', 'retained']).default('retained'),
     source: z.enum(['camera', 'library']),
     storageScope: z.literal('app_private_documents'),
     sizeBytes: z.number().int().nonnegative().nullable(),
@@ -233,11 +247,14 @@ export function buildReceiptCaptureDraftPayload(
     receipt: {
       capturedAt: input.capturedAt,
       contentType: input.contentType ?? null,
+      deletedAt: null,
+      deletionReason: null,
       originalFileName: input.originalFileName ?? null,
       parsingState: 'draft',
       retainedImageUri: input.retainedImageUri,
       retentionAnchor: 'capture_draft',
-      retentionPolicy: 'keep_until_saved_or_discarded',
+      retentionPolicy: 'keep_until_user_deletes',
+      retentionStatus: 'retained',
       source: input.source,
       storageScope: 'app_private_documents',
       sizeBytes: input.sizeBytes ?? null,
@@ -260,6 +277,43 @@ export function parseReceiptCaptureDraftPayload(
 
 export function isReceiptCaptureDraftPayload(payload: unknown): payload is ReceiptCaptureDraftPayload {
   return receiptCaptureDraftPayloadSchema.safeParse(payload).success;
+}
+
+export function receiptDraftHasRetainedImage(payload: ReceiptCaptureDraftPayload): boolean {
+  return payload.receipt.retentionStatus === 'retained' && payload.receipt.retainedImageUri !== null;
+}
+
+export function updateReceiptRetentionPolicy(
+  payload: ReceiptCaptureDraftPayload,
+  retentionPolicy: ReceiptImageRetentionPolicy,
+): ReceiptCaptureDraftPayload {
+  return {
+    ...payload,
+    receipt: {
+      ...payload.receipt,
+      retentionPolicy,
+    },
+  };
+}
+
+export function markReceiptImageDeleted(
+  payload: ReceiptCaptureDraftPayload,
+  input: {
+    deletedAt: string;
+    deletionReason: ReceiptImageRetentionDeletionReason;
+  },
+): ReceiptCaptureDraftPayload {
+  return {
+    ...payload,
+    receipt: {
+      ...payload.receipt,
+      deletedAt: input.deletedAt,
+      deletionReason: input.deletionReason,
+      retainedImageUri: null,
+      retentionStatus: 'deleted',
+      sizeBytes: null,
+    },
+  };
 }
 
 export function parseMoneyCaptureDraftPayload(

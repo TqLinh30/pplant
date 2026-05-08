@@ -48,7 +48,7 @@ class FakeCaptureDraftClient {
       return { changes: 1 };
     }
 
-    if (source.includes('payload_json = ?')) {
+    if (source.includes('payload_json = ?') && source.includes('last_saved_at = ?')) {
       const [payloadJson, updatedAt, lastSavedAt, workspaceId, id] = params;
       const row = this.rows.find(
         (candidate) => candidate.workspaceId === workspaceId && candidate.id === id && candidate.status === 'active',
@@ -58,6 +58,18 @@ class FakeCaptureDraftClient {
         row.payloadJson = payloadJson as string;
         row.updatedAt = updatedAt as string;
         row.lastSavedAt = lastSavedAt as string;
+      }
+
+      return { changes: row ? 1 : 0 };
+    }
+
+    if (source.includes('payload_json = ?')) {
+      const [payloadJson, updatedAt, workspaceId, id] = params;
+      const row = this.rows.find((candidate) => candidate.workspaceId === workspaceId && candidate.id === id);
+
+      if (row) {
+        row.payloadJson = payloadJson as string;
+        row.updatedAt = updatedAt as string;
       }
 
       return { changes: row ? 1 : 0 };
@@ -116,6 +128,20 @@ class FakeCaptureDraftClient {
   }
 
   getFirstSync<T>(source: string, ...params: unknown[]): T | null {
+    if (source.includes('saved_record_kind = ?')) {
+      const [workspaceId, savedRecordKind, savedRecordId] = params;
+
+      return (
+        (this.rows.find(
+          (row) =>
+            row.workspaceId === workspaceId &&
+            row.savedRecordKind === savedRecordKind &&
+            row.savedRecordId === savedRecordId &&
+            row.status === 'saved',
+        ) as T | undefined) ?? null
+      );
+    }
+
     if (source.includes('kind = ?')) {
       const [workspaceId, kind] = params;
 
@@ -140,12 +166,22 @@ class FakeCaptureDraftClient {
     );
   }
 
-  getAllSync<T>(_source: string, ...params: unknown[]): T[] {
+  getAllSync<T>(source: string, ...params: unknown[]): T[] {
     const [workspaceId] = params;
+    const beforeTimestamp = source.includes('updated_at < ?') ? (params[1] as string) : null;
 
     return this.rows
-      .filter((row) => row.workspaceId === workspaceId && row.status === 'active')
-      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id))
+      .filter(
+        (row) =>
+          row.workspaceId === workspaceId &&
+          row.status === 'active' &&
+          (!beforeTimestamp || row.updatedAt < beforeTimestamp),
+      )
+      .sort((left, right) =>
+        beforeTimestamp
+          ? left.updatedAt.localeCompare(right.updatedAt) || left.id.localeCompare(right.id)
+          : right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
+      )
       .map((row) => row as T);
   }
 }
@@ -274,6 +310,73 @@ describe('capture draft repository', () => {
     if (kept.ok) {
       expect(kept.value.updatedAt).toBe('2026-05-08T00:05:00.000Z');
       expect(kept.value.status).toBe('active');
+    }
+  });
+
+  it('updates saved draft payloads while preserving saved record links', async () => {
+    const client = new FakeCaptureDraftClient();
+    const repository = createCaptureDraftRepository({ $client: client } as never);
+
+    await repository.upsertActiveDraft({
+      id: 'draft-receipt' as never,
+      kind: 'expense',
+      payload: { receipt: { retentionStatus: 'retained' } },
+      timestamp: fixedNow,
+      workspaceId: localWorkspaceId,
+    });
+    await repository.markDraftSaved(localWorkspaceId, 'draft-receipt' as never, {
+      savedAt: '2026-05-08T00:02:00.000Z',
+      savedRecordId: 'money-1' as never,
+      savedRecordKind: 'money_record',
+    });
+
+    const updated = await repository.updateDraftPayload(localWorkspaceId, 'draft-receipt' as never, {
+      payload: { receipt: { retentionStatus: 'deleted' } },
+      timestamp: '2026-05-08T00:03:00.000Z',
+    });
+    const bySavedRecord = await repository.getDraftBySavedRecord(
+      localWorkspaceId,
+      'money_record',
+      'money-1' as never,
+    );
+
+    expect(updated.ok).toBe(true);
+    expect(bySavedRecord.ok).toBe(true);
+    if (updated.ok && bySavedRecord.ok) {
+      expect(updated.value.payload).toEqual({ receipt: { retentionStatus: 'deleted' } });
+      expect(updated.value.status).toBe('saved');
+      expect(bySavedRecord.value?.id).toBe('draft-receipt');
+      expect(bySavedRecord.value?.savedRecordId).toBe('money-1');
+    }
+  });
+
+  it('lists active drafts updated before a cleanup cutoff', async () => {
+    const client = new FakeCaptureDraftClient();
+    const repository = createCaptureDraftRepository({ $client: client } as never);
+
+    await repository.upsertActiveDraft({
+      id: 'draft-old' as never,
+      kind: 'expense',
+      payload: { amount: '12.50' },
+      timestamp: '2026-04-01T00:00:00.000Z',
+      workspaceId: localWorkspaceId,
+    });
+    await repository.upsertActiveDraft({
+      id: 'draft-task' as never,
+      kind: 'task',
+      payload: { title: 'Essay' },
+      timestamp: '2026-05-01T00:00:00.000Z',
+      workspaceId: localWorkspaceId,
+    });
+
+    const old = await repository.listActiveDraftsUpdatedBefore(
+      localWorkspaceId,
+      '2026-04-15T00:00:00.000Z',
+    );
+
+    expect(old.ok).toBe(true);
+    if (old.ok) {
+      expect(old.value.map((draft) => draft.id)).toEqual(['draft-old']);
     }
   });
 });

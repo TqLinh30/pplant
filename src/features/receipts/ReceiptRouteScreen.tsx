@@ -12,10 +12,13 @@ import {
   type ReceiptReviewDraft,
   type ReceiptReviewFieldErrors,
 } from '@/domain/receipts/review';
+import type { ReceiptDuplicateWarning, ReceiptDuplicateWarningActionId } from '@/domain/receipts/duplicates';
 import type { ReceiptParseJob } from '@/domain/receipts/types';
 import {
   isReceiptCaptureDraftPayload,
   parseReceiptCaptureDraftPayload,
+  receiptDraftHasRetainedImage,
+  type ReceiptImageRetentionPolicy,
   type ReceiptCaptureDraftPayload,
 } from '@/features/capture-drafts/captureDraftPayloads';
 import {
@@ -28,12 +31,17 @@ import {
   runReceiptParseJob,
   startReceiptParseJob,
 } from '@/services/receipt-parsing/receipt-parse-job.service';
+import { loadReceiptDuplicateWarning } from '@/services/receipt-parsing/receipt-duplicate.service';
 import { recordReceiptRecoveryFailure } from '@/services/receipt-parsing/receipt-recovery-diagnostics.service';
 import {
   loadReceiptReviewData,
   saveCorrectedReceiptExpense,
   type ReceiptReviewData,
 } from '@/services/receipt-parsing/receipt-review.service';
+import {
+  deleteReceiptDraftImage,
+  setReceiptDraftRetentionPolicy,
+} from '@/services/files/receipt-retention.service';
 import { Button } from '@/ui/primitives/Button';
 import { ListRow } from '@/ui/primitives/ListRow';
 import { StatusBanner } from '@/ui/primitives/StatusBanner';
@@ -96,6 +104,24 @@ function formatRecordAmount(record: MoneyRecord): string {
   return `${(record.amountMinor / 100).toFixed(2)} ${record.currencyCode}`;
 }
 
+function formatRetention(payload: ReceiptCaptureDraftPayload): string {
+  if (payload.receipt.retentionStatus === 'deleted') {
+    return `Image deleted; expense details remain. ${payload.receipt.deletedAt ?? ''}`.trim();
+  }
+
+  switch (payload.receipt.retentionPolicy) {
+    case 'delete_after_expense_saved':
+      return 'Delete image after receipt expense is saved';
+    case 'keep_until_saved_or_discarded':
+      return 'Legacy policy: keep until saved or discarded';
+    case 'keep_until_user_deletes':
+      return 'Keep image until you delete it';
+    default:
+      payload.receipt.retentionPolicy satisfies never;
+      return 'Keep image until you delete it';
+  }
+}
+
 function categoryName(reviewData: ReceiptReviewData, categoryId: string | null): string {
   if (!categoryId) {
     return 'No category';
@@ -107,7 +133,10 @@ function categoryName(reviewData: ReceiptReviewData, categoryId: string | null):
 export function ReceiptRouteScreen() {
   const { receiptDraftId } = useLocalSearchParams<{ receiptDraftId: string }>();
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState<ReceiptDuplicateWarning | null>(null);
+  const [duplicateWarningDismissed, setDuplicateWarningDismissed] = useState(false);
   const [parseActionRunning, setParseActionRunning] = useState(false);
+  const [retentionActionRunning, setRetentionActionRunning] = useState(false);
   const [reviewActionRunning, setReviewActionRunning] = useState(false);
   const [reviewData, setReviewData] = useState<ReceiptReviewData | null>(null);
   const [reviewDraft, setReviewDraft] = useState<ReceiptReviewDraft | null>(null);
@@ -126,6 +155,8 @@ export function ReceiptRouteScreen() {
     setReviewDraft(null);
     setReviewFieldErrors({});
     setSavedRecord(null);
+    setDuplicateWarning(null);
+    setDuplicateWarningDismissed(false);
     setViewState({ status: 'loading' });
     void (async () => {
       const result = await listActiveCaptureDrafts();
@@ -168,6 +199,16 @@ export function ReceiptRouteScreen() {
           setReviewDraft(review.value.reviewDraft);
         } else {
           setActionMessage('Receipt review could not load. Manual expense remains available.');
+        }
+      }
+
+      if (latestJob.value?.normalizedResult) {
+        const warning = await loadReceiptDuplicateWarning({
+          result: latestJob.value.normalizedResult,
+        });
+
+        if (warning.ok) {
+          setDuplicateWarning(warning.value);
         }
       }
 
@@ -332,6 +373,106 @@ export function ReceiptRouteScreen() {
     }
   };
 
+  const handleDuplicateAction = (actionId: ReceiptDuplicateWarningActionId) => {
+    switch (actionId) {
+      case 'continue_review':
+        setDuplicateWarningDismissed(true);
+        setActionMessage('Duplicate warning kept as context. Continue if this is a separate purchase.');
+        return;
+      case 'edit_fields':
+        setActionMessage('Review the receipt fields below before saving.');
+        return;
+      case 'manual_expense':
+        goToManualExpense();
+        return;
+      case 'discard_draft':
+        discardDraft();
+        return;
+      default:
+        actionId satisfies never;
+    }
+  };
+
+  const updateRetentionPolicy = (retentionPolicy: ReceiptImageRetentionPolicy) => {
+    if (viewState.status !== 'ready' || retentionActionRunning) {
+      return;
+    }
+
+    setRetentionActionRunning(true);
+    void setReceiptDraftRetentionPolicy({
+      draftId: viewState.draft.id,
+      retentionPolicy,
+    }).then((result) => {
+      setRetentionActionRunning(false);
+
+      if (!result.ok) {
+        setActionMessage(result.error.message);
+        return;
+      }
+
+      const payload = parseReceiptCaptureDraftPayload(result.value.payload);
+
+      if (!payload.ok) {
+        setActionMessage(payload.error.message);
+        return;
+      }
+
+      setViewState((current) =>
+        current.status === 'ready'
+          ? {
+              ...current,
+              draft: result.value,
+              payload: payload.value,
+            }
+          : current,
+      );
+      setActionMessage(
+        retentionPolicy === 'delete_after_expense_saved'
+          ? 'Receipt image will be deleted after this expense is saved.'
+          : 'Receipt image will be kept until you delete it.',
+      );
+    });
+  };
+
+  const deleteRetainedImage = (reason: 'saved_policy' | 'user_deleted' = 'user_deleted') => {
+    if (viewState.status !== 'ready' || retentionActionRunning) {
+      return;
+    }
+
+    setRetentionActionRunning(true);
+    void deleteReceiptDraftImage({
+      deletionReason: reason,
+      draftId: viewState.draft.id,
+    }).then((result) => {
+      setRetentionActionRunning(false);
+
+      if (!result.ok) {
+        setActionMessage(result.error.message);
+        return;
+      }
+
+      const payload = parseReceiptCaptureDraftPayload(result.value.draft.payload);
+
+      if (payload.ok) {
+        setViewState((current) =>
+          current.status === 'ready'
+            ? {
+                ...current,
+                draft: result.value.draft,
+                payload: payload.value,
+              }
+            : current,
+        );
+      }
+
+      setActionMessage(
+        result.value.deleted
+          ? 'Receipt image deleted. The expense record and receipt review context remain.'
+          : 'No retained receipt image needed deletion.',
+      );
+    });
+  };
+
   const updateReviewDraft = (patch: Partial<ReceiptReviewDraft>) => {
     setReviewFieldErrors({});
     setReviewDraft((current) => (current ? { ...current, ...patch } : current));
@@ -398,7 +539,7 @@ export function ReceiptRouteScreen() {
       parseJobId: reviewData.parseJob.id,
       receiptDraftId: viewState.draft.id,
       reviewDraft,
-    }).then((result) => {
+    }).then(async (result) => {
       setReviewActionRunning(false);
 
       if (!result.ok) {
@@ -418,9 +559,41 @@ export function ReceiptRouteScreen() {
           ? { ...current, draft: result.value.draft, parseJob: result.value.parseJob }
           : current,
       );
-      setActionMessage(
-        `${formatRecordAmount(result.value.record)} receipt expense saved. Parsed data stayed as review context.`,
-      );
+      const savedMessage = `${formatRecordAmount(result.value.record)} receipt expense saved. Parsed data stayed as review context.`;
+
+      if (
+        viewState.payload.receipt.retentionPolicy === 'delete_after_expense_saved' &&
+        receiptDraftHasRetainedImage(viewState.payload)
+      ) {
+        const deletion = await deleteReceiptDraftImage({
+          deletionReason: 'saved_policy',
+          draftId: result.value.draft.id,
+        });
+
+        if (deletion.ok) {
+          const payload = parseReceiptCaptureDraftPayload(deletion.value.draft.payload);
+
+          if (payload.ok) {
+            setViewState((current) =>
+              current.status === 'ready'
+                ? {
+                    ...current,
+                    draft: deletion.value.draft,
+                    payload: payload.value,
+                  }
+                : current,
+            );
+          }
+
+          setActionMessage(`${savedMessage} Receipt image deleted by your retention choice.`);
+          return;
+        }
+
+        setActionMessage(`${savedMessage} Receipt image stayed retained; you can delete it later.`);
+        return;
+      }
+
+      setActionMessage(savedMessage);
     });
   };
 
@@ -514,7 +687,40 @@ export function ReceiptRouteScreen() {
               <Text style={styles.label}>Stored size</Text>
               <Text style={styles.value}>{formatSize(viewState.payload.receipt.sizeBytes)}</Text>
               <Text style={styles.label}>Retention</Text>
-              <Text style={styles.value}>Keep until saved or discarded</Text>
+              <Text style={styles.value}>{formatRetention(viewState.payload)}</Text>
+            </View>
+            <View style={styles.retentionPanel} accessibilityLabel="Receipt image retention controls" accessibilityRole="summary">
+              <Text style={styles.sectionTitle}>Receipt image retention</Text>
+              <Text style={styles.helper}>
+                Receipt images stay in app-private storage. Deleting the image keeps the expense record.
+              </Text>
+              {viewState.payload.receipt.retentionStatus === 'retained' ? (
+                <View style={styles.actions}>
+                  <Button
+                    disabled={retentionActionRunning}
+                    label="Keep image"
+                    onPress={() => updateRetentionPolicy('keep_until_user_deletes')}
+                    variant="secondary"
+                  />
+                  <Button
+                    disabled={retentionActionRunning}
+                    label="Delete after save"
+                    onPress={() => updateRetentionPolicy('delete_after_expense_saved')}
+                    variant="secondary"
+                  />
+                  <Button
+                    disabled={retentionActionRunning}
+                    label="Delete image, keep expense"
+                    onPress={() => deleteRetainedImage('user_deleted')}
+                    variant="danger"
+                  />
+                </View>
+              ) : (
+                <StatusBanner
+                  title="Receipt image deleted"
+                  description="The image file reference was removed. Saved expense details remain available."
+                />
+              )}
             </View>
             {proposalRows.length > 0 ? (
               <View style={styles.proposals} accessibilityRole="summary">
@@ -549,6 +755,33 @@ export function ReceiptRouteScreen() {
                         label={action.label}
                         onPress={() => handleRecoveryAction(action.id)}
                         disabled={action.disabled}
+                        variant={action.variant}
+                      />
+                      <Text style={styles.helper}>{action.description}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+            {duplicateWarning && !duplicateWarningDismissed && !savedRecord ? (
+              <View style={styles.duplicatePanel} accessibilityLabel="Possible duplicate receipt" accessibilityRole="summary">
+                <Text style={styles.sectionTitle}>{duplicateWarning.title}</Text>
+                <Text style={styles.helper}>{duplicateWarning.description}</Text>
+                {duplicateWarning.parserFlagged ? (
+                  <Text style={styles.helper}>Parser signal: possible duplicate.</Text>
+                ) : null}
+                {duplicateWarning.matches.map((match) => (
+                  <Text key={match.id} style={styles.helper}>
+                    Similar expense: {match.merchantOrSource ?? 'Unnamed'} on {match.localDate},{' '}
+                    {(match.amountMinor / 100).toFixed(2)} {match.currencyCode}. {match.reasonLabels.join(', ')}.
+                  </Text>
+                ))}
+                <View style={styles.actions}>
+                  {duplicateWarning.actions.map((action) => (
+                    <View key={action.id} style={styles.recoveryAction}>
+                      <Button
+                        label={action.label}
+                        onPress={() => handleDuplicateAction(action.id)}
                         variant={action.variant}
                       />
                       <Text style={styles.helper}>{action.description}</Text>
@@ -716,6 +949,14 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.body,
   },
+  duplicatePanel: {
+    backgroundColor: colors.surfaceSoft,
+    borderColor: colors.hairline,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: spacing.md,
+    padding: spacing.md,
+  },
   eyebrow: {
     ...typography.caption,
     color: colors.muted,
@@ -791,6 +1032,14 @@ const styles = StyleSheet.create({
   },
   recoveryPanel: {
     backgroundColor: colors.surfaceSoft,
+    borderColor: colors.hairline,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: spacing.md,
+    padding: spacing.md,
+  },
+  retentionPanel: {
+    backgroundColor: colors.canvas,
     borderColor: colors.hairline,
     borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,

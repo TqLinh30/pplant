@@ -23,7 +23,11 @@ import {
 } from '@/domain/receipts/retry-policy';
 import { parseNormalizedReceiptParseResult } from '@/domain/receipts/schemas';
 import type { NormalizedReceiptParseResult, ReceiptParseJob } from '@/domain/receipts/types';
-import { isReceiptCaptureDraftPayload, parseReceiptCaptureDraftPayload } from '@/features/capture-drafts/captureDraftPayloads';
+import {
+  isReceiptCaptureDraftPayload,
+  parseReceiptCaptureDraftPayload,
+  receiptDraftHasRetainedImage,
+} from '@/features/capture-drafts/captureDraftPayloads';
 import { localWorkspaceId } from '@/domain/workspace/types';
 
 import { noopReceiptParser } from './noop-receipt-parser';
@@ -139,9 +143,19 @@ async function findReceiptDraftForParsing(
     return payload;
   }
 
+  if (!receiptDraftHasRetainedImage(payload.value)) {
+    return err(createAppError('validation_failed', 'Receipt image is no longer retained. Manual expense entry remains available.', 'manual_entry'));
+  }
+
+  const retainedImageUri = payload.value.receipt.retainedImageUri;
+
+  if (retainedImageUri === null) {
+    return err(createAppError('validation_failed', 'Receipt image is no longer retained. Manual expense entry remains available.', 'manual_entry'));
+  }
+
   return ok({
     draft,
-    retainedImageUri: payload.value.receipt.retainedImageUri,
+    retainedImageUri,
   });
 }
 

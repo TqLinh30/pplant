@@ -49,12 +49,12 @@ export function buildPrivacySettingAreas(environment: PrivacySettingsEnvironment
         'abandoned receipt draft age',
       ],
       currentBehavior:
-        'Receipt image controls are prepared for app-private storage and future retention cleanup. This screen does not save, delete, upload, or move receipt images.',
+        'Receipt images are stored in app-private storage from receipt capture. Receipt detail screens can keep an image, delete it after save, or delete the image while keeping the expense record. Abandoned receipt drafts older than 30 days are eligible for local cleanup.',
       id: 'receipt_image_retention',
       manualAlternative: 'Manual expense entry remains available when a receipt photo is not wanted.',
-      status: 'future_controlled',
-      statusLabel: 'Control surface ready',
-      summary: 'Receipt images are intended for private app storage, with retention and deletion controls coming with receipt flows.',
+      status: 'configured',
+      statusLabel: 'Local controls ready',
+      summary: 'Receipt images stay private and can be retained or deleted from receipt detail without deleting expense records.',
       title: 'Receipt images',
     },
     {

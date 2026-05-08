@@ -3,7 +3,11 @@ import type { EntityId } from '@/domain/common/ids';
 import { err, ok } from '@/domain/common/result';
 import type { CaptureDraft } from '@/domain/capture-drafts/types';
 import type { NormalizedReceiptParseResult, ReceiptParseJob } from '@/domain/receipts/types';
-import { buildReceiptCaptureDraftPayload, toCaptureDraftPayload } from '@/features/capture-drafts/captureDraftPayloads';
+import {
+  buildReceiptCaptureDraftPayload,
+  markReceiptImageDeleted,
+  toCaptureDraftPayload,
+} from '@/features/capture-drafts/captureDraftPayloads';
 import { localWorkspaceId, type WorkspaceId } from '@/domain/workspace/types';
 
 import type { ReceiptParsingPort } from './receipt-parsing.port';
@@ -222,6 +226,42 @@ describe('receipt parse job service', () => {
       expect(started.value.status).toBe('pending');
       expect(started.value.receiptDraftId).toBe('draft-receipt');
       expect(latest.value?.id).toBe(started.value.id);
+    }
+  });
+
+  it('does not start parsing when the retained receipt image was deleted', async () => {
+    const repository = new FakeReceiptParseJobRepository();
+    const payload = markReceiptImageDeleted(
+      buildReceiptCaptureDraftPayload({
+        capturedAt: fixedNow.toISOString(),
+        retainedImageUri: 'file:///app/documents/receipts/receipt-1.jpg',
+        source: 'camera',
+      }),
+      {
+        deletedAt: fixedNow.toISOString(),
+        deletionReason: 'user_deleted',
+      },
+    );
+    const result = await startReceiptParseJob(
+      { receiptDraftId: 'draft-receipt' },
+      dependencies(repository, {
+        drafts: [receiptDraft('draft-receipt'), { ...receiptDraft('deleted-receipt'), payload: toCaptureDraftPayload(payload) }],
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+
+    const deleted = await startReceiptParseJob(
+      { receiptDraftId: 'deleted-receipt' },
+      dependencies(repository, {
+        drafts: [{ ...receiptDraft('deleted-receipt'), payload: toCaptureDraftPayload(payload) }],
+      }),
+    );
+
+    expect(deleted.ok).toBe(false);
+    if (!deleted.ok) {
+      expect(deleted.error.recovery).toBe('manual_entry');
+      expect(deleted.error.message).not.toContain('file://');
     }
   });
 

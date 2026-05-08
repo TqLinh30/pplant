@@ -9,7 +9,9 @@ import {
 import type {
   CaptureDraft,
   CaptureDraftKind,
+  CaptureDraftPayload,
   CaptureDraftRow,
+  CaptureDraftSavedRecordKind,
   MarkCaptureDraftSavedInput,
   SaveActiveCaptureDraftInput,
 } from '@/domain/capture-drafts/types';
@@ -25,12 +27,22 @@ export type CaptureDraftRepository = {
     workspaceId: WorkspaceId,
     kind: CaptureDraftKind,
   ): Promise<AppResult<CaptureDraft | null>>;
+  getDraft(workspaceId: WorkspaceId, id: EntityId): Promise<AppResult<CaptureDraft | null>>;
+  getDraftBySavedRecord(
+    workspaceId: WorkspaceId,
+    savedRecordKind: CaptureDraftSavedRecordKind,
+    savedRecordId: EntityId,
+  ): Promise<AppResult<CaptureDraft | null>>;
   keepDraft(
     workspaceId: WorkspaceId,
     id: EntityId,
     timestamp: string,
   ): Promise<AppResult<CaptureDraft>>;
   listActiveDrafts(workspaceId: WorkspaceId): Promise<AppResult<CaptureDraft[]>>;
+  listActiveDraftsUpdatedBefore(
+    workspaceId: WorkspaceId,
+    beforeTimestamp: string,
+  ): Promise<AppResult<CaptureDraft[]>>;
   markActiveDraftSavedByKind(
     workspaceId: WorkspaceId,
     kind: CaptureDraftKind,
@@ -40,6 +52,11 @@ export type CaptureDraftRepository = {
     workspaceId: WorkspaceId,
     id: EntityId,
     input: MarkCaptureDraftSavedInput,
+  ): Promise<AppResult<CaptureDraft>>;
+  updateDraftPayload(
+    workspaceId: WorkspaceId,
+    id: EntityId,
+    input: { payload: CaptureDraftPayload; timestamp: string },
   ): Promise<AppResult<CaptureDraft>>;
   upsertActiveDraft(input: SaveActiveCaptureDraftInput): Promise<AppResult<CaptureDraft>>;
 };
@@ -190,6 +207,35 @@ export function createCaptureDraftRepository(database: PplantDatabase): CaptureD
       }
     },
 
+    async getDraft(workspaceId, id) {
+      return loadDraft(database, workspaceId, id);
+    },
+
+    async getDraftBySavedRecord(workspaceId, savedRecordKind, savedRecordId) {
+      try {
+        const row = database.$client.getFirstSync<CaptureDraftRow>(
+          `${selectCaptureDraftColumnsSql()}
+           WHERE workspace_id = ?
+             AND saved_record_kind = ?
+             AND saved_record_id = ?
+             AND status = 'saved'
+           ORDER BY saved_at DESC, updated_at DESC, id DESC
+           LIMIT 1`,
+          workspaceId,
+          savedRecordKind,
+          savedRecordId,
+        );
+
+        if (!row) {
+          return ok(null);
+        }
+
+        return parseCaptureDraftRow(row);
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local capture draft could not be loaded.', 'retry', cause));
+      }
+    },
+
     async keepDraft(workspaceId, id, timestamp) {
       try {
         database.$client.runSync(
@@ -214,6 +260,22 @@ export function createCaptureDraftRepository(database: PplantDatabase): CaptureD
            WHERE workspace_id = ? AND status = 'active'
            ORDER BY updated_at DESC, id DESC`,
           workspaceId,
+        );
+
+        return parseRows(rows);
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local capture drafts could not be loaded.', 'retry', cause));
+      }
+    },
+
+    async listActiveDraftsUpdatedBefore(workspaceId, beforeTimestamp) {
+      try {
+        const rows = database.$client.getAllSync<CaptureDraftRow>(
+          `${selectCaptureDraftColumnsSql()}
+           WHERE workspace_id = ? AND status = 'active' AND updated_at < ?
+           ORDER BY updated_at ASC, id ASC`,
+          workspaceId,
+          beforeTimestamp,
         );
 
         return parseRows(rows);
@@ -264,6 +326,31 @@ export function createCaptureDraftRepository(database: PplantDatabase): CaptureD
         return requireDraft(database, workspaceId, id);
       } catch (cause) {
         return err(createAppError('unavailable', 'Local capture draft could not be marked saved.', 'retry', cause));
+      }
+    },
+
+    async updateDraftPayload(workspaceId, id, input) {
+      const payloadJson = serializeCaptureDraftPayload(input.payload);
+
+      if (!payloadJson.ok) {
+        return payloadJson;
+      }
+
+      try {
+        database.$client.runSync(
+          `UPDATE capture_drafts
+           SET payload_json = ?,
+               updated_at = ?
+           WHERE workspace_id = ? AND id = ?`,
+          payloadJson.value,
+          input.timestamp,
+          workspaceId,
+          id,
+        );
+
+        return requireDraft(database, workspaceId, id);
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local capture draft could not be updated.', 'retry', cause));
       }
     },
 

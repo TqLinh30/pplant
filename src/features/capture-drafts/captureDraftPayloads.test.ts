@@ -5,12 +5,15 @@ import {
   isReminderCaptureDraftMeaningful,
   isTaskCaptureDraftMeaningful,
   isWorkCaptureDraftMeaningful,
+  markReceiptImageDeleted,
   parseMoneyCaptureDraftPayload,
   parseReceiptCaptureDraftPayload,
   parseReminderCaptureDraftPayload,
   parseTaskCaptureDraftPayload,
   parseWorkCaptureDraftPayload,
+  receiptDraftHasRetainedImage,
   toCaptureDraftPayload,
+  updateReceiptRetentionPolicy,
 } from './captureDraftPayloads';
 
 describe('capture draft payload helpers', () => {
@@ -154,7 +157,8 @@ describe('capture draft payload helpers', () => {
     expect(payload.receipt).toMatchObject({
       parsingState: 'draft',
       retentionAnchor: 'capture_draft',
-      retentionPolicy: 'keep_until_saved_or_discarded',
+      retentionPolicy: 'keep_until_user_deletes',
+      retentionStatus: 'retained',
       storageScope: 'app_private_documents',
     });
     expect(isReceiptCaptureDraftPayload(payload)).toBe(true);
@@ -163,6 +167,41 @@ describe('capture draft payload helpers', () => {
       expect(parsed.value.receipt.retainedImageUri).toBe('file:///app/documents/receipts/receipt-1.jpg');
       expect(parsed.value.localDate).toBe('2026-05-08');
     }
+  });
+
+  it('parses legacy receipt retention payloads and marks image deletion metadata', () => {
+    const legacyPayload = buildReceiptCaptureDraftPayload({
+      capturedAt: '2026-05-08T10:00:00.000Z',
+      retainedImageUri: 'file:///app/documents/receipts/receipt-1.jpg',
+      source: 'camera',
+    });
+    delete (legacyPayload.receipt as Partial<typeof legacyPayload.receipt>).deletedAt;
+    delete (legacyPayload.receipt as Partial<typeof legacyPayload.receipt>).deletionReason;
+    delete (legacyPayload.receipt as Partial<typeof legacyPayload.receipt>).retentionStatus;
+    legacyPayload.receipt.retentionPolicy = 'keep_until_saved_or_discarded';
+
+    const parsed = parseReceiptCaptureDraftPayload(toCaptureDraftPayload(legacyPayload));
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) {
+      return;
+    }
+
+    expect(parsed.value.receipt.retentionPolicy).toBe('keep_until_saved_or_discarded');
+    expect(parsed.value.receipt.retentionStatus).toBe('retained');
+    expect(receiptDraftHasRetainedImage(parsed.value)).toBe(true);
+
+    const policyUpdated = updateReceiptRetentionPolicy(parsed.value, 'delete_after_expense_saved');
+    const deleted = markReceiptImageDeleted(policyUpdated, {
+      deletedAt: '2026-05-08T11:00:00.000Z',
+      deletionReason: 'user_deleted',
+    });
+
+    expect(deleted.receipt.retentionPolicy).toBe('delete_after_expense_saved');
+    expect(deleted.receipt.retentionStatus).toBe('deleted');
+    expect(deleted.receipt.retainedImageUri).toBeNull();
+    expect(deleted.receipt.sizeBytes).toBeNull();
+    expect(receiptDraftHasRetainedImage(deleted)).toBe(false);
   });
 
   it('treats receipt expense draft payloads as meaningful even before amount entry', () => {

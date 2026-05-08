@@ -63,6 +63,26 @@ class FakeCaptureDraftRepository implements CaptureDraftRepository {
     };
   }
 
+  async getDraft(_workspaceId: never, id: never) {
+    return {
+      ok: true as const,
+      value: this.drafts.find((draft) => draft.id === id) ?? null,
+    };
+  }
+
+  async getDraftBySavedRecord(_workspaceId: never, savedRecordKind: never, savedRecordId: never) {
+    return {
+      ok: true as const,
+      value:
+        this.drafts.find(
+          (draft) =>
+            draft.status === 'saved' &&
+            draft.savedRecordKind === savedRecordKind &&
+            draft.savedRecordId === savedRecordId,
+        ) ?? null,
+    };
+  }
+
   async keepDraft(_workspaceId: never, id: never, timestamp: string) {
     const draft = this.drafts.find((item) => item.id === id);
 
@@ -77,6 +97,13 @@ class FakeCaptureDraftRepository implements CaptureDraftRepository {
 
   async listActiveDrafts() {
     return { ok: true as const, value: this.drafts.filter((draft) => draft.status === 'active') };
+  }
+
+  async listActiveDraftsUpdatedBefore(_workspaceId: never, beforeTimestamp: string) {
+    return {
+      ok: true as const,
+      value: this.drafts.filter((draft) => draft.status === 'active' && draft.updatedAt < beforeTimestamp),
+    };
   }
 
   async markActiveDraftSavedByKind(_workspaceId: never, kind: CaptureDraftKind, input: MarkCaptureDraftSavedInput) {
@@ -100,6 +127,19 @@ class FakeCaptureDraftRepository implements CaptureDraftRepository {
 
   async markDraftSaved() {
     return { ok: true as const, value: createDraft({ status: 'saved' }) };
+  }
+
+  async updateDraftPayload(_workspaceId: never, id: never, input: { payload: CaptureDraft['payload']; timestamp: string }) {
+    const draft = this.drafts.find((item) => item.id === id);
+
+    if (!draft) {
+      return { ok: false as const, error: { code: 'not_found' as const, message: 'Missing.', recovery: 'edit' as const } };
+    }
+
+    draft.payload = input.payload;
+    draft.updatedAt = input.timestamp;
+
+    return { ok: true as const, value: draft };
   }
 
   async upsertActiveDraft(input: SaveActiveCaptureDraftInput) {

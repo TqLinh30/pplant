@@ -3,7 +3,10 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { createAppError } from '@/domain/common/app-error';
 import { err, ok, type AppResult } from '@/domain/common/result';
 
-export type ReceiptImageRetentionPolicy = 'keep_until_saved_or_discarded';
+export type ReceiptImageRetentionPolicy =
+  | 'delete_after_expense_saved'
+  | 'keep_until_saved_or_discarded'
+  | 'keep_until_user_deletes';
 
 export type PersistReceiptImageReferenceInput = {
   capturedAt?: string;
@@ -30,6 +33,7 @@ export type ReceiptFileInfo = {
 
 export type ReceiptFileSystemAdapter = {
   copyAsync(options: { from: string; to: string }): Promise<void>;
+  deleteAsync(uri: string, options?: { idempotent?: boolean }): Promise<void>;
   documentDirectory: string | null;
   getInfoAsync(uri: string): Promise<ReceiptFileInfo>;
   makeDirectoryAsync(uri: string, options: { idempotent: boolean; intermediates: boolean }): Promise<void>;
@@ -43,6 +47,7 @@ export type ReceiptFileStoreDependencies = {
 
 const defaultFileSystem: ReceiptFileSystemAdapter = {
   copyAsync: FileSystem.copyAsync,
+  deleteAsync: FileSystem.deleteAsync,
   documentDirectory: FileSystem.documentDirectory,
   getInfoAsync: FileSystem.getInfoAsync,
   makeDirectoryAsync: FileSystem.makeDirectoryAsync,
@@ -58,6 +63,14 @@ function normalizeInput(input: PersistReceiptImageReferenceInput | string): Pers
 
 function ensureTrailingSlash(uri: string): string {
   return uri.endsWith('/') ? uri : `${uri}/`;
+}
+
+function receiptDirectoryFor(fileSystem: ReceiptFileSystemAdapter): string | null {
+  if (!fileSystem.documentDirectory) {
+    return null;
+  }
+
+  return `${ensureTrailingSlash(fileSystem.documentDirectory)}receipts/`;
 }
 
 function sanitizeExtension(input: string | null | undefined): string {
@@ -100,11 +113,12 @@ export async function persistReceiptImageReference(
     return err(createAppError('validation_failed', 'Choose a receipt image to save.', 'edit'));
   }
 
-  if (!fileSystem.documentDirectory) {
+  const receiptDirectory = receiptDirectoryFor(fileSystem);
+
+  if (!receiptDirectory) {
     return err(createAppError('unavailable', 'Private receipt storage is unavailable.', 'manual_entry'));
   }
 
-  const receiptDirectory = `${ensureTrailingSlash(fileSystem.documentDirectory)}receipts/`;
   const extension = sanitizeExtension(input.originalFileName ?? input.sourceUri);
   const referenceId = sanitizeReferenceId((dependencies.createReferenceId ?? defaultReferenceId)());
   const retainedImageUri = `${receiptDirectory}${referenceId}.${extension}`;
@@ -131,11 +145,49 @@ export async function persistReceiptImageReference(
       originalFileName: input.originalFileName ?? null,
       retainedImageUri,
       retentionAnchor: 'capture_draft',
-      retentionPolicy: 'keep_until_saved_or_discarded',
+      retentionPolicy: 'keep_until_user_deletes',
       sizeBytes: typeof info.size === 'number' ? info.size : null,
       storageScope: 'app_private_documents',
     });
   } catch {
     return err(createAppError('unavailable', 'Receipt image could not be saved locally.', 'manual_entry'));
+  }
+}
+
+export async function deleteReceiptImageReference(
+  retainedImageUri: string | null,
+  dependencies: ReceiptFileStoreDependencies = {},
+): Promise<AppResult<{ deleted: boolean; sizeBytes: number | null }>> {
+  const fileSystem = dependencies.fileSystem ?? defaultFileSystem;
+
+  if (!retainedImageUri || retainedImageUri.trim().length === 0) {
+    return ok({ deleted: false, sizeBytes: null });
+  }
+
+  const receiptDirectory = receiptDirectoryFor(fileSystem);
+
+  if (!receiptDirectory) {
+    return err(createAppError('unavailable', 'Private receipt storage is unavailable.', 'retry'));
+  }
+
+  if (!retainedImageUri.startsWith(receiptDirectory)) {
+    return err(createAppError('validation_failed', 'Receipt image is outside private receipt storage.', 'edit'));
+  }
+
+  try {
+    const info = await fileSystem.getInfoAsync(retainedImageUri);
+
+    if (!info.exists) {
+      return ok({ deleted: false, sizeBytes: null });
+    }
+
+    await fileSystem.deleteAsync(retainedImageUri, { idempotent: true });
+
+    return ok({
+      deleted: true,
+      sizeBytes: typeof info.size === 'number' ? info.size : null,
+    });
+  } catch {
+    return err(createAppError('unavailable', 'Receipt image could not be deleted locally.', 'retry'));
   }
 }

@@ -1,6 +1,6 @@
 # Story 5.5: Warn About Duplicates And Manage Receipt Retention
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -16,48 +16,48 @@ so that I avoid accidental duplicate expenses and control receipt image storage.
 
 ## Tasks / Subtasks
 
-- [ ] Add duplicate detection contracts. (AC: 1)
-  - [ ] Add a receipt duplicate helper under `src/domain/receipts` or `src/features/receipts` that combines parser-provided `duplicateSuspected` with local money-record matching.
-  - [ ] Match only local non-deleted expense records using conservative MVP signals: same currency, same amount, same local date, and normalized merchant/source text when available.
-  - [ ] Return neutral warning copy, matched-record context, and actions for continue review/save, edit fields, manual expense, or discard draft.
-  - [ ] Do not block saving solely because a duplicate is suspected.
+- [x] Add duplicate detection contracts. (AC: 1)
+  - [x] Add a receipt duplicate helper under `src/domain/receipts` or `src/features/receipts` that combines parser-provided `duplicateSuspected` with local money-record matching.
+  - [x] Match only local non-deleted expense records using conservative MVP signals: same currency, same amount, same local date, and normalized merchant/source text when available.
+  - [x] Return neutral warning copy, matched-record context, and actions for continue review/save, edit fields, manual expense, or discard draft.
+  - [x] Do not block saving solely because a duplicate is suspected.
 
-- [ ] Add receipt image retention metadata helpers. (AC: 2, 3)
-  - [ ] Extend receipt capture payload parsing in a backward-compatible way so existing `keep_until_saved_or_discarded` payloads remain valid.
-  - [ ] Add explicit retained/deleted metadata fields in the receipt payload JSON, not a separate receipt-drafts table for MVP.
-  - [ ] Support MVP policies: keep image until user deletes it, delete image after expense save when selected, and cleanup abandoned receipt drafts after 30 days.
-  - [ ] Store only file references and metadata; do not store raw OCR text or receipt content in diagnostics.
+- [x] Add receipt image retention metadata helpers. (AC: 2, 3)
+  - [x] Extend receipt capture payload parsing in a backward-compatible way so existing `keep_until_saved_or_discarded` payloads remain valid.
+  - [x] Add explicit retained/deleted metadata fields in the receipt payload JSON, not a separate receipt-drafts table for MVP.
+  - [x] Support MVP policies: keep image until user deletes it, delete image after expense save when selected, and cleanup abandoned receipt drafts after 30 days.
+  - [x] Store only file references and metadata; do not store raw OCR text or receipt content in diagnostics.
 
-- [ ] Implement repository/service support for safe retention updates. (AC: 2, 3)
-  - [ ] Add repository methods that can load/update receipt capture draft payloads for active or saved drafts by draft id and by saved money record id where needed.
-  - [ ] Add a file-store delete operation that deletes only app-private receipt files and returns safe errors without logging raw paths.
-  - [ ] Add a retention service that can delete a receipt image, update payload metadata, optionally mark abandoned active drafts discarded, and report cleaned counts/bytes.
-  - [ ] Keep expense/money records intact when a receipt image is deleted.
+- [x] Implement repository/service support for safe retention updates. (AC: 2, 3)
+  - [x] Add repository methods that can load/update receipt capture draft payloads for active or saved drafts by draft id and by saved money record id where needed.
+  - [x] Add a file-store delete operation that deletes only app-private receipt files and returns safe errors without logging raw paths.
+  - [x] Add a retention service that can delete a receipt image, update payload metadata, optionally mark abandoned active drafts discarded, and report cleaned counts/bytes.
+  - [x] Keep expense/money records intact when a receipt image is deleted.
 
-- [ ] Update Receipt Review Desk and settings/privacy surfaces. (AC: 1, 2)
-  - [ ] Show a duplicate warning panel in `ReceiptRouteScreen.tsx` when parser or local matching detects a possible duplicate.
-  - [ ] Ensure the warning gives clear options to continue review/save, edit fields, use manual expense, or discard the receipt draft.
-  - [ ] Show receipt image retention state and controls on receipt detail/review when an image is retained.
-  - [ ] Update privacy/settings receipt image detail so it reflects actual current behavior and available retention controls instead of future-only copy.
+- [x] Update Receipt Review Desk and settings/privacy surfaces. (AC: 1, 2)
+  - [x] Show a duplicate warning panel in `ReceiptRouteScreen.tsx` when parser or local matching detects a possible duplicate.
+  - [x] Ensure the warning gives clear options to continue review/save, edit fields, use manual expense, or discard the receipt draft.
+  - [x] Show receipt image retention state and controls on receipt detail/review when an image is retained.
+  - [x] Update privacy/settings receipt image detail so it reflects actual current behavior and available retention controls instead of future-only copy.
 
-- [ ] Add abandoned draft cleanup behavior. (AC: 3)
-  - [ ] Implement `cleanupAbandonedReceiptDrafts` using a 30-day threshold from the PRD/NFR.
-  - [ ] Cleanup must only target abandoned receipt capture drafts with retained receipt image metadata and no saved record.
-  - [ ] Soft-mark cleaned active drafts as discarded through repository behavior and update payload retention metadata.
-  - [ ] Do not delete money records, saved expenses, parse jobs for saved records, migrations, preferences, categories, topics, or unrelated draft kinds.
+- [x] Add abandoned draft cleanup behavior. (AC: 3)
+  - [x] Implement `cleanupAbandonedReceiptDrafts` using a 30-day threshold from the PRD/NFR.
+  - [x] Cleanup must only target abandoned receipt capture drafts with retained receipt image metadata and no saved record.
+  - [x] Soft-mark cleaned active drafts as discarded through repository behavior and update payload retention metadata.
+  - [x] Do not delete money records, saved expenses, parse jobs for saved records, migrations, preferences, categories, topics, or unrelated draft kinds.
 
-- [ ] Preserve privacy, data safety, and story boundaries. (AC: 1, 2, 3)
-  - [ ] Do not add bank/payment, cloud sync, backend API, external OCR credentials, or analytics upload behavior.
-  - [ ] Do not add destructive database migrations.
-  - [ ] Do not delete receipt images except by explicit user action, selected delete-after-save policy, or the 30-day abandoned-draft cleanup policy.
-  - [ ] Keep manual corrections and saved money records as source of truth.
+- [x] Preserve privacy, data safety, and story boundaries. (AC: 1, 2, 3)
+  - [x] Do not add bank/payment, cloud sync, backend API, external OCR credentials, or analytics upload behavior.
+  - [x] Do not add destructive database migrations.
+  - [x] Do not delete receipt images except by explicit user action, selected delete-after-save policy, or the 30-day abandoned-draft cleanup policy.
+  - [x] Keep manual corrections and saved money records as source of truth.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Add duplicate helper/service tests for parser-only duplicate signal, local exact match, non-match, deleted record exclusion, and save-not-blocked behavior.
-  - [ ] Add payload/schema tests for backward-compatible retention metadata parsing.
-  - [ ] Add repository/service/file-store tests for image deletion metadata updates while keeping saved money records.
-  - [ ] Add cleanup tests for the 30-day threshold, active abandoned drafts, saved draft exclusion, non-receipt draft exclusion, and cleanup count/byte summaries.
-  - [ ] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Add duplicate helper/service tests for parser-only duplicate signal, local exact match, non-match, deleted record exclusion, and save-not-blocked behavior.
+  - [x] Add payload/schema tests for backward-compatible retention metadata parsing.
+  - [x] Add repository/service/file-store tests for image deletion metadata updates while keeping saved money records.
+  - [x] Add cleanup tests for the 30-day threshold, active abandoned drafts, saved draft exclusion, non-receipt draft exclusion, and cleanup count/byte summaries.
+  - [x] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -175,16 +175,43 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-08: Created Story 5.5 ready-for-dev from Epic 5, PRD, architecture, UX, Story 5.1-5.4 context, and current receipt/capture-draft code.
+- 2026-05-08: Started Story 5.5 implementation. Plan: add duplicate helper/service/UI first, then add backward-compatible retention payload helpers, repository/file cleanup services, retention UI, focused tests, and full verification.
+- 2026-05-08: Added duplicate warning domain/service/UI, backward-compatible receipt retention metadata, file deletion and cleanup services, repository retention updates, and settings privacy copy.
+- 2026-05-08: Verification passed: focused Jest, typecheck, lint, full Jest, Expo install check, build-if-present, and git diff whitespace check.
 
 ### Completion Notes List
 
-- Pending implementation.
+- Implemented parser and local-record duplicate warning flow with neutral copy and non-blocking continue/edit/manual/discard actions.
+- Added retained/deleted receipt image metadata to the existing `capture_drafts` JSON payload while preserving legacy payload parsing.
+- Added safe receipt image deletion and abandoned draft cleanup that updates draft metadata and keeps saved money records intact.
+- Updated receipt detail/review and privacy settings copy to expose actual retention controls.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/5-5-warn-about-duplicates-and-manage-receipt-retention.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-5.5-review.md`
+- `src/data/repositories/capture-drafts.repository.test.ts`
+- `src/data/repositories/capture-drafts.repository.ts`
+- `src/domain/privacy/privacy-settings.ts`
+- `src/domain/receipts/duplicates.test.ts`
+- `src/domain/receipts/duplicates.ts`
+- `src/features/capture-drafts/captureDraftPayloads.test.ts`
+- `src/features/capture-drafts/captureDraftPayloads.ts`
+- `src/features/receipts/ReceiptRouteScreen.tsx`
+- `src/services/capture-drafts/capture-draft.service.test.ts`
+- `src/services/files/receipt-file-store.test.ts`
+- `src/services/files/receipt-file-store.ts`
+- `src/services/files/receipt-retention.service.test.ts`
+- `src/services/files/receipt-retention.service.ts`
+- `src/services/files/retention-cleanup.service.ts`
+- `src/services/receipt-parsing/receipt-duplicate.service.test.ts`
+- `src/services/receipt-parsing/receipt-duplicate.service.ts`
+- `src/services/receipt-parsing/receipt-parse-job.service.test.ts`
+- `src/services/receipt-parsing/receipt-parse-job.service.ts`
 
 ## Change Log
 
 - 2026-05-08: Created Story 5.5 ready-for-dev.
+- 2026-05-08: Started implementation.
+- 2026-05-08: Completed duplicate warning and receipt retention controls after verification.

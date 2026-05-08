@@ -1,4 +1,5 @@
 import {
+  deleteReceiptImageReference,
   persistReceiptImageReference,
   type ReceiptFileSystemAdapter,
 } from './receipt-file-store';
@@ -6,6 +7,7 @@ import {
 function createFileSystem(overrides: Partial<ReceiptFileSystemAdapter> = {}): ReceiptFileSystemAdapter {
   return {
     copyAsync: jest.fn(async () => undefined),
+    deleteAsync: jest.fn(async () => undefined),
     documentDirectory: 'file:///app/documents/',
     getInfoAsync: jest.fn(async () => ({ exists: true, size: 1234 })),
     makeDirectoryAsync: jest.fn(async () => undefined),
@@ -45,7 +47,7 @@ describe('receipt file store', () => {
         originalFileName: 'campus-receipt.jpeg',
         retainedImageUri: 'file:///app/documents/receipts/receipt-1.jpeg',
         retentionAnchor: 'capture_draft',
-        retentionPolicy: 'keep_until_saved_or_discarded',
+        retentionPolicy: 'keep_until_user_deletes',
         sizeBytes: 1234,
         storageScope: 'app_private_documents',
       });
@@ -86,6 +88,56 @@ describe('receipt file store', () => {
     if (!result.ok) {
       expect(result.error.recovery).toBe('manual_entry');
       expect(result.error.message).not.toContain('file:///tmp/receipt.png');
+    }
+  });
+
+  it('deletes only receipt images from app-private receipt storage', async () => {
+    const fileSystem = createFileSystem({
+      getInfoAsync: jest.fn(async () => ({ exists: true, size: 4321 })),
+    });
+    const result = await deleteReceiptImageReference('file:///app/documents/receipts/receipt-1.jpeg', {
+      fileSystem,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(fileSystem.deleteAsync).toHaveBeenCalledWith(
+      'file:///app/documents/receipts/receipt-1.jpeg',
+      { idempotent: true },
+    );
+    if (result.ok) {
+      expect(result.value).toEqual({ deleted: true, sizeBytes: 4321 });
+    }
+  });
+
+  it('rejects deletion outside private receipt storage without echoing raw paths', async () => {
+    const uri = 'file:///tmp/not-owned/receipt.jpg';
+    const result = await deleteReceiptImageReference(uri, {
+      fileSystem: createFileSystem(),
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).not.toContain(uri);
+      expect(result.error.message).not.toContain('file:///tmp');
+      expect(result.error.code).toBe('validation_failed');
+    }
+  });
+
+  it('redacts delete failures from expected error messages', async () => {
+    const uri = 'file:///app/documents/receipts/receipt-1.jpeg';
+    const result = await deleteReceiptImageReference(uri, {
+      fileSystem: createFileSystem({
+        deleteAsync: jest.fn(async () => {
+          throw new Error(`cannot delete ${uri}`);
+        }),
+      }),
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).not.toContain(uri);
+      expect(result.error.message).not.toContain('file://');
+      expect(result.error.cause).toBeUndefined();
     }
   });
 });
