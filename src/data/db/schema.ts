@@ -358,6 +358,19 @@ export const reflections = sqliteTable('reflections', {
   deletedAt: text('deleted_at'),
 });
 
+export const reflectionInsightPreferences = sqliteTable('reflection_insight_preferences', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  insightId: text('insight_id').notNull(),
+  action: text('action').notNull(),
+  scopeKey: text('scope_key').notNull(),
+  periodKind: text('period_kind'),
+  periodStartDate: text('period_start_date'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+});
+
 export const schema = {
   budgets,
   captureDrafts,
@@ -370,6 +383,7 @@ export const schema = {
   recurrenceRuleTopics,
   recoveryEvents,
   receiptParseJobs,
+  reflectionInsightPreferences,
   reflections,
   reminderExceptions,
   reminders,

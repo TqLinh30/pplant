@@ -2,11 +2,15 @@ import type { PplantDatabase } from '@/data/db/client';
 import { createAppError } from '@/domain/common/app-error';
 import { err, ok, type AppResult } from '@/domain/common/result';
 import {
+  parseReflectionInsightPreferenceRow,
   parseReflectionRow,
+  parseSaveReflectionInsightPreferenceInput,
   parseSaveReflectionInput,
 } from '@/domain/reflections/schemas';
 import type {
   Reflection,
+  ReflectionInsightPreference,
+  ReflectionInsightPreferenceRow,
   ReflectionPeriod,
   ReflectionRow,
 } from '@/domain/reflections/types';
@@ -17,11 +21,19 @@ export type ReflectionRepository = {
     workspaceId: WorkspaceId,
     options?: { limit?: number },
   ): Promise<AppResult<Reflection[]>>;
+  listRecentAnsweredReflections(
+    workspaceId: WorkspaceId,
+    options?: { limit?: number },
+  ): Promise<AppResult<Reflection[]>>;
   listReflectionsForPeriod(
     workspaceId: WorkspaceId,
     period: ReflectionPeriod,
   ): Promise<AppResult<Reflection[]>>;
+  listInsightPreferences(workspaceId: WorkspaceId): Promise<AppResult<ReflectionInsightPreference[]>>;
   saveReflection(input: unknown): Promise<AppResult<Reflection>>;
+  saveInsightPreference(input: unknown): Promise<AppResult<ReflectionInsightPreference>>;
+  softDeleteReflection(workspaceId: WorkspaceId, id: string, timestamp: string): Promise<AppResult<void>>;
+  softDeleteWorkspaceReflectionData(workspaceId: WorkspaceId, timestamp: string): Promise<AppResult<void>>;
 };
 
 const defaultRecentLimit = 20;
@@ -45,6 +57,23 @@ SELECT
   updated_at AS updatedAt,
   deleted_at AS deletedAt
 FROM reflections
+`;
+}
+
+function selectInsightPreferenceColumnsSql() {
+  return `
+SELECT
+  id,
+  workspace_id AS workspaceId,
+  insight_id AS insightId,
+  action,
+  scope_key AS scopeKey,
+  period_kind AS periodKind,
+  period_start_date AS periodStartDate,
+  created_at AS createdAt,
+  updated_at AS updatedAt,
+  deleted_at AS deletedAt
+FROM reflection_insight_preferences
 `;
 }
 
@@ -72,6 +101,24 @@ function parseRows(rows: ReflectionRow[]): AppResult<Reflection[]> {
   return ok(reflections);
 }
 
+function parsePreferenceRows(
+  rows: ReflectionInsightPreferenceRow[],
+): AppResult<ReflectionInsightPreference[]> {
+  const preferences: ReflectionInsightPreference[] = [];
+
+  for (const row of rows) {
+    const parsed = parseReflectionInsightPreferenceRow(row);
+
+    if (!parsed.ok) {
+      return parsed;
+    }
+
+    preferences.push(parsed.value);
+  }
+
+  return ok(preferences);
+}
+
 async function loadReflectionById(
   database: PplantDatabase,
   workspaceId: WorkspaceId,
@@ -96,6 +143,30 @@ async function loadReflectionById(
   }
 }
 
+async function loadInsightPreferenceById(
+  database: PplantDatabase,
+  workspaceId: WorkspaceId,
+  id: string,
+): Promise<AppResult<ReflectionInsightPreference>> {
+  try {
+    const row = database.$client.getFirstSync<ReflectionInsightPreferenceRow>(
+      `${selectInsightPreferenceColumnsSql()}
+       WHERE workspace_id = ? AND id = ? AND deleted_at IS NULL
+       LIMIT 1`,
+      workspaceId,
+      id,
+    );
+
+    if (!row) {
+      return err(createAppError('not_found', 'Insight preference was not found.', 'edit'));
+    }
+
+    return parseReflectionInsightPreferenceRow(row);
+  } catch (cause) {
+    return err(createAppError('unavailable', 'Local insight preference could not be loaded.', 'retry', cause));
+  }
+}
+
 export function createReflectionRepository(database: PplantDatabase): ReflectionRepository {
   return {
     async listRecentReflections(workspaceId, { limit } = {}) {
@@ -104,6 +175,23 @@ export function createReflectionRepository(database: PplantDatabase): Reflection
           `${selectReflectionColumnsSql()}
            WHERE workspace_id = ? AND deleted_at IS NULL
            ORDER BY updated_at DESC, id DESC
+           LIMIT ?`,
+          workspaceId,
+          normalizeLimit(limit),
+        );
+
+        return parseRows(rows);
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local reflections could not be loaded.', 'retry', cause));
+      }
+    },
+
+    async listRecentAnsweredReflections(workspaceId, { limit } = {}) {
+      try {
+        const rows = database.$client.getAllSync<ReflectionRow>(
+          `${selectReflectionColumnsSql()}
+           WHERE workspace_id = ? AND deleted_at IS NULL AND state = 'answered'
+           ORDER BY period_start_date DESC, updated_at DESC, id DESC
            LIMIT ?`,
           workspaceId,
           normalizeLimit(limit),
@@ -132,6 +220,21 @@ export function createReflectionRepository(database: PplantDatabase): Reflection
         return parseRows(rows);
       } catch (cause) {
         return err(createAppError('unavailable', 'Local reflections could not be loaded.', 'retry', cause));
+      }
+    },
+
+    async listInsightPreferences(workspaceId) {
+      try {
+        const rows = database.$client.getAllSync<ReflectionInsightPreferenceRow>(
+          `${selectInsightPreferenceColumnsSql()}
+           WHERE workspace_id = ? AND deleted_at IS NULL
+           ORDER BY updated_at DESC, id DESC`,
+          workspaceId,
+        );
+
+        return parsePreferenceRows(rows);
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local insight preferences could not be loaded.', 'retry', cause));
       }
     },
 
@@ -205,6 +308,114 @@ export function createReflectionRepository(database: PplantDatabase): Reflection
         return loadReflectionById(database, parsed.value.workspaceId, parsed.value.id);
       } catch (cause) {
         return err(createAppError('unavailable', 'Local reflection could not be saved.', 'retry', cause));
+      }
+    },
+
+    async saveInsightPreference(input) {
+      const parsed = parseSaveReflectionInsightPreferenceInput(input);
+
+      if (!parsed.ok) {
+        return parsed;
+      }
+
+      try {
+        const existing = database.$client.getFirstSync<ReflectionInsightPreferenceRow>(
+          `${selectInsightPreferenceColumnsSql()}
+           WHERE workspace_id = ?
+             AND insight_id = ?
+             AND scope_key = ?
+             AND deleted_at IS NULL
+           LIMIT 1`,
+          parsed.value.workspaceId,
+          parsed.value.insightId,
+          parsed.value.scopeKey,
+        );
+
+        if (existing) {
+          database.$client.runSync(
+            `UPDATE reflection_insight_preferences
+             SET action = ?,
+                 period_kind = ?,
+                 period_start_date = ?,
+                 updated_at = ?
+             WHERE workspace_id = ? AND id = ? AND deleted_at IS NULL`,
+            parsed.value.action,
+            parsed.value.periodKind,
+            parsed.value.periodStartDate,
+            parsed.value.timestamp,
+            parsed.value.workspaceId,
+            existing.id,
+          );
+
+          return loadInsightPreferenceById(database, parsed.value.workspaceId, existing.id);
+        }
+
+        database.$client.runSync(
+          `INSERT INTO reflection_insight_preferences
+            (id, workspace_id, insight_id, action, scope_key, period_kind, period_start_date,
+             created_at, updated_at, deleted_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          parsed.value.id,
+          parsed.value.workspaceId,
+          parsed.value.insightId,
+          parsed.value.action,
+          parsed.value.scopeKey,
+          parsed.value.periodKind,
+          parsed.value.periodStartDate,
+          parsed.value.timestamp,
+          parsed.value.timestamp,
+          null,
+        );
+
+        return loadInsightPreferenceById(database, parsed.value.workspaceId, parsed.value.id);
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local insight preference could not be saved.', 'retry', cause));
+      }
+    },
+
+    async softDeleteReflection(workspaceId, id, timestamp) {
+      try {
+        database.$client.runSync(
+          `UPDATE reflections
+           SET deleted_at = ?,
+               updated_at = ?
+           WHERE workspace_id = ? AND id = ? AND deleted_at IS NULL`,
+          timestamp,
+          timestamp,
+          workspaceId,
+          id,
+        );
+
+        return ok(undefined);
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local reflection could not be deleted.', 'retry', cause));
+      }
+    },
+
+    async softDeleteWorkspaceReflectionData(workspaceId, timestamp) {
+      try {
+        database.$client.runSync(
+          `UPDATE reflections
+           SET deleted_at = ?,
+               updated_at = ?
+           WHERE workspace_id = ? AND deleted_at IS NULL`,
+          timestamp,
+          timestamp,
+          workspaceId,
+        );
+        database.$client.runSync(
+          `UPDATE reflection_insight_preferences
+           SET deleted_at = ?,
+               updated_at = ?
+           WHERE workspace_id = ? AND deleted_at IS NULL`,
+          timestamp,
+          timestamp,
+          workspaceId,
+        );
+
+        return ok(undefined);
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local reflection data could not be deleted.', 'retry', cause));
       }
     },
   };

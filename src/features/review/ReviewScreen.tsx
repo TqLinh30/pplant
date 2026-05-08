@@ -4,8 +4,11 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatMinorUnitsForInput } from '@/domain/common/money';
+import { filterReflectionRelationshipsForPreferences } from '@/domain/reflections/insight-preferences';
+import { reflectionPeriodFromSummaryPeriod } from '@/domain/reflections/schemas';
 import type {
   Reflection,
+  ReflectionPeriod,
   ReflectionPrompt,
   ReflectionPromptId,
 } from '@/domain/reflections/types';
@@ -35,6 +38,10 @@ import { typography } from '@/ui/tokens/typography';
 import { routeForEndOfDayReviewEdit } from './end-of-day-review-routes';
 import { useEndOfDayReview } from './useEndOfDayReview';
 import { usePeriodReviewSummary, type PeriodReviewState } from './usePeriodReviewSummary';
+import {
+  useReflectionHistory,
+  type ReflectionHistoryState,
+} from './useReflectionHistory';
 import {
   useReflectionPrompts,
   type ReflectionPromptState,
@@ -555,25 +562,54 @@ function relationshipDescription(data: PeriodReviewData, relationship: Reflectio
 
 function PeriodRelationshipsSection({
   data,
-  reflectionCount,
+  onDismiss,
+  onMute,
+  relationships,
+  savingInsightId,
 }: {
   data: PeriodReviewData;
-  reflectionCount: number;
+  onDismiss: (insightId: ReflectionRelationship['id']) => void;
+  onMute: (insightId: ReflectionRelationship['id']) => void;
+  relationships: ReflectionRelationship[];
+  savingInsightId: ReflectionRelationship['id'] | null;
 }) {
-  const relationships = buildReflectionRelationships({ reflectionCount, summary: data.summary });
-
   return (
     <Section title="Reflection Pairs">
-      <View style={styles.listGroup}>
-        {relationships.map((relationship) => (
-          <ListRow
-            key={relationship.id}
-            title={relationship.title}
-            description={relationshipDescription(data, relationship)}
-            meta={relationship.state === 'ready' ? relationship.description : 'Partial data'}
-          />
-        ))}
-      </View>
+      {relationships.length === 0 ? (
+        <StatusBanner
+          title="Reflection pairs hidden"
+          description="Dismissed pairs stay hidden for this period. Muted pairs stay hidden in future reviews."
+        />
+      ) : (
+        <View style={styles.listGroup}>
+          {relationships.map((relationship) => (
+            <ListRow
+              key={relationship.id}
+              title={relationship.title}
+              description={relationshipDescription(data, relationship)}
+              meta={relationship.state === 'ready' ? relationship.description : 'Partial data'}
+              right={
+                <View style={styles.rowActions}>
+                  <Button
+                    accessibilityLabel={`Dismiss ${relationship.title} for this period`}
+                    disabled={savingInsightId !== null}
+                    label="Dismiss"
+                    onPress={() => onDismiss(relationship.id)}
+                    variant="secondary"
+                  />
+                  <Button
+                    accessibilityLabel={`Mute ${relationship.title} in future reviews`}
+                    disabled={savingInsightId !== null}
+                    label={savingInsightId === relationship.id ? 'Saving' : 'Mute'}
+                    onPress={() => onMute(relationship.id)}
+                    variant="secondary"
+                  />
+                </View>
+              }
+            />
+          ))}
+        </View>
+      )}
     </Section>
   );
 }
@@ -685,6 +721,53 @@ function ReflectionPromptsSection({
   );
 }
 
+function periodHistoryLabel(period: ReflectionPeriod): string {
+  return `${period.kind === 'week' ? 'Week' : 'Month'} ${period.startDate}`;
+}
+
+function ReflectionHistorySection({
+  onRetry,
+  state,
+}: {
+  onRetry: () => void;
+  state: ReflectionHistoryState;
+}) {
+  return (
+    <Section
+      title="Past Reflections"
+      action={state.status === 'failed' ? <Button label="Retry" onPress={onRetry} variant="secondary" /> : null}>
+      {state.status === 'idle' || state.status === 'loading' ? (
+        <StatusBanner title="Loading reflection history" description="Saved reflections are loading from local data." />
+      ) : null}
+      {state.status === 'failed' && state.actionError ? (
+        <StatusBanner
+          title="Reflection history did not update"
+          description="Your saved records are unchanged. Try loading history again when ready."
+          tone="warning"
+        />
+      ) : null}
+      {state.status === 'ready' && state.history.length === 0 ? (
+        <StatusBanner
+          title="No saved reflections yet"
+          description="Answered prompts will appear here by period. Skipped prompts stay out of history."
+        />
+      ) : null}
+      {state.history.length > 0 ? (
+        <View style={styles.listGroup}>
+          {state.history.map((reflection) => (
+            <ListRow
+              key={reflection.id}
+              title={periodHistoryLabel(reflection.period)}
+              description={reflection.responseText ?? 'Saved reflection'}
+              meta={reflection.promptText}
+            />
+          ))}
+        </View>
+      ) : null}
+    </Section>
+  );
+}
+
 function LoadedPeriodReviewContent({
   data,
   onRetry,
@@ -695,9 +778,23 @@ function LoadedPeriodReviewContent({
   status: PeriodReviewState['status'];
 }) {
   const reflectionPrompts = useReflectionPrompts(data);
+  const reflectionHistory = useReflectionHistory();
   const answeredReflectionCount = reflectionPrompts.state.reflections.filter(
     (reflection) => reflection.state === 'answered',
   ).length;
+  const reflectionPeriod = reflectionPeriodFromSummaryPeriod({
+    endDateExclusive: data.summary.period.endDateExclusive,
+    kind: data.summary.period.kind,
+    startDate: data.summary.period.startDate,
+  });
+  const relationships = filterReflectionRelationshipsForPreferences({
+    period: reflectionPeriod,
+    preferences: reflectionHistory.state.preferences,
+    relationships: buildReflectionRelationships({
+      reflectionCount: answeredReflectionCount,
+      summary: data.summary,
+    }),
+  });
 
   return (
     <>
@@ -719,13 +816,39 @@ function LoadedPeriodReviewContent({
       <PeriodWorkSection data={data} />
       <PeriodTasksSection data={data} />
       <PeriodRemindersSection data={data} />
-      <PeriodRelationshipsSection data={data} reflectionCount={answeredReflectionCount} />
+      {reflectionHistory.state.actionError ? (
+        <StatusBanner
+          title="Insight preference did not save"
+          description="Your review can continue. Try dismissing or muting again when ready."
+          tone="warning"
+        />
+      ) : null}
+      <PeriodRelationshipsSection
+        data={data}
+        onDismiss={(insightId) =>
+          reflectionHistory.saveInsightPreference({
+            action: 'dismissed',
+            insightId,
+            period: reflectionPeriod,
+          })
+        }
+        onMute={(insightId) =>
+          reflectionHistory.saveInsightPreference({
+            action: 'muted',
+            insightId,
+            period: reflectionPeriod,
+          })
+        }
+        relationships={relationships}
+        savingInsightId={reflectionHistory.state.savingInsightId}
+      />
       <ReflectionPromptsSection
         onRetry={onRetry}
         onSave={reflectionPrompts.savePrompt}
         onSkip={reflectionPrompts.skipPrompt}
         state={reflectionPrompts.state}
       />
+      <ReflectionHistorySection onRetry={reflectionHistory.reload} state={reflectionHistory.state} />
     </>
   );
 }

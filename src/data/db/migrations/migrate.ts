@@ -34,6 +34,7 @@ export const recoveryEventsMigrationId = '012_create_recovery_events';
 export const captureDraftsMigrationId = '013_create_capture_drafts';
 export const receiptParseJobsMigrationId = '014_create_receipt_parse_jobs';
 export const reflectionsMigrationId = '015_create_reflections';
+export const reflectionInsightPreferencesMigrationId = '016_create_reflection_insight_preferences';
 
 const createMigrationTrackingTableSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -570,6 +571,31 @@ CREATE INDEX IF NOT EXISTS idx_reflections_workspace_recent
   ON reflections (workspace_id, deleted_at, updated_at);
 `;
 
+const reflectionInsightPreferencesMigrationSql = `
+CREATE TABLE IF NOT EXISTS reflection_insight_preferences (
+  id TEXT PRIMARY KEY NOT NULL,
+  workspace_id TEXT NOT NULL,
+  insight_id TEXT NOT NULL,
+  action TEXT NOT NULL CHECK (action IN ('dismissed', 'muted')),
+  scope_key TEXT NOT NULL,
+  period_kind TEXT CHECK (period_kind IS NULL OR period_kind IN ('week', 'month')),
+  period_start_date TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reflection_insight_preferences_active_scope
+  ON reflection_insight_preferences (workspace_id, insight_id, scope_key)
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_reflection_insight_preferences_workspace_active
+  ON reflection_insight_preferences (workspace_id, deleted_at, action, scope_key);
+
+CREATE INDEX IF NOT EXISTS idx_reflection_insight_preferences_workspace_cleanup
+  ON reflection_insight_preferences (workspace_id, deleted_at, updated_at);
+`;
+
 const migrations = [
   {
     id: workspaceMigrationId,
@@ -630,6 +656,10 @@ const migrations = [
   {
     id: reflectionsMigrationId,
     sql: reflectionsMigrationSql,
+  },
+  {
+    id: reflectionInsightPreferencesMigrationId,
+    sql: reflectionInsightPreferencesMigrationSql,
   },
 ] as const;
 

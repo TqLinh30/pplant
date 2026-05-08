@@ -6,6 +6,8 @@ import { localWorkspaceId } from '@/domain/workspace/types';
 
 import {
   listPeriodReflections,
+  listReflectionHistory,
+  saveReflectionInsightPreference,
   saveReflectionPrompt,
   type ReflectionServiceDependencies,
 } from './reflection.service';
@@ -39,6 +41,7 @@ function createReflection(overrides: Partial<Reflection> = {}): Reflection {
 function createDependencies(repository: ReflectionRepository): ReflectionServiceDependencies {
   return {
     createId: () => 'reflection-generated',
+    createPreferenceId: () => 'preference-generated',
     createRepository: () => repository,
     migrateDatabase: async () => ok({ applied: 0, appliedMigrations: [] }),
     now: () => fixedDate,
@@ -50,12 +53,17 @@ describe('reflection service', () => {
   it('saves answered prompts with generated id, local workspace, and timestamp', async () => {
     const savedInputs: unknown[] = [];
     const repository: ReflectionRepository = {
+      listInsightPreferences: async () => ok([]),
+      listRecentAnsweredReflections: async () => ok([]),
       listRecentReflections: async () => ok([]),
       listReflectionsForPeriod: async () => ok([]),
       saveReflection: async (input) => {
         savedInputs.push(input);
         return ok(createReflection());
       },
+      saveInsightPreference: async () => ok({} as never),
+      softDeleteReflection: async () => ok(undefined),
+      softDeleteWorkspaceReflectionData: async () => ok(undefined),
     };
 
     const saved = await saveReflectionPrompt(
@@ -86,9 +94,14 @@ describe('reflection service', () => {
 
   it('saves skipped prompts without requiring response text', async () => {
     const repository: ReflectionRepository = {
+      listInsightPreferences: async () => ok([]),
+      listRecentAnsweredReflections: async () => ok([]),
       listRecentReflections: async () => ok([]),
       listReflectionsForPeriod: async () => ok([]),
+      saveInsightPreference: async () => ok({} as never),
       saveReflection: async () => ok(createReflection({ responseText: null, state: 'skipped' })),
+      softDeleteReflection: async () => ok(undefined),
+      softDeleteWorkspaceReflectionData: async () => ok(undefined),
     };
 
     const skipped = await saveReflectionPrompt(
@@ -111,13 +124,18 @@ describe('reflection service', () => {
 
   it('lists period reflections through the repository boundary', async () => {
     const repository: ReflectionRepository = {
+      listInsightPreferences: async () => ok([]),
+      listRecentAnsweredReflections: async () => ok([]),
       listRecentReflections: async () => ok([]),
       listReflectionsForPeriod: async (workspaceId, period) => {
         expect(workspaceId).toBe(localWorkspaceId);
         expect(period).toBe(weekPeriod);
         return ok([createReflection()]);
       },
+      saveInsightPreference: async () => ok({} as never),
       saveReflection: async () => ok(createReflection()),
+      softDeleteReflection: async () => ok(undefined),
+      softDeleteWorkspaceReflectionData: async () => ok(undefined),
     };
 
     const listed = await listPeriodReflections({ period: weekPeriod }, createDependencies(repository));
@@ -130,9 +148,14 @@ describe('reflection service', () => {
 
   it('returns retryable errors when local data cannot be opened', async () => {
     const repository: ReflectionRepository = {
+      listInsightPreferences: async () => ok([]),
+      listRecentAnsweredReflections: async () => ok([]),
       listRecentReflections: async () => ok([]),
       listReflectionsForPeriod: async () => ok([]),
+      saveInsightPreference: async () => ok({} as never),
       saveReflection: async () => ok(createReflection()),
+      softDeleteReflection: async () => ok(undefined),
+      softDeleteWorkspaceReflectionData: async () => ok(undefined),
     };
     const result = await listPeriodReflections(
       { period: weekPeriod },
@@ -153,9 +176,14 @@ describe('reflection service', () => {
 
   it('returns migration errors before using the repository', async () => {
     const repository: ReflectionRepository = {
+      listInsightPreferences: async () => ok([]),
+      listRecentAnsweredReflections: async () => ok([]),
       listRecentReflections: async () => ok([]),
       listReflectionsForPeriod: async () => ok([]),
+      saveInsightPreference: async () => ok({} as never),
       saveReflection: async () => ok(createReflection()),
+      softDeleteReflection: async () => ok(undefined),
+      softDeleteWorkspaceReflectionData: async () => ok(undefined),
     };
     const migrationFailure = createAppError('unavailable', 'Migration failed.', 'retry');
     const result = await listPeriodReflections(
@@ -167,5 +195,78 @@ describe('reflection service', () => {
     );
 
     expect(result).toEqual({ ok: false, error: migrationFailure });
+  });
+
+  it('lists answered reflection history through the repository boundary', async () => {
+    const repository: ReflectionRepository = {
+      listInsightPreferences: async () => ok([]),
+      listRecentAnsweredReflections: async (workspaceId, options) => {
+        expect(workspaceId).toBe(localWorkspaceId);
+        expect(options?.limit).toBe(5);
+        return ok([createReflection()]);
+      },
+      listRecentReflections: async () => ok([]),
+      listReflectionsForPeriod: async () => ok([]),
+      saveInsightPreference: async () => ok({} as never),
+      saveReflection: async () => ok(createReflection()),
+      softDeleteReflection: async () => ok(undefined),
+      softDeleteWorkspaceReflectionData: async () => ok(undefined),
+    };
+
+    const history = await listReflectionHistory(createDependencies(repository), { limit: 5 });
+
+    expect(history.ok).toBe(true);
+    if (history.ok) {
+      expect(history.value).toHaveLength(1);
+    }
+  });
+
+  it('saves dismissed insight preferences with generated id and period scope', async () => {
+    const savedInputs: unknown[] = [];
+    const repository: ReflectionRepository = {
+      listInsightPreferences: async () => ok([]),
+      listRecentAnsweredReflections: async () => ok([]),
+      listRecentReflections: async () => ok([]),
+      listReflectionsForPeriod: async () => ok([]),
+      saveInsightPreference: async (input) => {
+        savedInputs.push(input);
+        return ok({
+          action: 'dismissed',
+          createdAt: fixedDate.toISOString(),
+          deletedAt: null,
+          id: 'preference-generated' as never,
+          insightId: 'money_time',
+          periodKind: 'week',
+          periodStartDate: '2026-05-04' as never,
+          scopeKey: 'week:2026-05-04',
+          updatedAt: fixedDate.toISOString(),
+          workspaceId: localWorkspaceId,
+        });
+      },
+      saveReflection: async () => ok(createReflection()),
+      softDeleteReflection: async () => ok(undefined),
+      softDeleteWorkspaceReflectionData: async () => ok(undefined),
+    };
+
+    const saved = await saveReflectionInsightPreference(
+      {
+        action: 'dismissed',
+        insightId: 'money_time',
+        period: weekPeriod,
+      },
+      createDependencies(repository),
+    );
+
+    expect(saved.ok).toBe(true);
+    expect(savedInputs).toEqual([
+      {
+        action: 'dismissed',
+        id: 'preference-generated',
+        insightId: 'money_time',
+        period: weekPeriod,
+        timestamp: fixedDate.toISOString(),
+        workspaceId: localWorkspaceId,
+      },
+    ]);
   });
 });

@@ -11,8 +11,11 @@ import {
 import { createAppError } from '@/domain/common/app-error';
 import { asEntityId } from '@/domain/common/ids';
 import { err, isErr, ok, type AppResult } from '@/domain/common/result';
+import type { ReflectionRelationshipId } from '@/domain/summaries/reflection-relationships';
 import type {
   Reflection,
+  ReflectionInsightPreference,
+  ReflectionInsightPreferenceAction,
   ReflectionPeriod,
   ReflectionPromptId,
   ReflectionState,
@@ -31,8 +34,15 @@ export type ListPeriodReflectionsRequest = {
   period: ReflectionPeriod;
 };
 
+export type SaveInsightPreferenceRequest = {
+  action: ReflectionInsightPreferenceAction;
+  insightId: ReflectionRelationshipId;
+  period?: ReflectionPeriod | null;
+};
+
 export type ReflectionServiceDependencies = {
   createId?: () => string;
+  createPreferenceId?: () => string;
   createRepository?: (database: unknown) => ReflectionRepository;
   migrateDatabase?: (database: unknown, now: Date) => Promise<AppResult<MigrationReport>>;
   now?: () => Date;
@@ -46,6 +56,10 @@ type PreparedReflectionAccess = {
 
 function defaultCreateReflectionId(): string {
   return `reflection-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function defaultCreateInsightPreferenceId(): string {
+  return `reflection-insight-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 async function prepareReflectionAccess({
@@ -129,4 +143,89 @@ export async function listRecentReflections(
   }
 
   return access.value.repository.listRecentReflections(localWorkspaceId, options);
+}
+
+export async function listReflectionHistory(
+  dependencies: ReflectionServiceDependencies = {},
+  options: { limit?: number } = {},
+): Promise<AppResult<Reflection[]>> {
+  const access = await prepareReflectionAccess(dependencies);
+
+  if (isErr(access)) {
+    return access;
+  }
+
+  return access.value.repository.listRecentAnsweredReflections(localWorkspaceId, options);
+}
+
+export async function listReflectionInsightPreferences(
+  dependencies: ReflectionServiceDependencies = {},
+): Promise<AppResult<ReflectionInsightPreference[]>> {
+  const access = await prepareReflectionAccess(dependencies);
+
+  if (isErr(access)) {
+    return access;
+  }
+
+  return access.value.repository.listInsightPreferences(localWorkspaceId);
+}
+
+export async function saveReflectionInsightPreference(
+  input: SaveInsightPreferenceRequest,
+  dependencies: ReflectionServiceDependencies = {},
+): Promise<AppResult<ReflectionInsightPreference>> {
+  const access = await prepareReflectionAccess(dependencies);
+
+  if (isErr(access)) {
+    return access;
+  }
+
+  const id = asEntityId((dependencies.createPreferenceId ?? defaultCreateInsightPreferenceId)());
+
+  if (!id.ok) {
+    return err(createAppError('validation_failed', 'Insight preference id was invalid.', 'retry', id.error));
+  }
+
+  return access.value.repository.saveInsightPreference({
+    action: input.action,
+    id: id.value,
+    insightId: input.insightId,
+    period: input.action === 'muted' ? null : input.period ?? null,
+    timestamp: access.value.now.toISOString(),
+    workspaceId: localWorkspaceId,
+  });
+}
+
+export async function softDeleteReflectionForPrivacy(
+  input: { id: string },
+  dependencies: ReflectionServiceDependencies = {},
+): Promise<AppResult<void>> {
+  const access = await prepareReflectionAccess(dependencies);
+
+  if (isErr(access)) {
+    return access;
+  }
+
+  const id = asEntityId(input.id);
+
+  if (!id.ok) {
+    return err(createAppError('validation_failed', 'Choose a valid reflection.', 'edit', id.error));
+  }
+
+  return access.value.repository.softDeleteReflection(localWorkspaceId, id.value, access.value.now.toISOString());
+}
+
+export async function softDeleteWorkspaceReflectionDataForPrivacy(
+  dependencies: ReflectionServiceDependencies = {},
+): Promise<AppResult<void>> {
+  const access = await prepareReflectionAccess(dependencies);
+
+  if (isErr(access)) {
+    return access;
+  }
+
+  return access.value.repository.softDeleteWorkspaceReflectionData(
+    localWorkspaceId,
+    access.value.now.toISOString(),
+  );
 }

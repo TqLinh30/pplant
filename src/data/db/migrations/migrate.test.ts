@@ -7,6 +7,7 @@ import {
   moneyRecordsMigrationId,
   preferencesMigrationId,
   recoveryEventsMigrationId,
+  reflectionInsightPreferencesMigrationId,
   reflectionsMigrationId,
   receiptParseJobsMigrationId,
   recurringMoneyMigrationId,
@@ -64,7 +65,7 @@ describe('local database migrations', () => {
     expect(firstRun).toEqual({
       ok: true,
       value: {
-        applied: 15,
+        applied: 16,
         appliedMigrations: [
           workspaceMigrationId,
           preferencesMigrationId,
@@ -81,6 +82,7 @@ describe('local database migrations', () => {
           captureDraftsMigrationId,
           receiptParseJobsMigrationId,
           reflectionsMigrationId,
+          reflectionInsightPreferencesMigrationId,
         ],
       },
     });
@@ -106,6 +108,7 @@ describe('local database migrations', () => {
     expect(client.appliedMigrations.has(captureDraftsMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(receiptParseJobsMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(reflectionsMigrationId)).toBe(true);
+    expect(client.appliedMigrations.has(reflectionInsightPreferencesMigrationId)).toBe(true);
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS workspaces');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS user_preferences');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS categories');
@@ -136,6 +139,7 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS capture_drafts');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS receipt_parse_jobs');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS reflections');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS reflection_insight_preferences');
     expect(client.executedSql.join('\n')).toContain('idx_categories_workspace_active_order');
     expect(client.executedSql.join('\n')).toContain('idx_topics_workspace_active_order');
     expect(client.executedSql.join('\n')).toContain('idx_savings_goals_workspace_active_target_date');
@@ -164,6 +168,9 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('idx_reflections_active_period_prompt');
     expect(client.executedSql.join('\n')).toContain('idx_reflections_workspace_period');
     expect(client.executedSql.join('\n')).toContain('idx_reflections_workspace_recent');
+    expect(client.executedSql.join('\n')).toContain('idx_reflection_insight_preferences_active_scope');
+    expect(client.executedSql.join('\n')).toContain('idx_reflection_insight_preferences_workspace_active');
+    expect(client.executedSql.join('\n')).toContain('idx_reflection_insight_preferences_workspace_cleanup');
     expect(client.executedSql.join('\n')).not.toContain('DROP TABLE');
     expect(client.executedSql.join('\n')).not.toContain('ALTER TABLE recurrence_rules');
     expect(client.executedSql.join('\n')).not.toContain('ALTER TABLE task_recurrence_rules');
@@ -178,7 +185,7 @@ describe('local database migrations', () => {
     expect(result).toEqual({
       ok: true,
       value: {
-        applied: 14,
+        applied: 15,
         appliedMigrations: [
           preferencesMigrationId,
           categoryTopicMigrationId,
@@ -194,6 +201,7 @@ describe('local database migrations', () => {
           captureDraftsMigrationId,
           receiptParseJobsMigrationId,
           reflectionsMigrationId,
+          reflectionInsightPreferencesMigrationId,
         ],
       },
     });
@@ -211,6 +219,7 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS capture_drafts');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS receipt_parse_jobs');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS reflections');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS reflection_insight_preferences');
   });
 
   it('returns a retryable local error when migration setup fails', async () => {

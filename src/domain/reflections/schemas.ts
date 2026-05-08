@@ -4,18 +4,27 @@ import { createAppError } from '@/domain/common/app-error';
 import { asLocalDate, type LocalDate } from '@/domain/common/date-rules';
 import { asEntityId } from '@/domain/common/ids';
 import { err, isErr, ok, type AppResult } from '@/domain/common/result';
+import type { ReflectionRelationshipId } from '@/domain/summaries/reflection-relationships';
 import { asWorkspaceId } from '@/domain/workspace/types';
 
 import {
+  globalInsightScopeKey,
+  periodInsightScopeKey,
+} from './insight-preferences';
+import {
+  reflectionInsightPreferenceActions,
   reflectionPeriodKinds,
   reflectionPromptIds,
   reflectionSourceOfTruths,
   reflectionSources,
   reflectionStates,
   type Reflection,
+  type ReflectionInsightPreference,
+  type ReflectionInsightPreferenceRow,
   type ReflectionPeriod,
   type ReflectionPromptId,
   type ReflectionRow,
+  type SaveReflectionInsightPreferenceInput,
   type SaveReflectionInput,
 } from './types';
 
@@ -31,6 +40,14 @@ const reflectionPromptIdSchema = z.enum(reflectionPromptIds);
 const reflectionStateSchema = z.enum(reflectionStates);
 const reflectionSourceSchema = z.enum(reflectionSources);
 const reflectionSourceOfTruthSchema = z.enum(reflectionSourceOfTruths);
+const reflectionInsightPreferenceActionSchema = z.enum(reflectionInsightPreferenceActions);
+const reflectionRelationshipIdSchema = z.enum([
+  'money_time',
+  'receipts_spending',
+  'reflections_summary',
+  'tasks_reminders',
+  'work_savings',
+]);
 
 const rawPeriodSchema = z.object({
   endDateExclusive: z.string().min(1),
@@ -49,6 +66,15 @@ const rawSaveReflectionInputSchema = z.object({
   workspaceId: z.string().min(1),
 });
 
+const rawSaveReflectionInsightPreferenceInputSchema = z.object({
+  action: reflectionInsightPreferenceActionSchema,
+  id: z.string().min(1),
+  insightId: reflectionRelationshipIdSchema,
+  period: rawPeriodSchema.nullable(),
+  timestamp: isoTimestampSchema,
+  workspaceId: z.string().min(1),
+});
+
 const reflectionRowSchema = z.object({
   createdAt: isoTimestampSchema,
   deletedAt: isoTimestampSchema.nullable(),
@@ -62,6 +88,19 @@ const reflectionRowSchema = z.object({
   source: reflectionSourceSchema,
   sourceOfTruth: reflectionSourceOfTruthSchema,
   state: reflectionStateSchema,
+  updatedAt: isoTimestampSchema,
+  workspaceId: z.string().min(1),
+});
+
+const reflectionInsightPreferenceRowSchema = z.object({
+  action: reflectionInsightPreferenceActionSchema,
+  createdAt: isoTimestampSchema,
+  deletedAt: isoTimestampSchema.nullable(),
+  id: z.string().min(1),
+  insightId: reflectionRelationshipIdSchema,
+  periodKind: reflectionPeriodKindSchema.nullable(),
+  periodStartDate: z.string().min(1).nullable(),
+  scopeKey: z.string().min(1),
   updatedAt: isoTimestampSchema,
   workspaceId: z.string().min(1),
 });
@@ -208,6 +247,116 @@ export function parseReflectionRow(row: ReflectionRow): AppResult<Reflection> {
     source: parsed.data.source,
     sourceOfTruth: parsed.data.sourceOfTruth,
     state: parsed.data.state,
+    updatedAt: parsed.data.updatedAt,
+    workspaceId: workspaceId.value,
+  });
+}
+
+function preferenceScopeForInput(
+  action: (typeof reflectionInsightPreferenceActions)[number],
+  period: ReflectionPeriod | null,
+): AppResult<{
+  periodKind: ReflectionPeriod['kind'] | null;
+  periodStartDate: LocalDate | null;
+  scopeKey: string;
+}> {
+  if (action === 'muted') {
+    return ok({
+      periodKind: null,
+      periodStartDate: null,
+      scopeKey: globalInsightScopeKey,
+    });
+  }
+
+  if (!period) {
+    return err(createAppError('validation_failed', 'Dismissed insights need a review period.', 'edit'));
+  }
+
+  return ok({
+    periodKind: period.kind,
+    periodStartDate: period.startDate,
+    scopeKey: periodInsightScopeKey(period),
+  });
+}
+
+export function parseSaveReflectionInsightPreferenceInput(
+  input: unknown,
+): AppResult<SaveReflectionInsightPreferenceInput & { periodKind: ReflectionPeriod['kind'] | null; periodStartDate: LocalDate | null; scopeKey: string }> {
+  const parsed = rawSaveReflectionInsightPreferenceInputSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return err(createAppError('validation_failed', 'Insight preference input is invalid.', 'edit', parsed.error));
+  }
+
+  const id = asEntityId(parsed.data.id);
+  const workspaceId = asWorkspaceId(parsed.data.workspaceId);
+  const period = parsed.data.period ? parsePeriod(parsed.data.period) : ok(null);
+
+  if (isErr(id)) {
+    return id;
+  }
+
+  if (isErr(workspaceId)) {
+    return workspaceId;
+  }
+
+  if (isErr(period)) {
+    return period;
+  }
+
+  const scope = preferenceScopeForInput(parsed.data.action, period.value);
+
+  if (isErr(scope)) {
+    return scope;
+  }
+
+  return ok({
+    action: parsed.data.action,
+    id: id.value,
+    insightId: parsed.data.insightId as ReflectionRelationshipId,
+    period: period.value,
+    periodKind: scope.value.periodKind,
+    periodStartDate: scope.value.periodStartDate,
+    scopeKey: scope.value.scopeKey,
+    timestamp: parsed.data.timestamp,
+    workspaceId: workspaceId.value,
+  });
+}
+
+export function parseReflectionInsightPreferenceRow(
+  row: ReflectionInsightPreferenceRow,
+): AppResult<ReflectionInsightPreference> {
+  const parsed = reflectionInsightPreferenceRowSchema.safeParse(row);
+
+  if (!parsed.success) {
+    return err(createAppError('validation_failed', 'Local insight preference data is invalid.', 'retry', parsed.error));
+  }
+
+  const id = asEntityId(parsed.data.id);
+  const workspaceId = asWorkspaceId(parsed.data.workspaceId);
+  const periodStartDate = parsed.data.periodStartDate ? asLocalDate(parsed.data.periodStartDate) : ok(null);
+
+  if (isErr(id)) {
+    return id;
+  }
+
+  if (isErr(workspaceId)) {
+    return workspaceId;
+  }
+
+  if (isErr(periodStartDate)) {
+    return periodStartDate;
+  }
+
+  return ok({
+    action: parsed.data.action,
+    createdAt: parsed.data.createdAt,
+    deletedAt: parsed.data.deletedAt,
+    id: id.value,
+    insightId: parsed.data.insightId as ReflectionRelationshipId,
+    periodKind: parsed.data.periodKind,
+    periodStartDate: periodStartDate.value,
+    scopeKey: parsed.data.scopeKey,
     updatedAt: parsed.data.updatedAt,
     workspaceId: workspaceId.value,
   });
