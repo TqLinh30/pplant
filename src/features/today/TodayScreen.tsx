@@ -20,6 +20,7 @@ import { typography } from '@/ui/tokens/typography';
 import { CaptureDraftRecoveryPanel } from '@/features/capture-drafts/CaptureDraftRecoveryPanel';
 
 import { QuickCaptureLauncher } from './QuickCaptureLauncher';
+import { todayMinimumTouchTarget, todayUxNoticeFor } from './today-ux-states';
 import { useTodayOverview } from './useTodayOverview';
 
 function formatAmount(data: TodayOverviewData, amountMinor: number): string {
@@ -109,6 +110,8 @@ function Section({
 }
 
 function MoneySection({ data, summary }: { data: TodayOverviewData; summary: TodayOverviewSummary }) {
+  const emptyNotice = todayUxNoticeFor('partial_money');
+
   return (
     <Section title="Money and Budget" action={<Button label="Add" onPress={goToCapture} variant="secondary" />}>
       <View style={styles.metricRow}>
@@ -132,8 +135,9 @@ function MoneySection({ data, summary }: { data: TodayOverviewData; summary: Tod
 
       {summary.money.records.length === 0 ? (
         <StatusBanner
-          title="No money records today"
-          description="Add an expense, income, or recurring money item when something changes."
+          title={emptyNotice.title}
+          description={emptyNotice.description}
+          tone={emptyNotice.tone}
         />
       ) : (
         <View style={styles.listGroup}>
@@ -176,6 +180,9 @@ function SavingsSection({ data, summary }: { data: TodayOverviewData; summary: T
 }
 
 function TaskReminderSection({ summary }: { summary: TodayOverviewSummary }) {
+  const clearNotice = todayUxNoticeFor('partial_tasks_reminders');
+  const recoveryNotice = todayUxNoticeFor('recovery');
+
   return (
     <Section title="Tasks and Reminders" action={<Button label="Plan" onPress={goToCapture} variant="secondary" />}>
       <View style={styles.metricRow}>
@@ -186,7 +193,7 @@ function TaskReminderSection({ summary }: { summary: TodayOverviewSummary }) {
 
       {summary.tasks.summary.overdueOpenCount > 0 || summary.reminders.needsAttentionCount > 0 ? (
         <StatusBanner
-          title="Some items need a calm check"
+          title={recoveryNotice.title}
           description={`${summary.tasks.summary.overdueOpenCount} past-due task${
             summary.tasks.summary.overdueOpenCount === 1 ? '' : 's'
           } and ${summary.reminders.needsAttentionCount} reminder item${
@@ -198,8 +205,9 @@ function TaskReminderSection({ summary }: { summary: TodayOverviewSummary }) {
 
       {summary.tasks.items.length === 0 && summary.reminders.items.length === 0 ? (
         <StatusBanner
-          title="No tasks or reminders"
-          description="Capture a task, habit, or reminder when there is something concrete to return to."
+          title={clearNotice.title}
+          description={clearNotice.description}
+          tone={clearNotice.tone}
         />
       ) : null}
 
@@ -248,12 +256,15 @@ function TaskReminderSection({ summary }: { summary: TodayOverviewSummary }) {
 }
 
 function WorkSection({ data, summary }: { data: TodayOverviewData; summary: TodayOverviewSummary }) {
+  const emptyNotice = todayUxNoticeFor('partial_work');
+
   return (
     <Section title="Work Context" action={<Button label="Log" onPress={goToCapture} variant="secondary" />}>
       {summary.work.entryCount === 0 ? (
         <StatusBanner
-          title="No work logged today"
-          description="Log work time to see earned income beside today’s spending."
+          title={emptyNotice.title}
+          tone={emptyNotice.tone}
+          description={emptyNotice.description}
         />
       ) : (
         <>
@@ -303,14 +314,17 @@ export function TodayScreen() {
   const overview = useTodayOverview();
   const { state } = overview;
   const [quickCaptureVisible, setQuickCaptureVisible] = useState(false);
+  const loadingNotice = todayUxNoticeFor('loading');
+  const failedNotice = todayUxNoticeFor('failed');
+  const preferencesNotice = todayUxNoticeFor('preferences_needed');
 
   if (state.status === 'loading' && !state.data) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="Loading today" accessibilityRole="summary" style={styles.centered}>
           <ActivityIndicator color={colors.primary} />
-          <Text style={styles.title}>Loading Today</Text>
-          <Text style={styles.description}>Pplant is gathering your local overview.</Text>
+          <Text style={styles.title}>{loadingNotice.title}</Text>
+          <Text style={styles.description}>{loadingNotice.description}</Text>
         </View>
       </SafeAreaView>
     );
@@ -321,9 +335,9 @@ export function TodayScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="Today could not be loaded" accessibilityRole="summary" style={styles.centered}>
           <Text style={styles.eyebrow}>Today</Text>
-          <Text style={styles.title}>Today could not open.</Text>
-          <Text style={styles.description}>Your local data is unchanged. Try loading the overview again.</Text>
-          <Button label="Retry" onPress={overview.reload} variant="secondary" />
+          <Text style={styles.title}>{failedNotice.title}</Text>
+          <Text style={styles.description}>{failedNotice.description}</Text>
+          <Button label={failedNotice.actionLabel} onPress={overview.reload} variant="secondary" />
         </View>
       </SafeAreaView>
     );
@@ -334,9 +348,9 @@ export function TodayScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="Preferences needed" accessibilityRole="summary" style={styles.centered}>
           <Text style={styles.eyebrow}>Today</Text>
-          <Text style={styles.title}>Save preferences first.</Text>
-          <Text style={styles.description}>Today needs your currency, locale, reset day, and wage defaults.</Text>
-          <Button label="Open Settings" onPress={goToSettings} variant="secondary" />
+          <Text style={styles.title}>{preferencesNotice.title}</Text>
+          <Text style={styles.description}>{preferencesNotice.description}</Text>
+          <Button label={preferencesNotice.actionLabel} onPress={goToSettings} variant="secondary" />
         </View>
       </SafeAreaView>
     );
@@ -349,6 +363,9 @@ export function TodayScreen() {
   }
 
   const summary = data.summary;
+  const emptyNotice = todayUxNoticeFor('empty');
+  const refreshingNotice = todayUxNoticeFor('refreshing');
+  const staleNotice = todayUxNoticeFor('stale');
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -366,13 +383,29 @@ export function TodayScreen() {
 
         {state.status === 'empty' ? (
           <StatusBanner
-            title="Today is clear"
-            description="Start with one money record, task, reminder, or work entry when the day gives you something concrete."
+            title={emptyNotice.title}
+            description={emptyNotice.description}
+            tone={emptyNotice.tone}
           />
         ) : null}
 
         {state.status === 'loading' ? (
-          <StatusBanner title="Refreshing" description="The last overview stays visible while local data reloads." />
+          <StatusBanner
+            title={refreshingNotice.title}
+            description={refreshingNotice.description}
+            tone={refreshingNotice.tone}
+          />
+        ) : null}
+
+        {state.status === 'stale' ? (
+          <View style={styles.noticeWithAction}>
+            <StatusBanner
+              title={staleNotice.title}
+              description={staleNotice.description}
+              tone={staleNotice.tone}
+            />
+            <Button label={staleNotice.actionLabel} onPress={overview.reload} variant="secondary" />
+          </View>
         ) : null}
 
         <CaptureDraftRecoveryPanel />
@@ -415,6 +448,9 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     alignItems: 'flex-start',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
     paddingTop: spacing.sm,
   },
   listGroup: {
@@ -429,7 +465,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     flex: 1,
     gap: spacing.xxs,
-    minHeight: 72,
+    minHeight: Math.max(72, todayMinimumTouchTarget),
+    minWidth: 104,
     padding: spacing.md,
   },
   metricLabel: {
@@ -437,12 +474,17 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
   metricRow: {
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: spacing.sm,
   },
   metricValue: {
     ...typography.label,
     color: colors.ink,
+  },
+  noticeWithAction: {
+    alignItems: 'flex-start',
+    gap: spacing.sm,
   },
   safeArea: {
     backgroundColor: colors.canvas,
@@ -453,6 +495,7 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     alignItems: 'center',
+    flexWrap: 'wrap',
     flexDirection: 'row',
     gap: spacing.md,
     justifyContent: 'space-between',

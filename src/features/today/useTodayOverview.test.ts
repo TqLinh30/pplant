@@ -65,4 +65,37 @@ describe('today overview state', () => {
     expect(loading.status).toBe('loading');
     expect(loading.data).toBe(withData.data);
   });
+
+  it('keeps prior data visible as stale when refresh fails', () => {
+    const withData = todayOverviewReducer(initialTodayOverviewState, {
+      data: createData(false),
+      type: 'load_succeeded',
+    });
+    const stale = todayOverviewReducer(withData, {
+      error: {
+        code: 'unavailable',
+        message: 'Local data could not reload.',
+        recovery: 'retry',
+      },
+      type: 'load_failed',
+    });
+
+    expect(stale.status).toBe('stale');
+    expect(stale.data).toBe(withData.data);
+    expect(stale.loadError?.recovery).toBe('retry');
+  });
+
+  it('uses a full failed state when no previous Today data exists', () => {
+    const failed = todayOverviewReducer(initialTodayOverviewState, {
+      error: {
+        code: 'unavailable',
+        message: 'Local data could not open.',
+        recovery: 'retry',
+      },
+      type: 'load_failed',
+    });
+
+    expect(failed.status).toBe('failed');
+    expect(failed.data).toBeNull();
+  });
 });

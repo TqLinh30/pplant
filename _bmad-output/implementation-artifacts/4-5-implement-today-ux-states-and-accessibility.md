@@ -1,6 +1,6 @@
 # Story 4.5: Implement Today UX States And Accessibility
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -16,39 +16,39 @@ so that the app feels calm even when data is missing, stale, offline, or failed.
 
 ## Tasks / Subtasks
 
-- [ ] Define a Today UX state matrix and copy contract. (AC: 1, 3)
-  - [ ] Add a small feature helper such as `src/features/today/today-ux-states.ts`.
-  - [ ] Cover current implemented states: loading, refreshing, empty, ready, failed, preferences needed, stale-with-data, missed/recovery items, partial/no money, partial/no tasks/reminders, partial/no work, and draft-present state.
-  - [ ] Represent offline/estimated states only when supported by existing local-first behavior; do not add fake network detection or analytics.
-  - [ ] Provide clear next-action labels for each state.
-  - [ ] Keep labels text-based so no state relies on color alone.
-  - [ ] Keep copy neutral and non-shaming.
+- [x] Define a Today UX state matrix and copy contract. (AC: 1, 3)
+  - [x] Add a small feature helper such as `src/features/today/today-ux-states.ts`.
+  - [x] Cover current implemented states: loading, refreshing, empty, ready, failed, preferences needed, stale-with-data, missed/recovery items, partial/no money, partial/no tasks/reminders, partial/no work, and draft-present state.
+  - [x] Represent offline/estimated states only when supported by existing local-first behavior; do not add fake network detection or analytics.
+  - [x] Provide clear next-action labels for each state.
+  - [x] Keep labels text-based so no state relies on color alone.
+  - [x] Keep copy neutral and non-shaming.
 
-- [ ] Harden Today screen rendering and recovery actions. (AC: 1, 2, 3)
-  - [ ] Update `src/features/today/TodayScreen.tsx` to use the UX state helper for top-level and section-level notices where practical.
-  - [ ] Preserve existing Today summary ordering: header, draft recovery, money/budget, savings, tasks/reminders, work, recent activity.
-  - [ ] If a refresh/load fails while prior data exists, show stale data with a retry banner instead of replacing the whole screen with a dead-end failure state.
-  - [ ] Ensure loading, failed, preferences-needed, empty, missed/recovery, and partial-data states each have a clear action.
-  - [ ] Do not add new persistence, migrations, auth, cloud sync, external APIs, or large dependencies.
+- [x] Harden Today screen rendering and recovery actions. (AC: 1, 2, 3)
+  - [x] Update `src/features/today/TodayScreen.tsx` to use the UX state helper for top-level and section-level notices where practical.
+  - [x] Preserve existing Today summary ordering: header, draft recovery, money/budget, savings, tasks/reminders, work, recent activity.
+  - [x] If a refresh/load fails while prior data exists, show stale data with a retry banner instead of replacing the whole screen with a dead-end failure state.
+  - [x] Ensure loading, failed, preferences-needed, empty, missed/recovery, and partial-data states each have a clear action.
+  - [x] Do not add new persistence, migrations, auth, cloud sync, external APIs, or large dependencies.
 
-- [ ] Improve dynamic text, touch target, and non-color-only behavior. (AC: 1, 2, 3)
-  - [ ] Ensure primary Today actions and section actions use existing `Button`/`ListRow` primitives with at least 44px minimum height.
-  - [ ] Make metric rows and header/action rows wrap or stack safely instead of squeezing required labels/actions.
-  - [ ] Keep text visible at larger sizes; avoid fixed-height containers that clip labels.
-  - [ ] Add explicit status text beside any warning/success color usage.
-  - [ ] Keep signature colors sparse: use them only through existing meaningful `StatusBanner` tones or small state surfaces.
+- [x] Improve dynamic text, touch target, and non-color-only behavior. (AC: 1, 2, 3)
+  - [x] Ensure primary Today actions and section actions use existing `Button`/`ListRow` primitives with at least 44px minimum height.
+  - [x] Make metric rows and header/action rows wrap or stack safely instead of squeezing required labels/actions.
+  - [x] Keep text visible at larger sizes; avoid fixed-height containers that clip labels.
+  - [x] Add explicit status text beside any warning/success color usage.
+  - [x] Keep signature colors sparse: use them only through existing meaningful `StatusBanner` tones or small state surfaces.
 
-- [ ] Preserve scope boundaries and privacy. (AC: 1, 2, 3)
-  - [ ] Do not change Today summary calculations except when needed to expose existing state safely.
-  - [ ] Do not implement Epic 5 receipt flows, Epic 6 weekly/monthly reflection, or new reminder scheduling behavior.
-  - [ ] Do not log spending details, income values, task/reminder content, work notes, receipt data, or draft payloads.
-  - [ ] Do not add native accessibility libraries or UI kits.
+- [x] Preserve scope boundaries and privacy. (AC: 1, 2, 3)
+  - [x] Do not change Today summary calculations except when needed to expose existing state safely.
+  - [x] Do not implement Epic 5 receipt flows, Epic 6 weekly/monthly reflection, or new reminder scheduling behavior.
+  - [x] Do not log spending details, income values, task/reminder content, work notes, receipt data, or draft payloads.
+  - [x] Do not add native accessibility libraries or UI kits.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Add tests for Today UX state descriptors and next-action labels.
-  - [ ] Add reducer/hook tests for stale-with-data behavior after a failed refresh.
-  - [ ] Add helper/style tests where practical for touch target constants or state contract, without relying on fragile rendered style snapshots.
-  - [ ] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Add tests for Today UX state descriptors and next-action labels.
+  - [x] Add reducer/hook tests for stale-with-data behavior after a failed refresh.
+  - [x] Add helper/style tests where practical for touch target constants or state contract, without relying on fragile rendered style snapshots.
+  - [x] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -162,16 +162,31 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-08: Created Story 4.5 ready-for-dev from Epic 4, PRD, architecture, UX, DESIGN.md, and Story 4.1-4.4 implementation context.
+- 2026-05-08: Started Story 4.5 implementation.
+- 2026-05-08: Added Today UX state contract, stale-with-data reducer behavior, wrapped Today layouts, and state contract tests.
+- 2026-05-08: Verification passed: focused tests, typecheck, lint, full test suite, Expo install check, build-if-present, and diff whitespace check.
 
 ### Completion Notes List
 
-- Pending implementation.
+- Added a Today UX state descriptor contract with clear titles, descriptions, action labels, tones, and data-visibility rules.
+- Updated Today to show stale prior data with a retry path when refresh fails after a successful load.
+- Hardened Today action rows and metrics to wrap safely, while relying on existing 44px `Button` and `ListRow` primitives.
+- Kept scope to Epic 4 Today UX/accessibility hardening; no database, API, auth, receipt, reflection, or scheduling changes were added.
+- Manual device screen reader and large dynamic-type passes were not run in this automated environment.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/4-5-implement-today-ux-states-and-accessibility.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-4.5-review.md`
+- `src/features/today/TodayScreen.tsx`
+- `src/features/today/today-ux-states.test.ts`
+- `src/features/today/today-ux-states.ts`
+- `src/features/today/useTodayOverview.test.ts`
+- `src/features/today/useTodayOverview.ts`
 
 ## Change Log
 
 - 2026-05-08: Created Story 4.5 ready-for-dev.
+- 2026-05-08: Started implementation.
+- 2026-05-08: Completed Story 4.5 implementation and self-review.

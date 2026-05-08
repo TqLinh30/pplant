@@ -7,7 +7,7 @@ import {
   type TodayOverviewData,
 } from '@/services/summaries/today.service';
 
-export type TodayOverviewStatus = 'empty' | 'failed' | 'loading' | 'preferences_needed' | 'ready';
+export type TodayOverviewStatus = 'empty' | 'failed' | 'loading' | 'preferences_needed' | 'ready' | 'stale';
 
 export type TodayOverviewState = {
   data: TodayOverviewData | null;
@@ -40,7 +40,7 @@ export function todayOverviewReducer(
       return {
         ...state,
         loadError: action.error,
-        status: 'failed',
+        status: state.data ? 'stale' : 'failed',
       };
     case 'load_started':
       return {
