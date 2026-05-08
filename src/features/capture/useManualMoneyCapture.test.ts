@@ -70,6 +70,7 @@ function createRecord(): MoneyRecord {
     source: 'manual',
     sourceOfTruth: 'manual',
     updatedAt: fixedNow,
+    userCorrectedAt: null,
     workspaceId: localWorkspaceId,
   });
 
@@ -192,7 +193,12 @@ describe('manual money capture state', () => {
         },
         recentRecords: [],
       },
-      { record, type: 'save_succeeded' },
+      {
+        mutation: 'created',
+        nextDraft: createDefaultManualMoneyCaptureDraft(new Date('2026-05-08T00:00:00.000Z')),
+        record,
+        type: 'save_succeeded',
+      },
     );
 
     expect(state.status).toBe('saved');
@@ -200,5 +206,70 @@ describe('manual money capture state', () => {
     expect(state.recentRecords).toEqual([record]);
     expect(state.draft.amount).toBe('');
     expect(state.draft.kind).toBe('income');
+  });
+
+  it('starts and cancels editing from a recent record', () => {
+    const record = createRecord();
+    const editing = manualMoneyCaptureReducer(
+      {
+        ...initialManualMoneyCaptureState,
+        recentRecords: [record],
+      },
+      {
+        amount: '12.50',
+        record,
+        type: 'edit_started',
+      },
+    );
+    const cancelled = manualMoneyCaptureReducer(editing, {
+      nextDraft: createDefaultManualMoneyCaptureDraft(new Date('2026-05-08T00:00:00.000Z')),
+      type: 'edit_cancelled',
+    });
+
+    expect(editing.editingRecordId).toBe('money-1');
+    expect(editing.draft).toMatchObject({
+      amount: '12.50',
+      categoryId: 'cat-food',
+      localDate: '2026-05-08',
+      merchantOrSource: 'Campus cafe',
+    });
+    expect(cancelled.editingRecordId).toBeNull();
+    expect(cancelled.draft.amount).toBe('');
+  });
+
+  it('replaces recent records after edit save and removes them after delete', () => {
+    const record = createRecord();
+    const edited = {
+      ...record,
+      amountMinor: 2250,
+      merchantOrSource: 'Bookstore' as never,
+      updatedAt: '2026-05-08T01:00:00.000Z',
+      userCorrectedAt: '2026-05-08T01:00:00.000Z',
+    };
+    const editing = manualMoneyCaptureReducer(
+      {
+        ...initialManualMoneyCaptureState,
+        editingRecordId: record.id,
+        recentRecords: [record],
+      },
+      {
+        mutation: 'updated',
+        nextDraft: createDefaultManualMoneyCaptureDraft(new Date('2026-05-08T00:00:00.000Z')),
+        record: edited,
+        type: 'save_succeeded',
+      },
+    );
+    const deleted = manualMoneyCaptureReducer(editing, {
+      nextDraft: createDefaultManualMoneyCaptureDraft(new Date('2026-05-08T00:00:00.000Z')),
+      record: edited,
+      type: 'delete_succeeded',
+    });
+
+    expect(editing.editingRecordId).toBeNull();
+    expect(editing.lastMutation).toBe('updated');
+    expect(editing.recentRecords[0].amountMinor).toBe(2250);
+    expect(deleted.status).toBe('deleted');
+    expect(deleted.lastMutation).toBe('deleted');
+    expect(deleted.recentRecords).toEqual([]);
   });
 });

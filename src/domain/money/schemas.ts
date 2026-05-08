@@ -47,9 +47,10 @@ export const moneyRecordRowSchema = z.object({
   localDate: z.string(),
   merchantOrSource: z.string().nullable(),
   note: z.string().nullable(),
-  source: z.literal('manual'),
-  sourceOfTruth: z.literal('manual'),
+  source: z.enum(['manual', 'receipt']),
+  sourceOfTruth: z.enum(['manual', 'parsed']),
   updatedAt: isoTimestampSchema,
+  userCorrectedAt: isoTimestampSchema.nullable(),
   workspaceId: z.string().min(1),
 });
 
@@ -228,6 +229,7 @@ export function parseMoneyRecordRow(row: unknown, topicIds: string[] = []): AppR
     sourceOfTruth: parsed.data.sourceOfTruth,
     topicIds: parsedTopicIds.value,
     updatedAt: parsed.data.updatedAt,
+    userCorrectedAt: parsed.data.userCorrectedAt,
     workspaceId: workspaceId.value,
   });
 }

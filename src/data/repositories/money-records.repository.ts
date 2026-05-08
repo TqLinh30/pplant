@@ -7,14 +7,29 @@ import {
   type MoneyRecordRow,
 } from '@/domain/money/schemas';
 import type { MoneyRecord, SaveManualMoneyRecordInput } from '@/domain/money/types';
+import type { BudgetPeriod } from '@/domain/common/date-rules';
 import type { WorkspaceId } from '@/domain/workspace/types';
 
 export type MoneyRecordRepository = {
   createManualRecord(input: SaveManualMoneyRecordInput): Promise<AppResult<MoneyRecord>>;
-  getRecord(workspaceId: WorkspaceId, id: EntityId): Promise<AppResult<MoneyRecord | null>>;
+  updateRecord(input: SaveManualMoneyRecordInput): Promise<AppResult<MoneyRecord>>;
+  deleteRecord(
+    workspaceId: WorkspaceId,
+    id: EntityId,
+    options: { now: Date },
+  ): Promise<AppResult<MoneyRecord>>;
+  getRecord(
+    workspaceId: WorkspaceId,
+    id: EntityId,
+    options?: { includeDeleted?: boolean },
+  ): Promise<AppResult<MoneyRecord | null>>;
   listRecentRecords(
     workspaceId: WorkspaceId,
     options?: { limit?: number },
+  ): Promise<AppResult<MoneyRecord[]>>;
+  listRecordsForPeriod(
+    workspaceId: WorkspaceId,
+    period: BudgetPeriod,
   ): Promise<AppResult<MoneyRecord[]>>;
 };
 
@@ -36,6 +51,7 @@ SELECT
   note,
   source,
   source_of_truth AS sourceOfTruth,
+  user_corrected_at AS userCorrectedAt,
   created_at AS createdAt,
   updated_at AS updatedAt,
   deleted_at AS deletedAt
@@ -85,6 +101,38 @@ async function getTopicIdsForRecord(
   }
 }
 
+async function loadRecord(
+  database: PplantDatabase,
+  workspaceId: WorkspaceId,
+  id: EntityId,
+  { includeDeleted = false }: { includeDeleted?: boolean } = {},
+): Promise<AppResult<MoneyRecord | null>> {
+  try {
+    const deletedClause = includeDeleted ? '' : 'AND deleted_at IS NULL';
+    const row = database.$client.getFirstSync<MoneyRecordRow>(
+      `${selectMoneyRecordColumnsSql()}
+       WHERE workspace_id = ? AND id = ? ${deletedClause}
+       LIMIT 1`,
+      workspaceId,
+      id,
+    );
+
+    if (!row) {
+      return ok(null);
+    }
+
+    const topicIds = await getTopicIdsForRecord(database, workspaceId, id);
+
+    if (!topicIds.ok) {
+      return topicIds;
+    }
+
+    return parseRecord(row, topicIds.value);
+  } catch (cause) {
+    return err(createAppError('unavailable', 'Local money record could not be loaded.', 'retry', cause));
+  }
+}
+
 export function createMoneyRecordRepository(database: PplantDatabase): MoneyRecordRepository {
   return {
     async createManualRecord(input) {
@@ -103,6 +151,7 @@ export function createMoneyRecordRepository(database: PplantDatabase): MoneyReco
           source: input.source,
           sourceOfTruth: input.sourceOfTruth,
           updatedAt: input.updatedAt,
+          userCorrectedAt: input.userCorrectedAt ?? null,
           workspaceId: input.workspaceId,
         },
         input.topicIds,
@@ -119,8 +168,8 @@ export function createMoneyRecordRepository(database: PplantDatabase): MoneyReco
           database.$client.runSync(
             `INSERT INTO money_records
               (id, workspace_id, kind, amount_minor, currency_code, local_date, category_id,
-               merchant_or_source, note, source, source_of_truth, created_at, updated_at, deleted_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               merchant_or_source, note, source, source_of_truth, user_corrected_at, created_at, updated_at, deleted_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             record.id,
             record.workspaceId,
             record.kind,
@@ -132,6 +181,7 @@ export function createMoneyRecordRepository(database: PplantDatabase): MoneyReco
             record.note,
             record.source,
             record.sourceOfTruth,
+            record.userCorrectedAt,
             record.createdAt,
             record.updatedAt,
             record.deletedAt,
@@ -156,30 +206,139 @@ export function createMoneyRecordRepository(database: PplantDatabase): MoneyReco
       }
     },
 
-    async getRecord(workspaceId, id) {
+    async updateRecord(input) {
+      const existing = await loadRecord(database, input.workspaceId as WorkspaceId, input.id as EntityId);
+
+      if (!existing.ok) {
+        return existing;
+      }
+
+      if (!existing.value) {
+        return err(createAppError('not_found', 'Money record was not found.', 'edit'));
+      }
+
+      const parsed = parseMoneyRecordRow(
+        {
+          amountMinor: input.amountMinor,
+          categoryId: input.categoryId ?? null,
+          createdAt: existing.value.createdAt,
+          currencyCode: input.currencyCode,
+          deletedAt: null,
+          id: input.id,
+          kind: input.kind,
+          localDate: input.localDate,
+          merchantOrSource: input.merchantOrSource ?? null,
+          note: input.note ?? null,
+          source: existing.value.source,
+          sourceOfTruth: 'manual',
+          updatedAt: input.updatedAt,
+          userCorrectedAt: input.userCorrectedAt ?? input.updatedAt,
+          workspaceId: input.workspaceId,
+        },
+        input.topicIds,
+      );
+
+      if (!parsed.ok) {
+        return parsed;
+      }
+
+      const record = parsed.value;
+
       try {
-        const row = database.$client.getFirstSync<MoneyRecordRow>(
-          `${selectMoneyRecordColumnsSql()}
-           WHERE workspace_id = ? AND id = ? AND deleted_at IS NULL
-           LIMIT 1`,
+        runAtomic(database.$client as MoneyRecordSqlClient, () => {
+          database.$client.runSync(
+            `UPDATE money_records
+             SET kind = ?,
+                 amount_minor = ?,
+                 currency_code = ?,
+                 local_date = ?,
+                 category_id = ?,
+                 merchant_or_source = ?,
+                 note = ?,
+                 source = ?,
+                 source_of_truth = ?,
+                 user_corrected_at = ?,
+                 updated_at = ?,
+                 deleted_at = NULL
+             WHERE workspace_id = ? AND id = ? AND deleted_at IS NULL`,
+            record.kind,
+            record.amountMinor,
+            record.currencyCode,
+            record.localDate,
+            record.categoryId,
+            record.merchantOrSource,
+            record.note,
+            record.source,
+            record.sourceOfTruth,
+            record.userCorrectedAt,
+            record.updatedAt,
+            record.workspaceId,
+            record.id,
+          );
+
+          database.$client.runSync(
+            `DELETE FROM money_record_topics
+             WHERE workspace_id = ? AND money_record_id = ?`,
+            record.workspaceId,
+            record.id,
+          );
+
+          for (const topicId of record.topicIds) {
+            database.$client.runSync(
+              `INSERT INTO money_record_topics
+                (money_record_id, topic_id, workspace_id, created_at)
+               VALUES (?, ?, ?, ?)`,
+              record.id,
+              topicId,
+              record.workspaceId,
+              record.updatedAt,
+            );
+          }
+        });
+
+        return ok(record);
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local money record could not be saved.', 'retry', cause));
+      }
+    },
+
+    async deleteRecord(workspaceId, id, { now }) {
+      const existing = await loadRecord(database, workspaceId, id);
+
+      if (!existing.ok) {
+        return existing;
+      }
+
+      if (!existing.value) {
+        return err(createAppError('not_found', 'Money record was not found.', 'edit'));
+      }
+
+      const timestamp = now.toISOString();
+
+      try {
+        database.$client.runSync(
+          `UPDATE money_records
+           SET deleted_at = ?,
+               updated_at = ?
+           WHERE workspace_id = ? AND id = ? AND deleted_at IS NULL`,
+          timestamp,
+          timestamp,
           workspaceId,
           id,
         );
 
-        if (!row) {
-          return ok(null);
-        }
-
-        const topicIds = await getTopicIdsForRecord(database, workspaceId, id);
-
-        if (!topicIds.ok) {
-          return topicIds;
-        }
-
-        return parseRecord(row, topicIds.value);
+        return ok({
+          ...existing.value,
+          deletedAt: timestamp,
+          updatedAt: timestamp,
+        });
       } catch (cause) {
-        return err(createAppError('unavailable', 'Local money record could not be loaded.', 'retry', cause));
+        return err(createAppError('unavailable', 'Local money record could not be removed.', 'retry', cause));
       }
+    },
+
+    async getRecord(workspaceId, id, options) {
+      return loadRecord(database, workspaceId, id, options);
     },
 
     async listRecentRecords(workspaceId, { limit = 20 } = {}) {
@@ -191,6 +350,44 @@ export function createMoneyRecordRepository(database: PplantDatabase): MoneyReco
            LIMIT ?`,
           workspaceId,
           limit,
+        );
+        const records: MoneyRecord[] = [];
+
+        for (const row of rows) {
+          const recordId = row.id as EntityId;
+          const topicIds = await getTopicIdsForRecord(database, workspaceId, recordId);
+
+          if (!topicIds.ok) {
+            return topicIds;
+          }
+
+          const parsed = parseRecord(row, topicIds.value);
+
+          if (!parsed.ok) {
+            return parsed;
+          }
+
+          records.push(parsed.value);
+        }
+
+        return ok(records);
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local money records could not be loaded.', 'retry', cause));
+      }
+    },
+
+    async listRecordsForPeriod(workspaceId, period) {
+      try {
+        const rows = database.$client.getAllSync<MoneyRecordRow>(
+          `${selectMoneyRecordColumnsSql()}
+           WHERE workspace_id = ?
+             AND deleted_at IS NULL
+             AND local_date >= ?
+             AND local_date < ?
+           ORDER BY local_date ASC, created_at ASC, id ASC`,
+          workspaceId,
+          period.startDate,
+          period.endDateExclusive,
         );
         const records: MoneyRecord[] = [];
 

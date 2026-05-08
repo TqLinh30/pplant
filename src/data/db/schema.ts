@@ -79,6 +79,7 @@ export const moneyRecords = sqliteTable('money_records', {
   note: text('note'),
   source: text('source').notNull(),
   sourceOfTruth: text('source_of_truth').notNull(),
+  userCorrectedAt: text('user_corrected_at'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),

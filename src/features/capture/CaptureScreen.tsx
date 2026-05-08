@@ -23,6 +23,7 @@ export function CaptureScreen() {
   const capture = useManualMoneyCapture();
   const { state } = capture;
   const saving = state.status === 'saving';
+  const isEditing = state.editingRecordId !== null;
 
   const formatRecordAmount = (record: MoneyRecord) => {
     const formatted = state.preferences
@@ -35,6 +36,22 @@ export function CaptureScreen() {
       formatted.ok ? formatted.value : record.amountMinor
     } ${record.currencyCode}`;
   };
+
+  const savedTitle =
+    state.lastMutation === 'updated'
+      ? 'Money record updated'
+      : state.lastMutation === 'deleted'
+        ? 'Money record removed'
+        : 'Money record saved';
+
+  const savedDescription =
+    state.lastMutation === 'deleted' && state.deletedRecord
+      ? `${formatRecordAmount(state.deletedRecord)} is no longer shown in active records. Planning context was recalculated.`
+      : state.lastMutation === 'updated' && state.savedRecord
+        ? `${formatRecordAmount(state.savedRecord)} is saved locally. Planning context was recalculated.`
+        : state.savedRecord
+          ? `${formatRecordAmount(state.savedRecord)} is ready for budget, history, and summary inputs.`
+        : '';
 
   if (state.status === 'loading') {
     return (
@@ -81,24 +98,25 @@ export function CaptureScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Text style={styles.eyebrow}>Manual capture</Text>
-          <Text style={styles.title}>Add money record</Text>
+          <Text style={styles.title}>{isEditing ? 'Edit money record' : 'Add money record'}</Text>
           <Text style={styles.description}>
-            Save a local expense or income record with the context you know now.
+            {isEditing
+              ? 'Update the active record. Manual changes become the source of truth.'
+              : 'Save a local expense or income record with the context you know now.'}
           </Text>
         </View>
 
-        {state.status === 'saved' && state.savedRecord ? (
+        {(state.status === 'saved' || state.status === 'deleted') && savedDescription ? (
           <StatusBanner
-            title="Money record saved"
-            description={`${formatRecordAmount(state.savedRecord)} is ready for future budget, history, and summary inputs.`}
-            tone="success"
+            title={savedTitle}
+            description={savedDescription}
           />
         ) : null}
 
         {state.actionError ? (
           <StatusBanner
-            title="Money record was not saved"
-            description="Try saving again. Current edits are still on screen."
+            title="Money record action did not finish"
+            description="Try again. Current edits are still on screen."
             tone="warning"
           />
         ) : null}
@@ -198,9 +216,26 @@ export function CaptureScreen() {
 
           <Button
             disabled={saving}
-            label={saving ? 'Saving' : `Save ${state.draft.kind}`}
+            label={saving ? 'Saving' : isEditing ? 'Save changes' : `Save ${state.draft.kind}`}
             onPress={capture.save}
           />
+
+          {isEditing ? (
+            <View style={styles.buttonRow}>
+              <Button
+                disabled={saving}
+                label="Cancel edit"
+                onPress={capture.cancelEdit}
+                variant="secondary"
+              />
+              <Button
+                disabled={saving}
+                label="Remove from active records"
+                onPress={capture.deleteEditingRecord}
+                variant="danger"
+              />
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.divider} />
@@ -208,7 +243,7 @@ export function CaptureScreen() {
         <View style={styles.section}>
           <View style={styles.header}>
             <Text style={styles.sectionTitle}>Recent money records</Text>
-            <Text style={styles.description}>Saved records are available for later budget, history, and review surfaces.</Text>
+            <Text style={styles.description}>Tap a saved record to edit or remove it from active records.</Text>
           </View>
 
           {state.recentRecords.length === 0 ? (
@@ -221,6 +256,7 @@ export function CaptureScreen() {
                 key={record.id}
                 title={record.merchantOrSource ?? (record.kind === 'expense' ? 'Expense' : 'Income')}
                 description={record.note ?? undefined}
+                onPress={() => capture.startEdit(record)}
                 meta={`${formatRecordAmount(record)} · ${record.localDate}`}
               />
             ))}
@@ -238,6 +274,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     justifyContent: 'center',
     padding: spacing.lg,
+  },
+  buttonRow: {
+    gap: spacing.sm,
   },
   content: {
     gap: spacing.lg,

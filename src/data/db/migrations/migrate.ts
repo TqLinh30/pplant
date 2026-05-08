@@ -24,6 +24,7 @@ export const preferencesMigrationId = '002_create_user_preferences';
 export const categoryTopicMigrationId = '003_create_categories_topics';
 export const budgetPlanningMigrationId = '004_create_budgets_savings_goals';
 export const moneyRecordsMigrationId = '005_create_money_records';
+export const moneyRecordCorrectionsMigrationId = '006_add_money_record_corrections';
 
 const createMigrationTrackingTableSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -159,6 +160,10 @@ CREATE INDEX IF NOT EXISTS idx_money_record_topics_record
   ON money_record_topics (money_record_id);
 `;
 
+const moneyRecordCorrectionsMigrationSql = `
+ALTER TABLE money_records ADD COLUMN user_corrected_at TEXT;
+`;
+
 const migrations = [
   {
     id: workspaceMigrationId,
@@ -179,6 +184,10 @@ const migrations = [
   {
     id: moneyRecordsMigrationId,
     sql: moneyRecordsMigrationSql,
+  },
+  {
+    id: moneyRecordCorrectionsMigrationId,
+    sql: moneyRecordCorrectionsMigrationSql,
   },
 ] as const;
 

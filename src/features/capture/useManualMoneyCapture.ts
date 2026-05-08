@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 
 import { asLocalDate } from '@/domain/common/date-rules';
+import { formatMinorUnitsForInput } from '@/domain/common/money';
 import {
   asMoneyRecordKind,
   asMoneyRecordMerchantOrSource,
@@ -16,12 +17,16 @@ import { err, ok, type AppResult } from '@/domain/common/result';
 import type { UserPreferences } from '@/domain/preferences/types';
 import {
   createManualMoneyRecord,
+  deleteMoneyRecord,
+  editManualMoneyRecord,
   loadManualMoneyCaptureData,
   type CreateManualMoneyRecordRequest,
   type ManualMoneyCaptureData,
+  type MoneyRecordMutationResult,
 } from '@/services/money/money-record.service';
 
-export type ManualMoneyCaptureStatus = 'failed' | 'loading' | 'preferences_needed' | 'ready' | 'saved' | 'saving';
+export type ManualMoneyCaptureStatus = 'deleted' | 'failed' | 'loading' | 'preferences_needed' | 'ready' | 'saved' | 'saving';
+export type ManualMoneyCaptureMutation = 'created' | 'deleted' | 'updated';
 
 export type ManualMoneyCaptureDraft = {
   amount: string;
@@ -38,8 +43,11 @@ export type ManualMoneyCaptureFieldErrors = Partial<Record<keyof ManualMoneyCapt
 export type ManualMoneyCaptureState = {
   actionError: AppError | null;
   categories: CategoryTopicItem[];
+  deletedRecord: MoneyRecord | null;
   draft: ManualMoneyCaptureDraft;
+  editingRecordId: string | null;
   fieldErrors: ManualMoneyCaptureFieldErrors;
+  lastMutation: ManualMoneyCaptureMutation | null;
   loadError: AppError | null;
   preferences: UserPreferences | null;
   recentRecords: MoneyRecord[];
@@ -50,6 +58,10 @@ export type ManualMoneyCaptureState = {
 
 export type ManualMoneyCaptureAction =
   | { type: 'category_selected'; categoryId: string | null }
+  | { type: 'delete_started' }
+  | { type: 'delete_succeeded'; record: MoneyRecord; nextDraft: ManualMoneyCaptureDraft }
+  | { type: 'edit_cancelled'; nextDraft: ManualMoneyCaptureDraft }
+  | { type: 'edit_started'; amount: string; record: MoneyRecord }
   | { type: 'field_changed'; field: 'amount' | 'localDate' | 'merchantOrSource' | 'note'; value: string }
   | { type: 'kind_changed'; kind: MoneyRecordKind }
   | { type: 'load_failed'; error: AppError }
@@ -58,14 +70,19 @@ export type ManualMoneyCaptureAction =
   | { type: 'preferences_needed'; error: AppError }
   | { type: 'save_failed'; error: AppError }
   | { type: 'save_started' }
-  | { type: 'save_succeeded'; record: MoneyRecord }
+  | { type: 'save_succeeded'; mutation: 'created' | 'updated'; nextDraft: ManualMoneyCaptureDraft; record: MoneyRecord }
   | { type: 'topic_toggled'; topicId: string }
   | { type: 'validation_failed'; fieldErrors: ManualMoneyCaptureFieldErrors };
 
 export type ManualMoneyCaptureServices = {
   createRecord?: (input: CreateManualMoneyRecordRequest) => Promise<AppResult<MoneyRecord>>;
+  deleteRecord?: (id: string) => Promise<AppResult<MoneyRecordMutationResult>>;
   loadData?: () => Promise<AppResult<ManualMoneyCaptureData>>;
   now?: () => Date;
+  updateRecord?: (
+    id: string,
+    input: CreateManualMoneyRecordRequest,
+  ) => Promise<AppResult<MoneyRecordMutationResult>>;
 };
 
 export function formatTodayLocalDate(now = new Date()): string {
@@ -87,8 +104,11 @@ export function createDefaultManualMoneyCaptureDraft(now = new Date()): ManualMo
 export const initialManualMoneyCaptureState: ManualMoneyCaptureState = {
   actionError: null,
   categories: [],
+  deletedRecord: null,
   draft: createDefaultManualMoneyCaptureDraft(new Date('2026-01-01T00:00:00.000Z')),
+  editingRecordId: null,
   fieldErrors: {},
+  lastMutation: null,
   loadError: null,
   preferences: null,
   recentRecords: [],
@@ -197,8 +217,61 @@ export function manualMoneyCaptureReducer(
           ...state.draft,
           categoryId: action.categoryId,
         },
+        deletedRecord: null,
         fieldErrors: clearFieldError(state.fieldErrors, 'categoryId'),
+        lastMutation: null,
         savedRecord: null,
+      };
+    case 'delete_started':
+      return {
+        ...state,
+        actionError: null,
+        fieldErrors: {},
+        status: 'saving',
+      };
+    case 'delete_succeeded':
+      return {
+        ...state,
+        actionError: null,
+        deletedRecord: action.record,
+        draft: action.nextDraft,
+        editingRecordId: null,
+        lastMutation: 'deleted',
+        recentRecords: state.recentRecords.filter((record) => record.id !== action.record.id),
+        savedRecord: null,
+        status: 'deleted',
+      };
+    case 'edit_cancelled':
+      return {
+        ...state,
+        actionError: null,
+        deletedRecord: null,
+        draft: action.nextDraft,
+        editingRecordId: null,
+        fieldErrors: {},
+        lastMutation: null,
+        savedRecord: null,
+        status: 'ready',
+      };
+    case 'edit_started':
+      return {
+        ...state,
+        actionError: null,
+        deletedRecord: null,
+        draft: {
+          amount: action.amount,
+          categoryId: action.record.categoryId,
+          kind: action.record.kind,
+          localDate: action.record.localDate,
+          merchantOrSource: action.record.merchantOrSource ?? '',
+          note: action.record.note ?? '',
+          topicIds: action.record.topicIds,
+        },
+        editingRecordId: action.record.id,
+        fieldErrors: {},
+        lastMutation: null,
+        savedRecord: null,
+        status: 'ready',
       };
     case 'field_changed':
       return {
@@ -207,7 +280,9 @@ export function manualMoneyCaptureReducer(
           ...state.draft,
           [action.field]: action.value,
         },
+        deletedRecord: null,
         fieldErrors: clearFieldError(state.fieldErrors, action.field),
+        lastMutation: null,
         savedRecord: null,
       };
     case 'kind_changed':
@@ -217,7 +292,9 @@ export function manualMoneyCaptureReducer(
           ...state.draft,
           kind: action.kind,
         },
+        deletedRecord: null,
         fieldErrors: clearFieldError(state.fieldErrors, 'kind'),
+        lastMutation: null,
         savedRecord: null,
       };
     case 'load_failed':
@@ -237,7 +314,10 @@ export function manualMoneyCaptureReducer(
       return {
         ...state,
         categories: action.data.categories,
+        deletedRecord: null,
+        editingRecordId: null,
         loadError: null,
+        lastMutation: null,
         preferences: action.data.preferences,
         recentRecords: action.data.recentRecords,
         status: 'ready',
@@ -248,6 +328,7 @@ export function manualMoneyCaptureReducer(
         ...state,
         loadError: action.error,
         preferences: null,
+        lastMutation: null,
         status: 'preferences_needed',
       };
     case 'save_failed':
@@ -260,6 +341,7 @@ export function manualMoneyCaptureReducer(
       return {
         ...state,
         actionError: null,
+        deletedRecord: null,
         fieldErrors: {},
         status: 'saving',
       };
@@ -268,10 +350,13 @@ export function manualMoneyCaptureReducer(
         ...state,
         actionError: null,
         draft: {
-          ...createDefaultManualMoneyCaptureDraft(),
+          ...action.nextDraft,
           kind: state.draft.kind,
           localDate: state.draft.localDate,
         },
+        deletedRecord: null,
+        editingRecordId: null,
+        lastMutation: action.mutation,
         recentRecords: [action.record, ...state.recentRecords.filter((record) => record.id !== action.record.id)],
         savedRecord: action.record,
         status: 'saved',
@@ -287,7 +372,9 @@ export function manualMoneyCaptureReducer(
           ...state.draft,
           topicIds,
         },
+        deletedRecord: null,
         fieldErrors: clearFieldError(state.fieldErrors, 'topicIds'),
+        lastMutation: null,
         savedRecord: null,
       };
     }
@@ -308,8 +395,19 @@ export function useManualMoneyCapture(services: ManualMoneyCaptureServices = {})
     draft: createDefaultManualMoneyCaptureDraft(services.now?.() ?? new Date()),
   });
   const isMounted = useRef(false);
+  const now = services.now;
   const loadData = services.loadData ?? loadManualMoneyCaptureData;
   const createRecord = services.createRecord ?? createManualMoneyRecord;
+  const updateRecord = useMemo(
+    () =>
+      services.updateRecord ??
+      ((id: string, input: CreateManualMoneyRecordRequest) => editManualMoneyRecord({ ...input, id })),
+    [services.updateRecord],
+  );
+  const removeRecord = useMemo(
+    () => services.deleteRecord ?? ((id: string) => deleteMoneyRecord({ id })),
+    [services.deleteRecord],
+  );
 
   const reload = useCallback(() => {
     dispatch({ type: 'load_started' });
@@ -341,19 +439,94 @@ export function useManualMoneyCapture(services: ManualMoneyCaptureServices = {})
     }
 
     dispatch({ type: 'save_started' });
+
+    if (state.editingRecordId) {
+      void updateRecord(state.editingRecordId, validation.value).then((result) => {
+        if (!isMounted.current) {
+          return;
+        }
+
+        if (result.ok) {
+          dispatch({
+            mutation: 'updated',
+            nextDraft: createDefaultManualMoneyCaptureDraft(now?.() ?? new Date()),
+            record: result.value.record,
+            type: 'save_succeeded',
+          });
+          return;
+        }
+
+        dispatch({ error: result.error, type: 'save_failed' });
+      });
+      return;
+    }
+
     void createRecord(validation.value).then((result) => {
       if (!isMounted.current) {
         return;
       }
 
       if (result.ok) {
-        dispatch({ record: result.value, type: 'save_succeeded' });
+        dispatch({
+          mutation: 'created',
+          nextDraft: createDefaultManualMoneyCaptureDraft(now?.() ?? new Date()),
+          record: result.value,
+          type: 'save_succeeded',
+        });
         return;
       }
 
       dispatch({ error: result.error, type: 'save_failed' });
     });
-  }, [createRecord, state.draft, state.preferences]);
+  }, [createRecord, now, state.draft, state.editingRecordId, state.preferences, updateRecord]);
+
+  const startEdit = useCallback(
+    (record: MoneyRecord) => {
+      const amount = state.preferences
+        ? formatMinorUnitsForInput(record.amountMinor, record.currencyCode, {
+            locale: state.preferences.locale,
+          })
+        : { ok: false as const };
+
+      dispatch({
+        amount: amount.ok ? amount.value : String(record.amountMinor),
+        record,
+        type: 'edit_started',
+      });
+    },
+    [state.preferences],
+  );
+
+  const cancelEdit = useCallback(() => {
+    dispatch({
+      nextDraft: createDefaultManualMoneyCaptureDraft(now?.() ?? new Date()),
+      type: 'edit_cancelled',
+    });
+  }, [now]);
+
+  const deleteEditingRecord = useCallback(() => {
+    if (!state.editingRecordId) {
+      return;
+    }
+
+    dispatch({ type: 'delete_started' });
+    void removeRecord(state.editingRecordId).then((result) => {
+      if (!isMounted.current) {
+        return;
+      }
+
+      if (result.ok) {
+        dispatch({
+          nextDraft: createDefaultManualMoneyCaptureDraft(now?.() ?? new Date()),
+          record: result.value.record,
+          type: 'delete_succeeded',
+        });
+        return;
+      }
+
+      dispatch({ error: result.error, type: 'save_failed' });
+    });
+  }, [now, removeRecord, state.editingRecordId]);
 
   useEffect(() => {
     isMounted.current = true;
@@ -365,10 +538,13 @@ export function useManualMoneyCapture(services: ManualMoneyCaptureServices = {})
   }, [reload]);
 
   return {
+    cancelEdit,
+    deleteEditingRecord,
     reload,
     save,
     selectCategory: (categoryId: string | null) => dispatch({ categoryId, type: 'category_selected' }),
     setKind: (kind: MoneyRecordKind) => dispatch({ kind, type: 'kind_changed' }),
+    startEdit,
     state,
     toggleTopic: (topicId: string) => dispatch({ topicId, type: 'topic_toggled' }),
     updateField: (field: 'amount' | 'localDate' | 'merchantOrSource' | 'note', value: string) =>

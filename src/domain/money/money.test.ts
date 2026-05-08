@@ -1,4 +1,7 @@
 import {
+  calculateMoneyPlanningPeriodSummary,
+} from './calculations';
+import {
   asMoneyRecordMerchantOrSource,
   asMoneyRecordNote,
   asMoneyRecordTopicIds,
@@ -25,6 +28,7 @@ function createRow(overrides: Record<string, unknown> = {}) {
     source: 'manual',
     sourceOfTruth: 'manual',
     updatedAt: fixedNow,
+    userCorrectedAt: null,
     workspaceId: 'local',
     ...overrides,
   };
@@ -78,13 +82,84 @@ describe('money record domain', () => {
       expect(parsed.value.note).toBeNull();
       expect(parsed.value.source).toBe('manual');
       expect(parsed.value.sourceOfTruth).toBe('manual');
+      expect(parsed.value.userCorrectedAt).toBeNull();
     }
   });
 
-  it('rejects unsupported rows and impossible dates', () => {
-    expect(parseMoneyRecordRow(createRow({ source: 'receipt' }))).toMatchObject({ ok: false });
-    expect(parseMoneyRecordRow(createRow({ sourceOfTruth: 'parsed' }))).toMatchObject({ ok: false });
+  it('parses future receipt provenance and manual correction timestamps', () => {
+    const parsed = parseMoneyRecordRow(
+      createRow({
+        source: 'receipt',
+        sourceOfTruth: 'parsed',
+        userCorrectedAt: '2026-05-08T01:00:00.000Z',
+      }),
+    );
+
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.source).toBe('receipt');
+      expect(parsed.value.sourceOfTruth).toBe('parsed');
+      expect(parsed.value.userCorrectedAt).toBe('2026-05-08T01:00:00.000Z');
+    }
+  });
+
+  it('rejects unsupported provenance rows and impossible dates', () => {
+    expect(parseMoneyRecordRow(createRow({ source: 'bank' }))).toMatchObject({ ok: false });
+    expect(parseMoneyRecordRow(createRow({ sourceOfTruth: 'synced' }))).toMatchObject({ ok: false });
     expect(parseMoneyRecordRow(createRow({ localDate: '2026-02-30' }))).toMatchObject({ ok: false });
     expect(parseMoneyRecordRow(createRow({ amountMinor: 0 }))).toMatchObject({ ok: false });
+  });
+
+  it('calculates planning period summary from active expenses and manual savings progress', () => {
+    const activeExpense = parseMoneyRecordRow(createRow({ amountMinor: 1200, id: 'money-expense' }));
+    const deletedExpense = parseMoneyRecordRow(
+      createRow({ amountMinor: 3000, deletedAt: '2026-05-08T02:00:00.000Z', id: 'money-deleted' }),
+    );
+    const income = parseMoneyRecordRow(createRow({ amountMinor: 5000, id: 'money-income', kind: 'income' }));
+
+    if (!activeExpense.ok || !deletedExpense.ok || !income.ok) {
+      throw new Error('money fixture failed');
+    }
+
+    const summary = calculateMoneyPlanningPeriodSummary({
+      budgetRules: {
+        createdAt: fixedNow,
+        currencyCode: 'USD' as never,
+        monthlyBudgetAmountMinor: 2000,
+        overBudgetBehavior: 'allow_negative_warning',
+        resetDaySource: 'preferences',
+        rolloverPolicy: 'savings_fund',
+        updatedAt: fixedNow,
+        workspaceId: 'local' as never,
+      },
+      period: {
+        endDateExclusive: '2026-06-01' as never,
+        startDate: '2026-05-01' as never,
+      },
+      records: [activeExpense.value, deletedExpense.value, income.value],
+      savingsGoals: [
+        {
+          archivedAt: null,
+          createdAt: fixedNow,
+          currencyCode: 'USD' as never,
+          currentAmountMinor: 2500,
+          id: 'goal-1' as never,
+          name: 'Emergency fund' as never,
+          targetAmountMinor: 10000,
+          targetDate: null,
+          updatedAt: fixedNow,
+          workspaceId: 'local' as never,
+        },
+      ],
+    });
+
+    expect(summary.expenseAmountMinor).toBe(1200);
+    expect(summary.incomeAmountMinor).toBe(5000);
+    expect(summary.budgetStatus?.remainingMinor).toBe(800);
+    expect(summary.savingsProgress[0]).toMatchObject({
+      currentAmountMinor: 2500,
+      progressBasisPoints: 2500,
+      remainingMinor: 7500,
+    });
   });
 });

@@ -2,6 +2,7 @@ import {
   budgetPlanningMigrationId,
   categoryTopicMigrationId,
   migrateDatabase,
+  moneyRecordCorrectionsMigrationId,
   moneyRecordsMigrationId,
   preferencesMigrationId,
   workspaceMigrationId,
@@ -54,13 +55,14 @@ describe('local database migrations', () => {
     expect(firstRun).toEqual({
       ok: true,
       value: {
-        applied: 5,
+        applied: 6,
         appliedMigrations: [
           workspaceMigrationId,
           preferencesMigrationId,
           categoryTopicMigrationId,
           budgetPlanningMigrationId,
           moneyRecordsMigrationId,
+          moneyRecordCorrectionsMigrationId,
         ],
       },
     });
@@ -76,6 +78,7 @@ describe('local database migrations', () => {
     expect(client.appliedMigrations.has(categoryTopicMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(budgetPlanningMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(moneyRecordsMigrationId)).toBe(true);
+    expect(client.appliedMigrations.has(moneyRecordCorrectionsMigrationId)).toBe(true);
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS workspaces');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS user_preferences');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS categories');
@@ -84,6 +87,7 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS savings_goals');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS money_records');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS money_record_topics');
+    expect(client.executedSql.join('\n')).toContain('ALTER TABLE money_records ADD COLUMN user_corrected_at TEXT');
     expect(client.executedSql.join('\n')).toContain('idx_categories_workspace_active_order');
     expect(client.executedSql.join('\n')).toContain('idx_topics_workspace_active_order');
     expect(client.executedSql.join('\n')).toContain('idx_savings_goals_workspace_active_target_date');
@@ -101,12 +105,13 @@ describe('local database migrations', () => {
     expect(result).toEqual({
       ok: true,
       value: {
-        applied: 4,
+        applied: 5,
         appliedMigrations: [
           preferencesMigrationId,
           categoryTopicMigrationId,
           budgetPlanningMigrationId,
           moneyRecordsMigrationId,
+          moneyRecordCorrectionsMigrationId,
         ],
       },
     });

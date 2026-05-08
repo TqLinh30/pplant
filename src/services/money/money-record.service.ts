@@ -9,6 +9,10 @@ import {
   type CategoryTopicRepository,
 } from '@/data/repositories/category-topic.repository';
 import {
+  createBudgetPlanningRepository,
+  type BudgetPlanningRepository,
+} from '@/data/repositories/budget-planning.repository';
+import {
   createMoneyRecordRepository,
   type MoneyRecordRepository,
 } from '@/data/repositories/money-records.repository';
@@ -18,9 +22,17 @@ import {
 } from '@/data/repositories/preferences.repository';
 import type { CategoryTopicItem } from '@/domain/categories/types';
 import { createAppError } from '@/domain/common/app-error';
-import { asLocalDate } from '@/domain/common/date-rules';
-import type { EntityId } from '@/domain/common/ids';
+import {
+  asLocalDate,
+  resolveBudgetPeriodForDate,
+  type LocalDate,
+} from '@/domain/common/date-rules';
+import { asEntityId, type EntityId } from '@/domain/common/ids';
 import { err, isErr, ok, type AppResult } from '@/domain/common/result';
+import {
+  calculateMoneyPlanningPeriodSummary,
+  type MoneyPlanningPeriodSummary,
+} from '@/domain/money/calculations';
 import {
   asMoneyRecordKind,
   asMoneyRecordMerchantOrSource,
@@ -50,7 +62,21 @@ export type CreateManualMoneyRecordRequest = {
   note?: string | null;
 };
 
+export type EditManualMoneyRecordRequest = CreateManualMoneyRecordRequest & {
+  id: string;
+};
+
+export type DeleteMoneyRecordRequest = {
+  id: string;
+};
+
+export type MoneyRecordMutationResult = {
+  planningSummaries: MoneyPlanningPeriodSummary[];
+  record: MoneyRecord;
+};
+
 export type MoneyRecordServiceDependencies = {
+  createBudgetPlanningRepository?: (database: unknown) => BudgetPlanningRepository;
   createCategoryTopicRepository?: (database: unknown) => CategoryTopicRepository;
   createId?: () => string;
   createMoneyRecordRepository?: (database: unknown) => MoneyRecordRepository;
@@ -61,6 +87,7 @@ export type MoneyRecordServiceDependencies = {
 };
 
 type PreparedMoneyRecordAccess = {
+  budgetPlanningRepository: BudgetPlanningRepository;
   categoryTopicRepository: CategoryTopicRepository;
   moneyRecordRepository: MoneyRecordRepository;
   now: Date;
@@ -72,6 +99,8 @@ function defaultCreateMoneyRecordId(): string {
 }
 
 async function prepareMoneyRecordAccess({
+  createBudgetPlanningRepository: createBudgetPlanningRepositoryDependency = (database) =>
+    createBudgetPlanningRepository(database as PplantDatabase),
   createCategoryTopicRepository: createCategoryTopicRepositoryDependency = (database) =>
     createCategoryTopicRepository(database as PplantDatabase),
   createMoneyRecordRepository: createMoneyRecordRepositoryDependency = (database) =>
@@ -117,6 +146,7 @@ async function prepareMoneyRecordAccess({
   }
 
   return ok({
+    budgetPlanningRepository: createBudgetPlanningRepositoryDependency(database),
     categoryTopicRepository: createCategoryTopicRepositoryDependency(database),
     moneyRecordRepository: createMoneyRecordRepositoryDependency(database),
     now,
@@ -164,6 +194,132 @@ async function validateActiveTopics(
   return ok(topicIds);
 }
 
+type ValidatedMoneyRecordRequest = {
+  amountMinor: number;
+  categoryId: EntityId | null;
+  kind: MoneyRecordKind;
+  localDate: LocalDate;
+  merchantOrSource: MoneyRecord['merchantOrSource'];
+  note: MoneyRecord['note'];
+  topicIds: EntityId[];
+};
+
+async function validateMoneyRecordRequest(
+  input: CreateManualMoneyRecordRequest,
+  categoryTopicRepository: CategoryTopicRepository,
+): Promise<AppResult<ValidatedMoneyRecordRequest>> {
+  const kind = asMoneyRecordKind(input.kind);
+  const amount = validateMoneyRecordAmountMinor(input.amountMinor);
+  const localDate = asLocalDate(input.localDate);
+  const categoryId = asOptionalMoneyRecordCategoryId(input.categoryId);
+  const topicIds = asMoneyRecordTopicIds(input.topicIds ?? []);
+  const merchantOrSource = asMoneyRecordMerchantOrSource(input.merchantOrSource);
+  const note = asMoneyRecordNote(input.note);
+
+  if (!kind.ok) {
+    return kind;
+  }
+
+  if (!amount.ok) {
+    return amount;
+  }
+
+  if (!localDate.ok) {
+    return localDate;
+  }
+
+  if (!categoryId.ok) {
+    return categoryId;
+  }
+
+  if (!topicIds.ok) {
+    return topicIds;
+  }
+
+  if (!merchantOrSource.ok) {
+    return merchantOrSource;
+  }
+
+  if (!note.ok) {
+    return note;
+  }
+
+  const activeCategory = await validateActiveCategory(categoryTopicRepository, categoryId.value);
+
+  if (isErr(activeCategory)) {
+    return activeCategory;
+  }
+
+  const activeTopics = await validateActiveTopics(categoryTopicRepository, topicIds.value);
+
+  if (isErr(activeTopics)) {
+    return activeTopics;
+  }
+
+  return ok({
+    amountMinor: amount.value,
+    categoryId: activeCategory.value,
+    kind: kind.value,
+    localDate: localDate.value,
+    merchantOrSource: merchantOrSource.value,
+    note: note.value,
+    topicIds: activeTopics.value,
+  });
+}
+
+async function recalculatePlanningSummaries(
+  access: PreparedMoneyRecordAccess,
+  localDates: LocalDate[],
+): Promise<AppResult<MoneyPlanningPeriodSummary[]>> {
+  const budgetRules = await access.budgetPlanningRepository.loadBudgetRules(localWorkspaceId);
+
+  if (isErr(budgetRules)) {
+    return budgetRules;
+  }
+
+  const savingsGoals = await access.budgetPlanningRepository.listSavingsGoals(localWorkspaceId);
+
+  if (isErr(savingsGoals)) {
+    return savingsGoals;
+  }
+
+  const summaries: MoneyPlanningPeriodSummary[] = [];
+  const seenPeriods = new Set<string>();
+
+  for (const localDate of localDates) {
+    const period = resolveBudgetPeriodForDate(localDate, access.preferences.monthlyBudgetResetDay);
+
+    if (!period.ok) {
+      return period;
+    }
+
+    const periodKey = `${period.value.startDate}/${period.value.endDateExclusive}`;
+
+    if (seenPeriods.has(periodKey)) {
+      continue;
+    }
+
+    seenPeriods.add(periodKey);
+
+    const records = await access.moneyRecordRepository.listRecordsForPeriod(localWorkspaceId, period.value);
+
+    if (isErr(records)) {
+      return records;
+    }
+
+    summaries.push(
+      calculateMoneyPlanningPeriodSummary({
+        budgetRules: budgetRules.value,
+        period: period.value,
+        records: records.value,
+        savingsGoals: savingsGoals.value,
+      }),
+    );
+  }
+
+  return ok(summaries);
+}
+
 export async function loadManualMoneyCaptureData(
   dependencies: MoneyRecordServiceDependencies = {},
 ): Promise<AppResult<ManualMoneyCaptureData>> {
@@ -209,71 +365,147 @@ export async function createManualMoneyRecord(
     return access;
   }
 
-  const kind = asMoneyRecordKind(input.kind);
-  const amount = validateMoneyRecordAmountMinor(input.amountMinor);
-  const localDate = asLocalDate(input.localDate);
-  const categoryId = asOptionalMoneyRecordCategoryId(input.categoryId);
-  const topicIds = asMoneyRecordTopicIds(input.topicIds ?? []);
-  const merchantOrSource = asMoneyRecordMerchantOrSource(input.merchantOrSource);
-  const note = asMoneyRecordNote(input.note);
+  const validated = await validateMoneyRecordRequest(input, access.value.categoryTopicRepository);
 
-  if (!kind.ok) {
-    return kind;
-  }
-
-  if (!amount.ok) {
-    return amount;
-  }
-
-  if (!localDate.ok) {
-    return localDate;
-  }
-
-  if (!categoryId.ok) {
-    return categoryId;
-  }
-
-  if (!topicIds.ok) {
-    return topicIds;
-  }
-
-  if (!merchantOrSource.ok) {
-    return merchantOrSource;
-  }
-
-  if (!note.ok) {
-    return note;
-  }
-
-  const activeCategory = await validateActiveCategory(access.value.categoryTopicRepository, categoryId.value);
-
-  if (isErr(activeCategory)) {
-    return activeCategory;
-  }
-
-  const activeTopics = await validateActiveTopics(access.value.categoryTopicRepository, topicIds.value);
-
-  if (isErr(activeTopics)) {
-    return activeTopics;
+  if (isErr(validated)) {
+    return validated;
   }
 
   const timestamp = access.value.now.toISOString();
 
   return access.value.moneyRecordRepository.createManualRecord({
-    amountMinor: amount.value,
-    categoryId: activeCategory.value,
+    amountMinor: validated.value.amountMinor,
+    categoryId: validated.value.categoryId,
     createdAt: timestamp,
     currencyCode: access.value.preferences.currencyCode,
     deletedAt: null,
     id: (dependencies.createId ?? defaultCreateMoneyRecordId)(),
-    kind: kind.value,
-    localDate: localDate.value,
-    merchantOrSource: merchantOrSource.value,
-    note: note.value,
+    kind: validated.value.kind,
+    localDate: validated.value.localDate,
+    merchantOrSource: validated.value.merchantOrSource,
+    note: validated.value.note,
     source: 'manual',
     sourceOfTruth: 'manual',
-    topicIds: activeTopics.value,
+    topicIds: validated.value.topicIds,
     updatedAt: timestamp,
+    userCorrectedAt: null,
     workspaceId: localWorkspaceId,
+  });
+}
+
+export async function editManualMoneyRecord(
+  input: EditManualMoneyRecordRequest,
+  dependencies: MoneyRecordServiceDependencies = {},
+): Promise<AppResult<MoneyRecordMutationResult>> {
+  const access = await prepareMoneyRecordAccess(dependencies);
+
+  if (isErr(access)) {
+    return access;
+  }
+
+  const id = asEntityId(input.id);
+
+  if (!id.ok) {
+    return err(createAppError('validation_failed', 'Choose a valid money record.', 'edit', id.error));
+  }
+
+  const existing = await access.value.moneyRecordRepository.getRecord(localWorkspaceId, id.value);
+
+  if (isErr(existing)) {
+    return existing;
+  }
+
+  if (!existing.value) {
+    return err(createAppError('not_found', 'Money record was not found.', 'edit'));
+  }
+
+  const validated = await validateMoneyRecordRequest(input, access.value.categoryTopicRepository);
+
+  if (isErr(validated)) {
+    return validated;
+  }
+
+  const timestamp = access.value.now.toISOString();
+  const updated = await access.value.moneyRecordRepository.updateRecord({
+    amountMinor: validated.value.amountMinor,
+    categoryId: validated.value.categoryId,
+    createdAt: existing.value.createdAt,
+    currencyCode: access.value.preferences.currencyCode,
+    deletedAt: null,
+    id: existing.value.id,
+    kind: validated.value.kind,
+    localDate: validated.value.localDate,
+    merchantOrSource: validated.value.merchantOrSource,
+    note: validated.value.note,
+    source: existing.value.source,
+    sourceOfTruth: 'manual',
+    topicIds: validated.value.topicIds,
+    updatedAt: timestamp,
+    userCorrectedAt: timestamp,
+    workspaceId: localWorkspaceId,
+  });
+
+  if (isErr(updated)) {
+    return updated;
+  }
+
+  const planningSummaries = await recalculatePlanningSummaries(access.value, [
+    existing.value.localDate,
+    updated.value.localDate,
+  ]);
+
+  if (isErr(planningSummaries)) {
+    return planningSummaries;
+  }
+
+  return ok({
+    planningSummaries: planningSummaries.value,
+    record: updated.value,
+  });
+}
+
+export async function deleteMoneyRecord(
+  input: DeleteMoneyRecordRequest,
+  dependencies: MoneyRecordServiceDependencies = {},
+): Promise<AppResult<MoneyRecordMutationResult>> {
+  const access = await prepareMoneyRecordAccess(dependencies);
+
+  if (isErr(access)) {
+    return access;
+  }
+
+  const id = asEntityId(input.id);
+
+  if (!id.ok) {
+    return err(createAppError('validation_failed', 'Choose a valid money record.', 'edit', id.error));
+  }
+
+  const existing = await access.value.moneyRecordRepository.getRecord(localWorkspaceId, id.value);
+
+  if (isErr(existing)) {
+    return existing;
+  }
+
+  if (!existing.value) {
+    return err(createAppError('not_found', 'Money record was not found.', 'edit'));
+  }
+
+  const deleted = await access.value.moneyRecordRepository.deleteRecord(localWorkspaceId, existing.value.id, {
+    now: access.value.now,
+  });
+
+  if (isErr(deleted)) {
+    return deleted;
+  }
+
+  const planningSummaries = await recalculatePlanningSummaries(access.value, [existing.value.localDate]);
+
+  if (isErr(planningSummaries)) {
+    return planningSummaries;
+  }
+
+  return ok({
+    planningSummaries: planningSummaries.value,
+    record: deleted.value,
   });
 }

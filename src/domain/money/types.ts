@@ -4,8 +4,8 @@ import type { LocalDate } from '@/domain/common/date-rules';
 import type { WorkspaceId } from '@/domain/workspace/types';
 
 export type MoneyRecordKind = 'expense' | 'income';
-export type MoneyRecordSource = 'manual';
-export type MoneyRecordSourceOfTruth = 'manual';
+export type MoneyRecordSource = 'manual' | 'receipt';
+export type MoneyRecordSourceOfTruth = 'manual' | 'parsed';
 export type MoneyRecordMerchantOrSource = string & { readonly __brand: 'MoneyRecordMerchantOrSource' };
 export type MoneyRecordNote = string & { readonly __brand: 'MoneyRecordNote' };
 
@@ -32,6 +32,7 @@ export type MoneyRecord = {
   note: MoneyRecordNote | null;
   source: MoneyRecordSource;
   sourceOfTruth: MoneyRecordSourceOfTruth;
+  userCorrectedAt: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -50,6 +51,7 @@ export type SaveManualMoneyRecordInput = {
   note?: string | null;
   source: MoneyRecordSource;
   sourceOfTruth: MoneyRecordSourceOfTruth;
+  userCorrectedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
