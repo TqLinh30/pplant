@@ -6,7 +6,7 @@
 
 ## Last Completed Story
 
-- Story 3.4: Control Reminder Timing And Reminder Fatigue
+- Story 3.5: Recover From Missed Tasks And Reminders
 
 ## Stories Completed
 
@@ -25,17 +25,16 @@
 - Story 3.2: Manage Recurring Tasks And Habits. Commit: `2294db0 feat: complete story 3.2 - recurring tasks and habits`
 - Story 3.3: Create Deadline And Repeat Reminders. Commit: `2ec9c65 feat: complete story 3.3 - deadline and repeat reminders`
 - Story 3.4: Control Reminder Timing And Reminder Fatigue. Commit: `6d6989f feat: complete story 3.4 - reminder timing controls`
+- Story 3.5: Recover From Missed Tasks And Reminders. Commit: `cc99922 feat: complete story 3.5 - recovery actions`
 
 ## Stories Skipped
 
-- Story 3.5 and later were not implemented.
-- Story 3.5 is now created as `ready-for-dev`; remaining backlog starts at Epic 4 after Story 3.5 is implemented.
+- Story 4.1 and later remain in backlog.
 
 ## Stop Reason
 
-- Stopped after completing the requested Story 3.4.
-- Story 3.5 has been prepared as ready-for-dev, but implementation has not started.
-- Independent Story 3.4 review found one P2 cancellation issue; it was fixed in `e7ee971 fix: address story 3.4 notification cleanup`.
+- Stopped after completing Story 3.5 and moving it to `review`.
+- Independent Story 3.5 self-review verdict is `APPROVED_WITH_MINOR_NOTES`.
 
 ## Commits Created
 
@@ -59,6 +58,8 @@
 - `2ec9c65 feat: complete story 3.3 - deadline and repeat reminders`
 - `6d6989f feat: complete story 3.4 - reminder timing controls`
 - `e7ee971 fix: address story 3.4 notification cleanup`
+- `521e2ae docs: record story 3.4 review resolution`
+- `cc99922 feat: complete story 3.5 - recovery actions`
 
 ## Commands Run
 
@@ -82,6 +83,9 @@
 - Story 3.4 P2 fix checks:
   - `npm test -- --runTestsByPath src/services/reminders/reminder.service.test.ts`
   - `npm pkg get scripts.build`
+- Focused Story 3.5 checks:
+  - `npm test -- --runTestsByPath src/domain/recovery/recovery.test.ts src/data/repositories/recovery.repository.test.ts src/data/repositories/reminders.repository.test.ts src/services/recovery/recovery.service.test.ts src/features/recovery/useRecovery.test.ts src/features/recovery/recovery-copy.test.ts src/data/db/migrations/migrate.test.ts`
+  - `npm test -- --runTestsByPath src/services/recovery/recovery.service.test.ts`
 
 ## Test Results
 
@@ -89,24 +93,27 @@
 - Story 3.4 focused verification passed: 4 suites, 23 tests.
 - Story 3.4 service verification passed after adding delete and notification-cleanup coverage: 1 suite, 14 tests.
 - Story 3.4 final verification passed after the P2 fix: 51 suites, 269 tests.
+- Story 3.5 focused verification passed: 7 suites, 26 tests.
+- Story 3.5 final verification passed: 56 suites, 286 tests.
 - `npm run typecheck`: passed.
 - `npm run lint`: passed.
 - `npx expo install --check`: passed.
-- Build: no `scripts.build` entry is defined.
+- `npm run build --if-present`: passed; no build script is defined.
 - `git diff --check`: passed.
 - `git diff --cached --check`: passed.
 
 ## Known Risks
 
 - Native Expo notification behavior was not manually tested on a device/emulator; service behavior is covered with fake scheduler tests and Expo dependency check.
-- Mobile visual and screen-reader behavior for the new reminder form was not manually device-tested.
+- Mobile visual and screen-reader behavior for the new reminder and recovery surfaces was not manually device-tested.
 - UI component rendering is indirectly covered because the current Jest config only matches `.test.ts` files.
 - `.claude/worktrees/` remains untracked and was not committed.
 - Story 3.4 independent code review P2 is resolved in `e7ee971`; native notification cancellation now happens before local rows are cleared.
-- Story 3.5 missed-task/reminder recovery is ready-for-dev but not implemented.
+- Story 3.5 reschedule/edit actions expose and record handoff state; richer form handoff UX can be refined when Story 4 Today surfaces consume recovery items.
 
 ## What I Should Do Next When I Wake Up
 
-- Review Story 3.4 commit `6d6989f`, self-review report `docs/automation-reports/story-3.4-review.md`, and independent review `docs/automation-reports/story-3.4-code-review.md`.
-- Implement Story 3.5 from `_bmad-output/implementation-artifacts/3-5-recover-from-missed-tasks-and-reminders.md`.
+- Review Story 3.5 commit `cc99922` and self-review report `docs/automation-reports/story-3.5-review.md`.
+- Run an independent code review for Story 3.5 before marking it done.
+- After approval, create the next ready story from Epic 4 or start Story 4.1 through BMAD story creation.
 - Continue on branch `auto/codex-overnight-1`.
