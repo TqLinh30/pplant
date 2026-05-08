@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-05-07T22:57:05+08:00"
-last_updated: "2026-05-08T22:40:17+08:00"
+last_updated: "2026-05-08T22:44:10+08:00"
 project: "Pplant"
 project_key: "NOKEY"
 tracking_system: "file-system"
@@ -82,7 +82,7 @@ development_status:
   epic-5-retrospective: optional
   epic-6: in-progress
   6-1-generate-weekly-and-monthly-summaries: done
-  6-2-show-reflection-only-relationships: backlog
+  6-2-show-reflection-only-relationships: ready-for-dev
   6-3-answer-skip-and-save-reflection-prompts: backlog
   6-4-review-past-reflections-and-mute-insights: backlog
   6-5-make-reviews-accessible-and-visually-calm: backlog
