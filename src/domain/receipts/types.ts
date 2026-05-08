@@ -39,6 +39,8 @@ export const receiptParseJobStatuses = [
   'running',
   'parsed',
   'low_confidence',
+  'reviewed',
+  'saved',
   'failed',
   'retry_exhausted',
 ] as const;

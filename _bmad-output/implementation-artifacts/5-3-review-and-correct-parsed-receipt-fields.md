@@ -1,6 +1,6 @@
 # Story 5.3: Review And Correct Parsed Receipt Fields
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -16,44 +16,44 @@ so that imperfect OCR still feels trustworthy and recoverable.
 
 ## Tasks / Subtasks
 
-- [ ] Add receipt review and correction domain contracts. (AC: 1, 2, 3)
-  - [ ] Add review draft types/helpers that derive editable merchant, date, total, category, topics, and line items from `NormalizedReceiptParseResult`.
-  - [ ] Validate corrected total in minor units, corrected local date, optional category/topic ids, merchant length, and line-item amount values using existing money/category/topic validation patterns.
-  - [ ] Track whether each final field is user-corrected, accepted parsed data, unknown, or ignored with text labels available to UI.
-  - [ ] Support total-only save by ignoring line-item details without failing validation.
+- [x] Add receipt review and correction domain contracts. (AC: 1, 2, 3)
+  - [x] Add review draft types/helpers that derive editable merchant, date, total, category, topics, and line items from `NormalizedReceiptParseResult`.
+  - [x] Validate corrected total in minor units, corrected local date, optional category/topic ids, merchant length, and line-item amount values using existing money/category/topic validation patterns.
+  - [x] Track whether each final field is user-corrected, accepted parsed data, unknown, or ignored with text labels available to UI.
+  - [x] Support total-only save by ignoring line-item details without failing validation.
 
-- [ ] Implement receipt review save orchestration. (AC: 2, 3)
-  - [ ] Load active receipt draft, latest parsed/low-confidence parse job, preferences, categories, and topics for the Review Desk.
-  - [ ] Save a reviewed receipt as a `money_records` expense with `source: receipt`.
-  - [ ] Use `sourceOfTruth: manual` and `userCorrectedAt` when user corrections are applied; do not let parsed values override corrections.
-  - [ ] Soft-mark the existing `capture_drafts` row as saved with `savedRecordKind: money_record` and the new money record id.
-  - [ ] Preserve receipt draft context and parse job result until later retention/deletion stories handle cleanup.
-  - [ ] Do not create final expenses from pending, failed, retry-exhausted, missing, discarded, or non-receipt drafts.
+- [x] Implement receipt review save orchestration. (AC: 2, 3)
+  - [x] Load active receipt draft, latest parsed/low-confidence parse job, preferences, categories, and topics for the Review Desk.
+  - [x] Save a reviewed receipt as a `money_records` expense with `source: receipt`.
+  - [x] Use `sourceOfTruth: manual` and `userCorrectedAt` when user corrections are applied; do not let parsed values override corrections.
+  - [x] Soft-mark the existing `capture_drafts` row as saved with `savedRecordKind: money_record` and the new money record id.
+  - [x] Preserve receipt draft context and parse job result until later retention/deletion stories handle cleanup.
+  - [x] Do not create final expenses from pending, failed, retry-exhausted, missing, discarded, or non-receipt drafts.
 
-- [ ] Add reviewed/saved parse-job state support where needed. (AC: 2, 3)
-  - [ ] Extend receipt parse job domain status validation to include reviewed/saved lifecycle states if the save workflow needs them.
-  - [ ] Add repository method(s) to mark a parsed job reviewed/saved without destructive migration.
-  - [ ] Keep migration changes non-destructive; avoid a new receipt line-item table unless implementation proves impossible without it.
+- [x] Add reviewed/saved parse-job state support where needed. (AC: 2, 3)
+  - [x] Extend receipt parse job domain status validation to include reviewed/saved lifecycle states if the save workflow needs them.
+  - [x] Add repository method(s) to mark a parsed job reviewed/saved without destructive migration.
+  - [x] Keep migration changes non-destructive; avoid a new receipt line-item table unless implementation proves impossible without it.
 
-- [ ] Build the Receipt Review Desk surface. (AC: 1, 2, 3)
-  - [ ] Update receipt draft/review screen so parsed and low-confidence jobs show editable fields, confidence/source labels, and correction errors.
-  - [ ] Provide controls for merchant, date, total, category, topic, line-item edit, ignore line items, save corrected receipt, manual expense, keep draft, and discard draft.
-  - [ ] Keep low-confidence, unknown, corrected, and ignored states text-labeled and reachable by screen readers.
-  - [ ] Ensure manual expense remains available if review cannot proceed.
-  - [ ] After save, show a calm saved state with the final total-only expense summary and no implication that OCR was final truth.
+- [x] Build the Receipt Review Desk surface. (AC: 1, 2, 3)
+  - [x] Update receipt draft/review screen so parsed and low-confidence jobs show editable fields, confidence/source labels, and correction errors.
+  - [x] Provide controls for merchant, date, total, category, topic, line-item edit, ignore line items, save corrected receipt, manual expense, keep draft, and discard draft.
+  - [x] Keep low-confidence, unknown, corrected, and ignored states text-labeled and reachable by screen readers.
+  - [x] Ensure manual expense remains available if review cannot proceed.
+  - [x] After save, show a calm saved state with the final total-only expense summary and no implication that OCR was final truth.
 
-- [ ] Preserve privacy, data safety, and story boundaries. (AC: 1, 2, 3)
-  - [ ] Do not add real OCR credentials, external AI/OCR calls, duplicate warning logic, receipt retention cleanup, image deletion, or diagnostics expansion beyond redacted local errors.
-  - [ ] Do not log receipt image URI, OCR text, merchant, spending amount, line items, draft payloads, or corrected values to diagnostics.
-  - [ ] Do not change auth, cloud sync, backend/public APIs, regulated-finance scope, or unrelated capture flows.
-  - [ ] Do not delete parse jobs, receipt drafts, receipt files, money records, or migrations.
+- [x] Preserve privacy, data safety, and story boundaries. (AC: 1, 2, 3)
+  - [x] Do not add real OCR credentials, external AI/OCR calls, duplicate warning logic, receipt retention cleanup, image deletion, or diagnostics expansion beyond redacted local errors.
+  - [x] Do not log receipt image URI, OCR text, merchant, spending amount, line items, draft payloads, or corrected values to diagnostics.
+  - [x] Do not change auth, cloud sync, backend/public APIs, regulated-finance scope, or unrelated capture flows.
+  - [x] Do not delete parse jobs, receipt drafts, receipt files, money records, or migrations.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Add domain tests for deriving review drafts, correction flags, low-confidence text labels, line-item edits, ignored line items, and total-only validation.
-  - [ ] Add service tests for loading review data, saving corrected receipt expenses, marking draft saved, preserving parse context, rejecting unsafe states, and user-correction source-of-truth behavior.
-  - [ ] Add repository tests for any reviewed/saved parse-job transition added in this story.
-  - [ ] Add feature/helper tests for Review Desk visible labels, manual fallback, save disabled/error states, and total-only save path.
-  - [ ] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Add domain tests for deriving review drafts, correction flags, low-confidence text labels, line-item edits, ignored line items, and total-only validation.
+  - [x] Add service tests for loading review data, saving corrected receipt expenses, marking draft saved, preserving parse context, rejecting unsafe states, and user-correction source-of-truth behavior.
+  - [x] Add repository tests for any reviewed/saved parse-job transition added in this story.
+  - [x] Add feature/helper tests for Review Desk visible labels, manual fallback, save disabled/error states, and total-only save path.
+  - [x] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -160,16 +160,40 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-08: Created Story 5.3 ready-for-dev from Epic 5, PRD, architecture, UX, Story 5.1/5.2 implementation context, and current receipt review/money save patterns.
+- 2026-05-08: Started Story 5.3 implementation.
+- 2026-05-08: Added receipt review domain contracts, save orchestration, UI review desk, reviewed/saved parse-job support, and focused tests.
+- 2026-05-08: Verification passed: focused Jest, typecheck, lint, full Jest, Expo install check, build-if-present, and git diff whitespace check.
 
 ### Completion Notes List
 
-- Pending implementation.
+- Implemented receipt review drafts, correction/source labels, validation, and total-only line-item ignore behavior.
+- Added receipt review service to load active receipt drafts and parsed jobs, validate active category/topic ids, save a reviewed receipt as a `source: receipt` money record, mark the draft saved, and mark the parse job saved while preserving parse result JSON.
+- Updated the receipt route screen with editable merchant/date/total/note/category/topic/line-item controls, text-labeled confidence/correction states, manual fallback, keep/discard actions, and a calm saved state.
+- Preserved story boundaries: no real OCR credentials/calls, duplicate warning logic, receipt retention cleanup, backend/auth/sync changes, destructive migration, or raw receipt diagnostics.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/5-3-review-and-correct-parsed-receipt-fields.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-5.3-review.md`
+- `src/data/repositories/receipt-parse-jobs.repository.test.ts`
+- `src/data/repositories/receipt-parse-jobs.repository.ts`
+- `src/domain/receipts/review.test.ts`
+- `src/domain/receipts/review.ts`
+- `src/domain/receipts/schemas.ts`
+- `src/domain/receipts/types.ts`
+- `src/features/receipts/ReceiptRouteScreen.tsx`
+- `src/features/receipts/receipt-parse-state.test.ts`
+- `src/features/receipts/receipt-parse-state.ts`
+- `src/features/receipts/receipt-review-state.test.ts`
+- `src/features/receipts/receipt-review-state.ts`
+- `src/services/receipt-parsing/receipt-parse-job.service.test.ts`
+- `src/services/receipt-parsing/receipt-parse-job.service.ts`
+- `src/services/receipt-parsing/receipt-review.service.test.ts`
+- `src/services/receipt-parsing/receipt-review.service.ts`
 
 ## Change Log
 
 - 2026-05-08: Created Story 5.3 ready-for-dev.
+- 2026-05-08: Started implementation.
+- 2026-05-08: Completed receipt review/correction flow and marked Story 5.3 done after verification.

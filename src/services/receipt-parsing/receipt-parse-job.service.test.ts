@@ -151,6 +151,20 @@ class FakeReceiptParseJobRepository implements ReceiptParseJobRepository {
     return ok({ ...job });
   }
 
+  async markSaved(
+    _workspaceId: WorkspaceId,
+    id: EntityId,
+    input: Parameters<ReceiptParseJobRepository['markSaved']>[2],
+  ) {
+    const job = this.requireJob(id);
+    job.completedAt = job.completedAt ?? input.savedAt;
+    job.lastErrorCategory = null;
+    job.status = input.status;
+    job.updatedAt = input.savedAt;
+
+    return ok({ ...job });
+  }
+
   private requireJob(id: string): ReceiptParseJob {
     const job = this.jobs.find((candidate) => candidate.id === id);
 

@@ -39,6 +39,11 @@ export type MarkReceiptParseJobFailedInput = {
   status: Extract<ReceiptParseJobStatus, 'failed' | 'retry_exhausted'>;
 };
 
+export type MarkReceiptParseJobSavedInput = {
+  savedAt: string;
+  status: Extract<ReceiptParseJobStatus, 'reviewed' | 'saved'>;
+};
+
 export type ReceiptParseJobRepository = {
   createPendingJob(input: CreateReceiptParseJobInput): Promise<AppResult<ReceiptParseJob>>;
   getJobById(workspaceId: WorkspaceId, id: EntityId): Promise<AppResult<ReceiptParseJob | null>>;
@@ -61,6 +66,11 @@ export type ReceiptParseJobRepository = {
     workspaceId: WorkspaceId,
     id: EntityId,
     input: MarkReceiptParseJobRunningInput,
+  ): Promise<AppResult<ReceiptParseJob>>;
+  markSaved(
+    workspaceId: WorkspaceId,
+    id: EntityId,
+    input: MarkReceiptParseJobSavedInput,
   ): Promise<AppResult<ReceiptParseJob>>;
 };
 
@@ -282,6 +292,28 @@ export function createReceiptParseJobRepository(database: PplantDatabase): Recei
         return requireJob(database, workspaceId, id);
       } catch (cause) {
         return err(createAppError('unavailable', 'Local receipt parse job could not be started.', 'retry', cause));
+      }
+    },
+
+    async markSaved(workspaceId, id, input) {
+      try {
+        database.$client.runSync(
+          `UPDATE receipt_parse_jobs
+           SET status = ?,
+               completed_at = COALESCE(completed_at, ?),
+               last_error_category = NULL,
+               updated_at = ?
+           WHERE workspace_id = ? AND id = ? AND deleted_at IS NULL`,
+          input.status,
+          input.savedAt,
+          input.savedAt,
+          workspaceId,
+          id,
+        );
+
+        return requireJob(database, workspaceId, id);
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local receipt parse job could not be marked saved.', 'retry', cause));
       }
     },
   };

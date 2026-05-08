@@ -102,6 +102,20 @@ class FakeReceiptParseJobClient {
       return { changes: row ? 1 : 0 };
     }
 
+    if (source.includes('completed_at = COALESCE')) {
+      const [status, savedAt, updatedAt, workspaceId, id] = params;
+      const row = this.findRow(workspaceId as string, id as string);
+
+      if (row) {
+        row.completedAt = row.completedAt ?? (savedAt as string);
+        row.lastErrorCategory = null;
+        row.status = status as string;
+        row.updatedAt = updatedAt as string;
+      }
+
+      return { changes: row ? 1 : 0 };
+    }
+
     return { changes: 0 };
   }
 
@@ -233,6 +247,39 @@ describe('receipt parse job repository', () => {
     if (exhausted.ok) {
       expect(exhausted.value.status).toBe('retry_exhausted');
       expect(exhausted.value.normalizedResult).toBeNull();
+    }
+  });
+
+  it('marks a parsed job saved after receipt review without deleting parse result data', async () => {
+    const client = new FakeReceiptParseJobClient();
+    const repository = createReceiptParseJobRepository({ $client: client } as never);
+
+    await repository.createPendingJob({
+      id: 'job-1' as never,
+      receiptDraftId: 'draft-receipt' as never,
+      requestedAt: fixedNow,
+      workspaceId: localWorkspaceId,
+    });
+    await repository.markRunning(localWorkspaceId, 'job-1' as never, {
+      attemptCount: 1,
+      retryWindowStartedAt: '2026-05-08T00:01:00.000Z',
+      startedAt: '2026-05-08T00:01:00.000Z',
+    });
+    await repository.markParsed(localWorkspaceId, 'job-1' as never, {
+      completedAt: '2026-05-08T00:02:00.000Z',
+      normalizedResult: parsedResult,
+      status: 'parsed',
+    });
+    const saved = await repository.markSaved(localWorkspaceId, 'job-1' as never, {
+      savedAt: '2026-05-08T00:03:00.000Z',
+      status: 'saved',
+    });
+
+    expect(saved.ok).toBe(true);
+    if (saved.ok) {
+      expect(saved.value.status).toBe('saved');
+      expect(saved.value.completedAt).toBe('2026-05-08T00:02:00.000Z');
+      expect(saved.value.normalizedResult?.totalMinor.value).toBe(825);
     }
   });
 });

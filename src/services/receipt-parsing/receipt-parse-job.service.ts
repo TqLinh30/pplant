@@ -234,7 +234,13 @@ export async function runReceiptParseJob(
     return err(createAppError('not_found', 'Receipt parse job was not found.', 'retry'));
   }
 
-  if (job.value.status === 'parsed' || job.value.status === 'low_confidence' || job.value.status === 'running') {
+  if (
+    job.value.status === 'parsed' ||
+    job.value.status === 'low_confidence' ||
+    job.value.status === 'reviewed' ||
+    job.value.status === 'saved' ||
+    job.value.status === 'running'
+  ) {
     return ok(job.value);
   }
 

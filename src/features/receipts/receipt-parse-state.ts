@@ -101,6 +101,24 @@ export function receiptParseNoticeFor(job: ReceiptParseJob | null): ReceiptParse
         title: 'Receipt fields need review',
         tone: 'warning',
       };
+    case 'reviewed':
+      return {
+        actionLabel: null,
+        description: 'Receipt fields were reviewed. Save the corrected receipt when ready.',
+        manualActionLabel: 'Manual expense',
+        status: job.status,
+        title: 'Receipt reviewed',
+        tone: 'neutral',
+      };
+    case 'saved':
+      return {
+        actionLabel: null,
+        description: 'The reviewed receipt was saved as an expense. Parsed data is no longer treated as unreviewed.',
+        manualActionLabel: 'Manual expense',
+        status: job.status,
+        title: 'Receipt expense saved',
+        tone: 'neutral',
+      };
     case 'failed':
       return {
         actionLabel: 'Retry parsing',

@@ -141,7 +141,10 @@ export function parseReceiptParseJobRow(row: ReceiptParseJobRow): AppResult<Rece
   }
 
   if (
-    (parsed.data.status === 'parsed' || parsed.data.status === 'low_confidence') &&
+    (parsed.data.status === 'parsed' ||
+      parsed.data.status === 'low_confidence' ||
+      parsed.data.status === 'reviewed' ||
+      parsed.data.status === 'saved') &&
     normalizedResult.value === null
   ) {
     return err(createAppError('validation_failed', 'Parsed receipt job is missing result data.', 'retry'));

@@ -28,7 +28,10 @@ function job(status: ReceiptParseJob['status']): ReceiptParseJob {
     deletedAt: null,
     id: 'job-1' as never,
     lastErrorCategory: null,
-    normalizedResult: status === 'parsed' || status === 'low_confidence' ? parsedResult : null,
+    normalizedResult:
+      status === 'parsed' || status === 'low_confidence' || status === 'reviewed' || status === 'saved'
+        ? parsedResult
+        : null,
     receiptDraftId: 'draft-receipt' as never,
     requestedAt: '2026-05-08T00:00:00.000Z',
     retryWindowStartedAt: '2026-05-08T00:00:00.000Z',
@@ -47,11 +50,15 @@ describe('receipt parse state copy', () => {
       job('running'),
       job('parsed'),
       job('low_confidence'),
+      job('reviewed'),
+      job('saved'),
       job('failed'),
       job('retry_exhausted'),
     ];
 
     expect(states.map((state) => receiptParseNoticeFor(state).manualActionLabel)).toEqual([
+      'Manual expense',
+      'Manual expense',
       'Manual expense',
       'Manual expense',
       'Manual expense',
