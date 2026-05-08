@@ -1,5 +1,6 @@
 import {
   calculateMoneyPlanningPeriodSummary,
+  calculateMoneyHistorySummaries,
 } from './calculations';
 import {
   asMoneyRecordMerchantOrSource,
@@ -160,6 +161,43 @@ describe('money record domain', () => {
       currentAmountMinor: 2500,
       progressBasisPoints: 2500,
       remainingMinor: 7500,
+    });
+  });
+
+  it('groups active money history by day, week, and month', () => {
+    const expense = parseMoneyRecordRow(createRow({ amountMinor: 1200, id: 'money-expense', localDate: '2026-05-08' }));
+    const income = parseMoneyRecordRow(
+      createRow({ amountMinor: 5000, id: 'money-income', kind: 'income', localDate: '2026-05-09' }),
+    );
+    const deleted = parseMoneyRecordRow(
+      createRow({
+        amountMinor: 9999,
+        deletedAt: '2026-05-10T00:00:00.000Z',
+        id: 'money-deleted',
+        localDate: '2026-05-10',
+      }),
+    );
+
+    if (!expense.ok || !income.ok || !deleted.ok) {
+      throw new Error('money fixture failed');
+    }
+
+    const day = calculateMoneyHistorySummaries([expense.value, income.value, deleted.value], 'day');
+    const week = calculateMoneyHistorySummaries([expense.value, income.value], 'week');
+    const month = calculateMoneyHistorySummaries([expense.value, income.value], 'month');
+
+    expect(day.map((summary) => summary.key)).toEqual(['2026-05-09', '2026-05-08']);
+    expect(week[0]).toMatchObject({
+      expenseAmountMinor: 1200,
+      incomeAmountMinor: 5000,
+      key: '2026-05-04',
+      netAmountMinor: 3800,
+      recordCount: 2,
+    });
+    expect(month[0]).toMatchObject({
+      endDateExclusive: '2026-06-01',
+      key: '2026-05',
+      startDate: '2026-05-01',
     });
   });
 });

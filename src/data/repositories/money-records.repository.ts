@@ -6,7 +6,13 @@ import {
   parseMoneyRecordRow,
   type MoneyRecordRow,
 } from '@/domain/money/schemas';
-import type { MoneyRecord, SaveManualMoneyRecordInput } from '@/domain/money/types';
+import type {
+  MoneyHistoryPage,
+  MoneyHistoryQuery,
+  MoneyHistorySort,
+  MoneyRecord,
+  SaveManualMoneyRecordInput,
+} from '@/domain/money/types';
 import type { BudgetPeriod } from '@/domain/common/date-rules';
 import type { WorkspaceId } from '@/domain/workspace/types';
 
@@ -31,6 +37,10 @@ export type MoneyRecordRepository = {
     workspaceId: WorkspaceId,
     period: BudgetPeriod,
   ): Promise<AppResult<MoneyRecord[]>>;
+  listHistoryRecords(
+    workspaceId: WorkspaceId,
+    query: MoneyHistoryQuery,
+  ): Promise<AppResult<MoneyHistoryPage>>;
 };
 
 type MoneyRecordSqlClient = PplantDatabase['$client'] & {
@@ -78,6 +88,76 @@ function runAtomic(client: MoneyRecordSqlClient, task: () => void): void {
 
 function parseRecord(row: MoneyRecordRow, topicIds: string[]): AppResult<MoneyRecord> {
   return parseMoneyRecordRow(row, topicIds);
+}
+
+function orderBySql(sort: MoneyHistorySort): string {
+  switch (sort) {
+    case 'amount_asc':
+      return 'amount_minor ASC, local_date DESC, created_at DESC, id DESC';
+    case 'amount_desc':
+      return 'amount_minor DESC, local_date DESC, created_at DESC, id DESC';
+    case 'date_asc':
+      return 'local_date ASC, created_at ASC, id ASC';
+    case 'date_desc':
+    default:
+      return 'local_date DESC, created_at DESC, id DESC';
+  }
+}
+
+function buildHistoryWhereClause(workspaceId: WorkspaceId, query: MoneyHistoryQuery) {
+  const clauses = ['workspace_id = ?', 'deleted_at IS NULL'];
+  const params: unknown[] = [workspaceId];
+
+  if (query.kind) {
+    clauses.push('kind = ?');
+    params.push(query.kind);
+  }
+
+  if (query.dateFrom) {
+    clauses.push('local_date >= ?');
+    params.push(query.dateFrom);
+  }
+
+  if (query.dateTo) {
+    clauses.push('local_date <= ?');
+    params.push(query.dateTo);
+  }
+
+  if (query.categoryId) {
+    clauses.push('category_id = ?');
+    params.push(query.categoryId);
+  }
+
+  if (query.topicId) {
+    clauses.push(`EXISTS (
+      SELECT 1
+      FROM money_record_topics AS history_topics
+      WHERE history_topics.workspace_id = money_records.workspace_id
+        AND history_topics.money_record_id = money_records.id
+        AND history_topics.topic_id = ?
+    )`);
+    params.push(query.topicId);
+  }
+
+  if (query.merchantOrSource) {
+    clauses.push("LOWER(COALESCE(merchant_or_source, '')) LIKE ?");
+    params.push(`%${query.merchantOrSource.toLowerCase()}%`);
+  }
+
+  if (query.amountMinorMin !== null && query.amountMinorMin !== undefined) {
+    clauses.push('amount_minor >= ?');
+    params.push(query.amountMinorMin);
+  }
+
+  if (query.amountMinorMax !== null && query.amountMinorMax !== undefined) {
+    clauses.push('amount_minor <= ?');
+    params.push(query.amountMinorMax);
+  }
+
+  return {
+    params,
+    sql: clauses.join(' AND '),
+  };
 }
 
 async function getTopicIdsForRecord(
@@ -411,6 +491,56 @@ export function createMoneyRecordRepository(database: PplantDatabase): MoneyReco
         return ok(records);
       } catch (cause) {
         return err(createAppError('unavailable', 'Local money records could not be loaded.', 'retry', cause));
+      }
+    },
+
+    async listHistoryRecords(workspaceId, query) {
+      try {
+        const where = buildHistoryWhereClause(workspaceId, query);
+        const countRow = database.$client.getFirstSync<{ totalCount: number }>(
+          `SELECT COUNT(*) AS totalCount
+           FROM money_records
+           WHERE ${where.sql}`,
+          ...(where.params as never[]),
+        );
+        const totalCount = countRow?.totalCount ?? 0;
+        const rows = database.$client.getAllSync<MoneyRecordRow>(
+          `${selectMoneyRecordColumnsSql()}
+           WHERE ${where.sql}
+           ORDER BY ${orderBySql(query.sort)}
+           LIMIT ? OFFSET ?`,
+          ...(where.params as never[]),
+          query.limit,
+          query.offset,
+        );
+        const records: MoneyRecord[] = [];
+
+        for (const row of rows) {
+          const recordId = row.id as EntityId;
+          const topicIds = await getTopicIdsForRecord(database, workspaceId, recordId);
+
+          if (!topicIds.ok) {
+            return topicIds;
+          }
+
+          const parsed = parseRecord(row, topicIds.value);
+
+          if (!parsed.ok) {
+            return parsed;
+          }
+
+          records.push(parsed.value);
+        }
+
+        return ok({
+          hasMore: query.offset + records.length < totalCount,
+          limit: query.limit,
+          offset: query.offset,
+          records,
+          totalCount,
+        });
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local money history could not be loaded.', 'retry', cause));
       }
     },
   };

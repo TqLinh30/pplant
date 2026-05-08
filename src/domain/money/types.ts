@@ -6,6 +6,8 @@ import type { WorkspaceId } from '@/domain/workspace/types';
 export type MoneyRecordKind = 'expense' | 'income';
 export type MoneyRecordSource = 'manual' | 'receipt';
 export type MoneyRecordSourceOfTruth = 'manual' | 'parsed';
+export type MoneyHistorySort = 'amount_asc' | 'amount_desc' | 'date_asc' | 'date_desc';
+export type MoneyHistorySummaryMode = 'day' | 'month' | 'week';
 export type MoneyRecordMerchantOrSource = string & { readonly __brand: 'MoneyRecordMerchantOrSource' };
 export type MoneyRecordNote = string & { readonly __brand: 'MoneyRecordNote' };
 
@@ -55,4 +57,26 @@ export type SaveManualMoneyRecordInput = {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
+};
+
+export type MoneyHistoryQuery = {
+  amountMinorMax?: number | null;
+  amountMinorMin?: number | null;
+  categoryId?: string | null;
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  kind?: MoneyRecordKind | null;
+  limit: number;
+  merchantOrSource?: string | null;
+  offset: number;
+  sort: MoneyHistorySort;
+  topicId?: string | null;
+};
+
+export type MoneyHistoryPage = {
+  hasMore: boolean;
+  limit: number;
+  offset: number;
+  records: MoneyRecord[];
+  totalCount: number;
 };

@@ -164,6 +164,10 @@ class FakeMoneyRecordClient {
   }
 
   getFirstSync<T>(_source: string, ...params: unknown[]): T | null {
+    if (_source.includes('COUNT(*) AS totalCount')) {
+      return { totalCount: this.filterHistoryRows(_source, params).length } as T;
+    }
+
     const [workspaceId, id] = params;
     const includeDeleted = !_source.includes('deleted_at IS NULL');
     const record =
@@ -177,8 +181,47 @@ class FakeMoneyRecordClient {
     return record as T | null;
   }
 
+  private filterHistoryRows(source: string, params: unknown[]): MoneyRecordRow[] {
+    const [workspaceId] = params;
+    let paramIndex = 1;
+    const kind = source.includes('kind = ?') ? (params[paramIndex++] as string) : null;
+    const dateFrom = source.includes('local_date >= ?') ? (params[paramIndex++] as string) : null;
+    const dateTo = source.includes('local_date <= ?') ? (params[paramIndex++] as string) : null;
+    const categoryId = source.includes('category_id = ?') ? (params[paramIndex++] as string) : null;
+    const topicId = source.includes('history_topics.topic_id = ?') ? (params[paramIndex++] as string) : null;
+    const merchantSearch = source.includes('LIKE ?')
+      ? String(params[paramIndex++]).replace(/%/g, '').toLowerCase()
+      : null;
+    const amountMin = source.includes('amount_minor >= ?') ? (params[paramIndex++] as number) : null;
+    const amountMax = source.includes('amount_minor <= ?') ? (params[paramIndex++] as number) : null;
+
+    return this.records.filter((record) => {
+      const topicMatched =
+        !topicId ||
+        this.topics.some(
+          (topic) =>
+            topic.workspaceId === workspaceId &&
+            topic.moneyRecordId === record.id &&
+            topic.topicId === topicId,
+        );
+
+      return (
+        record.workspaceId === workspaceId &&
+        record.deletedAt === null &&
+        (!kind || record.kind === kind) &&
+        (!dateFrom || record.localDate >= dateFrom) &&
+        (!dateTo || record.localDate <= dateTo) &&
+        (!categoryId || record.categoryId === categoryId) &&
+        topicMatched &&
+        (!merchantSearch || (record.merchantOrSource ?? '').toLowerCase().includes(merchantSearch)) &&
+        (amountMin === null || record.amountMinor >= amountMin) &&
+        (amountMax === null || record.amountMinor <= amountMax)
+      );
+    });
+  }
+
   getAllSync<T>(source: string, ...params: unknown[]): T[] {
-    if (source.includes('FROM money_record_topics')) {
+    if (source.includes('SELECT topic_id AS topicId')) {
       const [workspaceId, moneyRecordId] = params;
 
       return this.topics
@@ -188,6 +231,24 @@ class FakeMoneyRecordClient {
     }
 
     const [workspaceId, firstOption, secondOption] = params;
+
+    if (source.includes('OFFSET ?')) {
+      const limit = params[params.length - 2] as number;
+      const offset = params[params.length - 1] as number;
+      let rows = this.filterHistoryRows(source, params.slice(0, -2));
+
+      if (source.includes('amount_minor DESC')) {
+        rows = rows.sort((left, right) => right.amountMinor - left.amountMinor || right.localDate.localeCompare(left.localDate));
+      } else if (source.includes('amount_minor ASC')) {
+        rows = rows.sort((left, right) => left.amountMinor - right.amountMinor || right.localDate.localeCompare(left.localDate));
+      } else if (source.includes('local_date ASC')) {
+        rows = rows.sort((left, right) => left.localDate.localeCompare(right.localDate) || left.id.localeCompare(right.id));
+      } else {
+        rows = rows.sort((left, right) => right.localDate.localeCompare(left.localDate) || right.id.localeCompare(left.id));
+      }
+
+      return rows.slice(offset, offset + limit).map((record) => ({ ...record }) as T);
+    }
 
     if (source.includes('local_date >= ?')) {
       return this.records
@@ -370,6 +431,83 @@ describe('money records repository', () => {
     expect(listed.ok).toBe(true);
     if (listed.ok) {
       expect(listed.value.map((record) => record.id)).toEqual(['money-active']);
+    }
+  });
+
+  it('filters, sorts, and paginates money history records', async () => {
+    const client = new FakeMoneyRecordClient();
+    const repository = createRepository(client);
+
+    await repository.createManualRecord(
+      createInput({
+        amountMinor: 500,
+        id: 'money-coffee',
+        localDate: '2026-05-09',
+        merchantOrSource: 'Campus cafe',
+        topicIds: ['topic-campus'],
+      }),
+    );
+    await repository.createManualRecord(
+      createInput({
+        amountMinor: 2500,
+        id: 'money-books',
+        localDate: '2026-05-10',
+        merchantOrSource: 'Bookstore',
+        topicIds: ['topic-study'],
+      }),
+    );
+    await repository.createManualRecord(
+      createInput({
+        amountMinor: 4000,
+        id: 'money-income',
+        kind: 'income',
+        localDate: '2026-05-11',
+        merchantOrSource: 'Campus job',
+        topicIds: ['topic-campus'],
+      }),
+    );
+
+    const filtered = await repository.listHistoryRecords(localWorkspaceId, {
+      amountMinorMax: 5000,
+      amountMinorMin: 1000,
+      categoryId: 'cat-food',
+      dateFrom: '2026-05-01',
+      dateTo: '2026-05-31',
+      kind: null,
+      limit: 1,
+      merchantOrSource: 'store',
+      offset: 0,
+      sort: 'amount_desc',
+      topicId: 'topic-study',
+    });
+
+    expect(filtered.ok).toBe(true);
+    if (filtered.ok) {
+      expect(filtered.value.totalCount).toBe(1);
+      expect(filtered.value.hasMore).toBe(false);
+      expect(filtered.value.records.map((record) => record.id)).toEqual(['money-books']);
+    }
+  });
+
+  it('returns pagination metadata for money history pages', async () => {
+    const client = new FakeMoneyRecordClient();
+    const repository = createRepository(client);
+
+    await repository.createManualRecord(createInput({ id: 'money-1', localDate: '2026-05-09', topicIds: [] }));
+    await repository.createManualRecord(createInput({ id: 'money-2', localDate: '2026-05-10', topicIds: [] }));
+    await repository.createManualRecord(createInput({ id: 'money-3', localDate: '2026-05-11', topicIds: [] }));
+
+    const page = await repository.listHistoryRecords(localWorkspaceId, {
+      limit: 2,
+      offset: 0,
+      sort: 'date_desc',
+    });
+
+    expect(page.ok).toBe(true);
+    if (page.ok) {
+      expect(page.value.records.map((record) => record.id)).toEqual(['money-3', 'money-2']);
+      expect(page.value.totalCount).toBe(3);
+      expect(page.value.hasMore).toBe(true);
     }
   });
 
