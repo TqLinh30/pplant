@@ -12,6 +12,7 @@ import { TextField } from '@/ui/primitives/TextField';
 import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
+import { TaskForm } from '@/features/tasks/TaskForm';
 import { WorkEntryForm } from '@/features/work/WorkEntryForm';
 import { buildExpenseWorkTimeContextText } from '@/features/work/workTimeContextText';
 
@@ -595,6 +596,10 @@ export function CaptureScreen() {
             </>
           ) : null}
         </View>
+
+        <View style={styles.divider} />
+
+        <TaskForm />
 
         <View style={styles.divider} />
 

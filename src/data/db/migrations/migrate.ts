@@ -27,6 +27,7 @@ export const moneyRecordsMigrationId = '005_create_money_records';
 export const moneyRecordCorrectionsMigrationId = '006_add_money_record_corrections';
 export const recurringMoneyMigrationId = '007_create_recurring_money_rules';
 export const workEntriesMigrationId = '008_create_work_entries';
+export const tasksMigrationId = '009_create_tasks';
 
 const createMigrationTrackingTableSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -272,6 +273,46 @@ CREATE INDEX IF NOT EXISTS idx_work_entry_topics_entry
   ON work_entry_topics (work_entry_id);
 `;
 
+const tasksMigrationSql = `
+CREATE TABLE IF NOT EXISTS tasks (
+  id TEXT PRIMARY KEY NOT NULL,
+  workspace_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  notes TEXT,
+  state TEXT NOT NULL,
+  priority TEXT NOT NULL,
+  deadline_local_date TEXT,
+  completed_at TEXT,
+  category_id TEXT,
+  source TEXT NOT NULL,
+  source_of_truth TEXT NOT NULL,
+  user_corrected_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_workspace_state_deadline
+  ON tasks (workspace_id, deleted_at, state, deadline_local_date);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_workspace_deadline
+  ON tasks (workspace_id, deleted_at, deadline_local_date, created_at);
+
+CREATE TABLE IF NOT EXISTS task_topics (
+  task_id TEXT NOT NULL,
+  topic_id TEXT NOT NULL,
+  workspace_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (task_id, topic_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_topics_task
+  ON task_topics (task_id);
+
+CREATE INDEX IF NOT EXISTS idx_task_topics_workspace_topic
+  ON task_topics (workspace_id, topic_id);
+`;
+
 const migrations = [
   {
     id: workspaceMigrationId,
@@ -304,6 +345,10 @@ const migrations = [
   {
     id: workEntriesMigrationId,
     sql: workEntriesMigrationSql,
+  },
+  {
+    id: tasksMigrationId,
+    sql: tasksMigrationSql,
   },
 ] as const;
 

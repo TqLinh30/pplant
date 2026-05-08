@@ -1,21 +1,28 @@
-import { useLocalSearchParams } from 'expo-router';
+import { ScrollView, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { FeaturePlaceholderScreen } from '@/ui/components/FeaturePlaceholderScreen';
+import { colors } from '@/ui/tokens/colors';
+import { spacing } from '@/ui/tokens/spacing';
+
+import { TaskForm } from './TaskForm';
 
 export function TaskRouteScreen() {
-  const { taskId } = useLocalSearchParams<{ taskId: string }>();
-
   return (
-    <FeaturePlaceholderScreen
-      title="Task"
-      eyebrow="Daily planning"
-      description="Task details will support To Do, Doing, Done, priority, deadlines, recurrence, and reminder recovery."
-      sections={[
-        {
-          title: 'Task reference',
-          description: taskId ? `Task: ${taskId}` : 'Task id is not available yet.',
-        },
-      ]}
-    />
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <TaskForm />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  content: {
+    gap: spacing.lg,
+    padding: spacing.lg,
+  },
+  safeArea: {
+    backgroundColor: colors.canvas,
+    flex: 1,
+  },
+});

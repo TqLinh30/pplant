@@ -167,6 +167,31 @@ export const workEntryTopics = sqliteTable('work_entry_topics', {
   createdAt: text('created_at').notNull(),
 });
 
+export const tasks = sqliteTable('tasks', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  title: text('title').notNull(),
+  notes: text('notes'),
+  state: text('state').notNull(),
+  priority: text('priority').notNull(),
+  deadlineLocalDate: text('deadline_local_date'),
+  completedAt: text('completed_at'),
+  categoryId: text('category_id'),
+  source: text('source').notNull(),
+  sourceOfTruth: text('source_of_truth').notNull(),
+  userCorrectedAt: text('user_corrected_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+});
+
+export const taskTopics = sqliteTable('task_topics', {
+  taskId: text('task_id').notNull(),
+  topicId: text('topic_id').notNull(),
+  workspaceId: text('workspace_id').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
 export const schema = {
   budgets,
   categories,
@@ -177,6 +202,8 @@ export const schema = {
   recurrenceRuleTopics,
   savingsGoals,
   schemaMigrations,
+  tasks,
+  taskTopics,
   topics,
   userPreferences,
   workEntries,

@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-05-07T22:57:05+08:00"
-last_updated: "2026-05-08T13:39:23+08:00"
+last_updated: "2026-05-08T14:26:23+08:00"
 project: "Pplant"
 project_key: "NOKEY"
 tracking_system: "file-system"
@@ -59,8 +59,8 @@ development_status:
   2-6-review-work-history-and-earned-income: done
   2-7-show-expense-impact-as-work-time-context: done
   epic-2-retrospective: optional
-  epic-3: backlog
-  3-1-create-and-manage-daily-tasks: backlog
+  epic-3: in-progress
+  3-1-create-and-manage-daily-tasks: done
   3-2-manage-recurring-tasks-and-habits: backlog
   3-3-create-deadline-and-repeat-reminders: backlog
   3-4-control-reminder-timing-and-reminder-fatigue: backlog
