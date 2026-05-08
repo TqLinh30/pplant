@@ -6,7 +6,7 @@
 
 ## Last Completed Story
 
-- Story 3.1: Create And Manage Daily Tasks
+- Story 3.2: Manage Recurring Tasks And Habits
 
 ## Stories Completed
 
@@ -22,22 +22,17 @@
 - Story 2.6: Review Work History And Earned Income. Commit: `4b73039 feat: complete story 2.6 - work history`
 - Story 2.7: Show Expense Impact As Work-Time Context. Commit: `8cccc4f feat: complete story 2.7 - work-time context`
 - Story 3.1: Create And Manage Daily Tasks. Commit: `8bfaa8b feat: complete story 3.1 - daily tasks`
+- Story 3.2: Manage Recurring Tasks And Habits. Commit: `2294db0 feat: complete story 3.2 - recurring tasks and habits`
 
 ## Stories Skipped
 
-- Story 3.2 and later were not implemented.
-- Remaining backlog starts at `3-2-manage-recurring-tasks-and-habits`.
+- Story 3.3 and later were not implemented.
+- Remaining backlog starts at `3-3-create-deadline-and-repeat-reminders`.
 
 ## Stop Reason
 
-- Stopped after Story 3.1 due to hard stop condition #1.
-- Story 3.2 is still `backlog` in `sprint-status.yaml` and has no ready-for-dev story file.
-- Story 3.2 requires schema-affecting decisions that are not safe to guess:
-  - whether to extend the existing money-specific `recurrence_rules` table or create task/habit-specific recurrence tables,
-  - whether generated task occurrences should materialize into `tasks` rows or remain virtual until completed,
-  - how completion-by-day should be stored for recurring tasks versus habits,
-  - how pause, skip-one, stop, delete, and edit apply to occurrence versus series data,
-  - how this should prepare for Story 3.3 reminders without implementing reminder scheduling early.
+- Stopped after Story 3.2 because the next pending item, Story 3.3, is still `backlog` in `sprint-status.yaml` and has no ready-for-dev story file.
+- This is a safe BMAD stop condition: reminders introduce notification permission, scheduling, timing, and recovery behavior that should be specified in its own story before code changes.
 
 ## Commits Created
 
@@ -57,38 +52,33 @@
 - `8cccc4f feat: complete story 2.7 - work-time context`
 - `ed96011 docs: update overnight automation summary`
 - `8bfaa8b feat: complete story 3.1 - daily tasks`
+- `2294db0 feat: complete story 3.2 - recurring tasks and habits`
 
 ## Commands Run
 
-- Git safety and publishing:
+- Git safety and status:
   - `git branch --show-current`
   - `git status --short`
-  - `git log --oneline --max-count=8`
-  - `git push origin auto/codex-overnight-1`
-- Story verification gates used repeatedly:
+  - `git diff --check`
+  - `git diff --cached --check`
+- Story verification gates:
   - `npm run typecheck`
   - `npm run lint`
   - `npm test`
   - `npx expo install --check`
   - `npm run build --if-present`
   - `git diff --check`
-- Focused Story 3.1 checks:
-  - `npx jest src/domain/tasks/tasks.test.ts src/data/repositories/tasks.repository.test.ts src/services/tasks/task.service.test.ts src/features/tasks/useTaskCapture.test.ts src/data/db/migrations/migrate.test.ts --runInBand`
-- Story 3.2 readiness analysis:
-  - Read `sprint-status.yaml`, `epics.md`, recurrence domain/repository/service code, and Story 3.1 task model.
+- Focused Story 3.2 checks:
+  - `npx jest src/domain/tasks/task-recurrence.test.ts src/data/repositories/task-recurrence.repository.test.ts src/services/tasks/task-recurrence.service.test.ts src/features/tasks/useTaskRecurrence.test.ts src/data/db/migrations/migrate.test.ts --runInBand`
 
 ## Test Results
 
-- Story 2.4 final verification passed: 31 suites, 172 tests.
-- Story 2.5 final verification passed: 35 suites, 191 tests.
-- Story 2.6 final verification passed: 37 suites, 199 tests.
-- Story 2.7 final verification passed: 39 suites, 206 tests.
-- Story 3.1 focused verification passed: 5 suites, 20 tests.
-- Story 3.1 final verification passed: 43 suites, 222 tests.
-- `npm run typecheck`: passed for each completed story.
-- `npm run lint`: passed for each completed story.
-- `npx expo install --check`: passed for each completed story.
-- `npm run build --if-present`: completed; no build script is defined.
+- Story 3.2 focused verification passed: 5 suites, 23 tests.
+- Story 3.2 final verification passed: 47 suites, 241 tests.
+- `npm run typecheck`: passed.
+- `npm run lint`: passed.
+- `npx expo install --check`: passed.
+- `npm run build --if-present`: passed; no build script is defined.
 - `git diff --check`: passed.
 
 ## Known Risks
@@ -97,15 +87,11 @@
 - Mobile visual and screen-reader behavior was not manually device-tested.
 - UI component rendering is indirectly covered because the current Jest config only matches `.test.ts` files.
 - `.claude/worktrees/` remains untracked and was not committed.
-- Story 3.2 needs product/architecture clarification before implementation because it introduces recurring task/habit persisted data.
+- Story 3.3 reminders should be created as a ready-for-dev story before implementation because it affects notifications and scheduling.
 
 ## What I Should Do Next When I Wake Up
 
-- Review Story 3.1 commit `8bfaa8b` and self-review report `docs/automation-reports/story-3.1-review.md`.
-- Make Story 3.2 decisions:
-  - Use a new task/habit recurrence table or generalize existing recurrence tables?
-  - Materialize generated occurrences as task rows, virtual occurrence views, or a hybrid?
-  - Store habit completion-by-day in a separate completion table?
-  - Define exact series versus occurrence behavior for edit, pause, skip, stop, and delete.
-  - Decide what schema fields are needed now for Story 3.3 reminders.
-- Create a ready-for-dev Story 3.2 file, then continue on `auto/codex-overnight-1`.
+- Review Story 3.2 commit `2294db0` and self-review report `docs/automation-reports/story-3.2-review.md`.
+- Create Story 3.3 as ready-for-dev before implementation.
+- For Story 3.3, decide reminder storage, local notification permission flow, schedule ownership, recurrence linkage, and neutral recovery copy.
+- Continue on branch `auto/codex-overnight-1`.
