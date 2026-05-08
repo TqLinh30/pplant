@@ -29,12 +29,13 @@
 ## Stories Skipped
 
 - Story 3.5 and later were not implemented.
-- Remaining backlog starts at `3-5-recover-from-missed-tasks-and-reminders`.
+- Story 3.5 is now created as `ready-for-dev`; remaining backlog starts at Epic 4 after Story 3.5 is implemented.
 
 ## Stop Reason
 
 - Stopped after completing the requested Story 3.4.
-- The next pending item, Story 3.5, remains `backlog` in `sprint-status.yaml` and does not have a ready-for-dev story file yet.
+- Story 3.5 has been prepared as ready-for-dev, but implementation has not started.
+- Independent Story 3.4 review found one P2 cancellation issue to address before or during Story 3.5 implementation.
 
 ## Commits Created
 
@@ -97,11 +98,12 @@
 - Mobile visual and screen-reader behavior for the new reminder form was not manually device-tested.
 - UI component rendering is indirectly covered because the current Jest config only matches `.test.ts` files.
 - `.claude/worktrees/` remains untracked and was not committed.
-- Story 3.5 missed-task/reminder recovery remains backlog and should be specified before implementation.
+- Story 3.4 independent code review found a P2 issue: denied/unavailable/local-only reminder transitions can soft-delete local notification rows before platform cancellation.
+- Story 3.5 missed-task/reminder recovery is ready-for-dev but not implemented.
 
 ## What I Should Do Next When I Wake Up
 
-- Review Story 3.4 commit `6d6989f` and self-review report `docs/automation-reports/story-3.4-review.md`.
-- Create Story 3.5 as ready-for-dev before implementation.
-- For Story 3.5, specify missed-task and missed-reminder recovery semantics without changing the Story 3.4 timing-control contracts.
+- Review Story 3.4 commit `6d6989f`, self-review report `docs/automation-reports/story-3.4-review.md`, and independent review `docs/automation-reports/story-3.4-code-review.md`.
+- Fix the Story 3.4 P2 cancellation issue before implementing Story 3.5 recovery behavior.
+- Implement Story 3.5 from `_bmad-output/implementation-artifacts/3-5-recover-from-missed-tasks-and-reminders.md`.
 - Continue on branch `auto/codex-overnight-1`.
