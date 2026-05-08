@@ -355,6 +355,38 @@ describe('period review summary', () => {
     });
   });
 
+  it('uses corrected receipt money records for period and budget summaries', () => {
+    const period = resolveWeeklySummaryPeriod('2026-05-08');
+
+    expect(period.ok).toBe(true);
+    if (!period.ok) {
+      return;
+    }
+
+    const correctedReceipt = createMoneyRecord({
+      amountMinor: 3200,
+      id: 'corrected-receipt' as never,
+      source: 'receipt',
+      sourceOfTruth: 'manual',
+      userCorrectedAt: '2026-05-08T09:00:00.000Z',
+    });
+    const summary = calculateForPeriod(period.value, {
+      budgetPeriodMoneyRecords: [correctedReceipt],
+      budgetRules: createBudgetRules(),
+      moneyRecords: [correctedReceipt],
+    });
+
+    expect(summary.money).toMatchObject({
+      expenseAmountMinor: 3200,
+      receiptExpenseAmountMinor: 3200,
+      receiptExpenseCount: 1,
+      recordCount: 1,
+    });
+    expect(summary.budget.budgetStatus).toMatchObject({
+      remainingMinor: 46800,
+    });
+  });
+
   it('returns neutral empty and partial states when no source data exists', () => {
     const period = resolveMonthlySummaryPeriod('2026-05-08');
 

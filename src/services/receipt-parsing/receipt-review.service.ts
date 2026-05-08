@@ -30,6 +30,7 @@ import { createAppError } from '@/domain/common/app-error';
 import { asEntityId, type EntityId } from '@/domain/common/ids';
 import { err, isErr, ok, type AppResult } from '@/domain/common/result';
 import type { MoneyRecord } from '@/domain/money/types';
+import { resolveReceiptReviewMoneyProvenance } from '@/domain/money/provenance';
 import type { UserPreferences } from '@/domain/preferences/types';
 import {
   type ReceiptReviewDraft,
@@ -434,6 +435,10 @@ export async function saveCorrectedReceiptExpense(
 
   const timestamp = access.value.now.toISOString();
   const moneyRecordId = (dependencies.createMoneyRecordId ?? defaultCreateMoneyRecordId)(draft.value.id);
+  const provenance = resolveReceiptReviewMoneyProvenance({
+    corrected: validated.value.corrected,
+    timestamp,
+  });
   const record = await access.value.moneyRecordRepository.createManualRecord({
     amountMinor: validated.value.amountMinor,
     categoryId: activeCategory.value,
@@ -448,10 +453,10 @@ export async function saveCorrectedReceiptExpense(
     recurrenceOccurrenceDate: null,
     recurrenceRuleId: null,
     source: 'receipt',
-    sourceOfTruth: 'manual',
+    sourceOfTruth: provenance.sourceOfTruth,
     topicIds: activeTopics.value,
     updatedAt: timestamp,
-    userCorrectedAt: validated.value.corrected ? timestamp : null,
+    userCorrectedAt: provenance.userCorrectedAt,
     workspaceId: localWorkspaceId,
   });
 

@@ -256,6 +256,36 @@ describe('end-of-day review summary', () => {
     ]);
   });
 
+  it('uses corrected receipt money records for end-of-day review totals and activity', () => {
+    const correctedReceipt = createMoneyRecord({
+      amountMinor: 2100,
+      id: 'corrected-receipt' as never,
+      merchantOrSource: 'Corrected bookstore' as never,
+      source: 'receipt',
+      sourceOfTruth: 'manual',
+      userCorrectedAt: '2026-05-08T09:00:00.000Z',
+    });
+    const summary = calculateEndOfDayReviewSummary({
+      localDate: '2026-05-08' as never,
+      moneyRecords: [correctedReceipt],
+      recoveryItems: [],
+      reminders: [],
+      taskRecurrenceOccurrences: [],
+      tasks: [],
+      workEntries: [],
+    });
+
+    expect(summary.money).toMatchObject({
+      expenseAmountMinor: 2100,
+      expenseCount: 1,
+      totalCount: 1,
+    });
+    expect(summary.activity[0]).toMatchObject({
+      id: 'corrected-receipt',
+      title: 'Corrected bookstore',
+    });
+  });
+
   it('caps review lists and activity to bounded sizes', () => {
     const summary = calculateEndOfDayReviewSummary({
       localDate: '2026-05-08' as never,

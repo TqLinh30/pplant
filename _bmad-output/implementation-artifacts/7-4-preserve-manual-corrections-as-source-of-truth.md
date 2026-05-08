@@ -1,6 +1,6 @@
 # Story 7.4: Preserve Manual Corrections As Source Of Truth
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -18,40 +18,40 @@ so that Pplant respects what I actually fixed.
 
 ## Tasks / Subtasks
 
-- [ ] Tighten receipt review provenance semantics. (AC: 1, 2, 3)
-  - [ ] Save an accepted parsed receipt as `source: receipt`, `sourceOfTruth: parsed`, and `userCorrectedAt: null` when the user saves without changing parsed fields.
-  - [ ] Save a manually corrected receipt as `source: receipt`, `sourceOfTruth: manual`, and `userCorrectedAt` set to the save timestamp when any field or line-item review choice is changed.
-  - [ ] Keep the existing receipt draft, parse job, and money record linkage behavior intact.
-  - [ ] Do not create a per-field provenance table unless implementation proves the current record-level provenance cannot satisfy the story.
+- [x] Tighten receipt review provenance semantics. (AC: 1, 2, 3)
+  - [x] Save an accepted parsed receipt as `source: receipt`, `sourceOfTruth: parsed`, and `userCorrectedAt: null` when the user saves without changing parsed fields.
+  - [x] Save a manually corrected receipt as `source: receipt`, `sourceOfTruth: manual`, and `userCorrectedAt` set to the save timestamp when any field or line-item review choice is changed.
+  - [x] Keep the existing receipt draft, parse job, and money record linkage behavior intact.
+  - [x] Do not create a per-field provenance table unless implementation proves the current record-level provenance cannot satisfy the story.
 
-- [ ] Centralize manual-correction precedence checks for money records. (AC: 1, 2, 3)
-  - [ ] Add a small domain helper for resolving money record provenance from receipt review save payloads and/or asserting that existing manual corrections must not be replaced by parsed values.
-  - [ ] Ensure manual edits to receipt-sourced records keep `source: receipt` while switching or staying `sourceOfTruth: manual`.
-  - [ ] Ensure recurring/manual money creation remains `sourceOfTruth: manual`.
-  - [ ] Keep money values in integer minor units and preserve current category/topic validation.
+- [x] Centralize manual-correction precedence checks for money records. (AC: 1, 2, 3)
+  - [x] Add a small domain helper for resolving money record provenance from receipt review save payloads and/or asserting that existing manual corrections must not be replaced by parsed values.
+  - [x] Ensure manual edits to receipt-sourced records keep `source: receipt` while switching or staying `sourceOfTruth: manual`.
+  - [x] Ensure recurring/manual money creation remains `sourceOfTruth: manual`.
+  - [x] Keep money values in integer minor units and preserve current category/topic validation.
 
-- [ ] Prove summaries and review calculations use corrected source records only. (AC: 2, 3)
-  - [ ] Add or update summary/review tests with receipt-sourced records where parsed values differ from later manual corrections.
-  - [ ] Verify Today, period review, end-of-day review, and money history calculations read the saved `money_records` values and never recompute from parse job JSON.
-  - [ ] Do not add summary snapshot persistence or new cache invalidation tables in this story.
+- [x] Prove summaries and review calculations use corrected source records only. (AC: 2, 3)
+  - [x] Add or update summary/review tests with receipt-sourced records where parsed values differ from later manual corrections.
+  - [x] Verify Today, period review, end-of-day review, and money history calculations read the saved `money_records` values and never recompute from parse job JSON.
+  - [x] Do not add summary snapshot persistence or new cache invalidation tables in this story.
 
-- [ ] Prove migrations preserve manual correction fields. (AC: 2, 3)
-  - [ ] Add migration tests that assert `source_of_truth` and `user_corrected_at` survive later migrations/recalculation setup.
-  - [ ] Do not add destructive migrations or rewrite existing migration history.
-  - [ ] Do not mutate existing money record source/provenance during migration.
+- [x] Prove migrations preserve manual correction fields. (AC: 2, 3)
+  - [x] Add migration tests that assert `source_of_truth` and `user_corrected_at` survive later migrations/recalculation setup.
+  - [x] Do not add destructive migrations or rewrite existing migration history.
+  - [x] Do not mutate existing money record source/provenance during migration.
 
-- [ ] Preserve privacy, architecture, and story boundaries. (AC: 1, 2, 3)
-  - [ ] Do not log merchant, amount, dates, notes, OCR text, receipt image URI, line items, or corrected values to diagnostics.
-  - [ ] Do not add cloud sync, account auth, backend APIs, external OCR providers, or conflict-resolution services.
-  - [ ] Do not implement Story 7.5 diagnostics/benchmark fixtures early.
-  - [ ] Keep UI route files thin and keep SQLite access inside repositories/services.
+- [x] Preserve privacy, architecture, and story boundaries. (AC: 1, 2, 3)
+  - [x] Do not log merchant, amount, dates, notes, OCR text, receipt image URI, line items, or corrected values to diagnostics.
+  - [x] Do not add cloud sync, account auth, backend APIs, external OCR providers, or conflict-resolution services.
+  - [x] Do not implement Story 7.5 diagnostics/benchmark fixtures early.
+  - [x] Keep UI route files thin and keep SQLite access inside repositories/services.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Add receipt review service/domain tests for accepted parsed saves vs corrected saves.
-  - [ ] Add money service/repository tests for manual edit precedence on receipt-sourced rows.
-  - [ ] Add summary/history/review tests for corrected values taking precedence.
-  - [ ] Add migration preservation tests for correction metadata.
-  - [ ] Run `npm run typecheck -- --pretty false`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Add receipt review service/domain tests for accepted parsed saves vs corrected saves.
+  - [x] Add money service/repository tests for manual edit precedence on receipt-sourced rows.
+  - [x] Add summary/history/review tests for corrected values taking precedence.
+  - [x] Add migration preservation tests for correction metadata.
+  - [x] Run `npm run typecheck -- --pretty false`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -154,16 +154,35 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-09: Created Story 7.4 ready-for-dev from Epic 7, PRD FR50, architecture provenance guidance, UX correction trust guidance, and completed Stories 2.2, 5.3, 6.1, and 7.3.
+- 2026-05-09: Started implementation. Plan: add provenance helper, update receipt review save semantics, add regression tests for accepted parsed vs corrected saves, money edits, summaries/history/reviews, and migration preservation.
+- 2026-05-09: Completed implementation and verification. Focused Story 7.4 suites, full Jest, typecheck, lint, Expo dependency check, build-if-present, and whitespace check passed.
 
 ### Completion Notes List
 
-- Pending implementation.
+- Added `resolveReceiptReviewMoneyProvenance` so accepted parsed receipt saves remain `sourceOfTruth: parsed` with no correction timestamp, while changed review saves become `sourceOfTruth: manual` with `userCorrectedAt`.
+- Updated receipt review save orchestration to use the shared provenance helper without changing draft, parse job, or saved money record linkage behavior.
+- Added regression coverage for accepted parsed saves, corrected saves, ignored line-item total-only saves, corrected receipt values in Today, period review, end-of-day review, and money history, plus migration preservation of correction metadata.
+- Preserved existing money edit behavior: receipt-sourced records keep `source: receipt` and become manual source-of-truth when edited.
+- No schema migration, diagnostics expansion, cloud sync, auth, backend, external OCR, or Story 7.5 benchmark fixture work was added.
+- Full verification passed: typecheck, lint, Jest, Expo install check, build-if-present, and `git diff --check`.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/7-4-preserve-manual-corrections-as-source-of-truth.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-7.4-review.md`
+- `src/data/db/migrations/migrate.test.ts`
+- `src/domain/money/provenance.test.ts`
+- `src/domain/money/provenance.ts`
+- `src/domain/summaries/end-of-day-review.test.ts`
+- `src/domain/summaries/period-summary.test.ts`
+- `src/domain/summaries/today-summary.test.ts`
+- `src/services/money/money-history.service.test.ts`
+- `src/services/receipt-parsing/receipt-review.service.test.ts`
+- `src/services/receipt-parsing/receipt-review.service.ts`
 
 ## Change Log
 
 - 2026-05-09: Created Story 7.4 ready-for-dev.
+- 2026-05-09: Started implementation.
+- 2026-05-09: Completed manual correction source-of-truth hardening and marked story done.

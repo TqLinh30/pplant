@@ -222,6 +222,28 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS reflection_insight_preferences');
   });
 
+  it('keeps money correction provenance additive through later migrations', async () => {
+    const client = new FakeMigrationClient();
+
+    const result = await migrateDatabase({ $client: client }, fixedNow);
+
+    expect(result.ok).toBe(true);
+    const applied = result.ok ? result.value.appliedMigrations : [];
+    expect(applied.indexOf(moneyRecordCorrectionsMigrationId)).toBeGreaterThan(
+      applied.indexOf(moneyRecordsMigrationId),
+    );
+    expect(applied.indexOf(recurringMoneyMigrationId)).toBeGreaterThan(
+      applied.indexOf(moneyRecordCorrectionsMigrationId),
+    );
+
+    const sql = client.executedSql.join('\n');
+    expect(sql).toContain('source_of_truth TEXT NOT NULL');
+    expect(sql).toContain('ALTER TABLE money_records ADD COLUMN user_corrected_at TEXT');
+    expect(sql).not.toMatch(/UPDATE\s+money_records[\s\S]*source_of_truth/i);
+    expect(sql).not.toMatch(/UPDATE\s+money_records[\s\S]*user_corrected_at/i);
+    expect(sql).not.toMatch(/user_corrected_at\s*=\s*NULL/i);
+  });
+
   it('returns a retryable local error when migration setup fails', async () => {
     const client = new FakeMigrationClient();
     client.failOnExec = true;

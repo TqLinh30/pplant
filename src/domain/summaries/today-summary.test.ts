@@ -292,6 +292,43 @@ describe('today overview summary', () => {
     expect(summary.recentActivity.map((item) => item.kind)).toEqual(['money', 'money', 'work', 'task']);
   });
 
+  it('uses saved manual-corrected receipt record values as the Today source of truth', () => {
+    const correctedReceipt = createMoneyRecord({
+      amountMinor: 1750,
+      id: 'corrected-receipt' as never,
+      merchantOrSource: 'Corrected campus store' as never,
+      source: 'receipt',
+      sourceOfTruth: 'manual',
+      userCorrectedAt: '2026-05-08T09:00:00.000Z',
+    });
+    const summary = calculateTodayOverviewSummary({
+      budgetPeriod: {
+        endDateExclusive: '2026-06-01' as never,
+        startDate: '2026-05-01' as never,
+      },
+      budgetPeriodMoneyRecords: [correctedReceipt],
+      budgetRules: createBudgetRules(),
+      localDate: '2026-05-08' as never,
+      recoveryItems: [],
+      reminders: [],
+      savingsGoals: [],
+      taskRecurrenceOccurrences: [],
+      tasks: [],
+      todayMoneyRecords: [correctedReceipt],
+      workEntries: [],
+    });
+
+    expect(summary.money).toMatchObject({
+      expenseAmountMinor: 1750,
+      recordCount: 1,
+    });
+    expect(summary.budget.budgetStatus?.remainingMinor).toBe(250);
+    expect(summary.recentActivity[0]).toMatchObject({
+      id: 'corrected-receipt',
+      title: 'Corrected campus store',
+    });
+  });
+
   it('caps task, reminder, recovery, and recent activity lists', () => {
     const summary = calculateTodayOverviewSummary({
       budgetPeriod: {

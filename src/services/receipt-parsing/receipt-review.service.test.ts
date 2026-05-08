@@ -349,6 +349,48 @@ describe('receipt review service', () => {
     }
   });
 
+  it('saves accepted parsed receipt values as parsed source of truth', async () => {
+    const moneyRepository = new FakeMoneyRecordRepository();
+    const captureRepository = new FakeCaptureDraftRepository();
+    const jobRepository = new FakeReceiptParseJobRepository();
+    const loaded = await loadReceiptReviewData(
+      { receiptDraftId: 'draft-receipt' },
+      dependencies({
+        captureDraftRepository: captureRepository,
+        moneyRecordRepository: moneyRepository,
+        receiptParseJobRepository: jobRepository,
+      }),
+    );
+
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) {
+      return;
+    }
+
+    const result = await saveCorrectedReceiptExpense(
+      {
+        parseJobId: loaded.value.parseJob.id,
+        receiptDraftId: loaded.value.draft.id,
+        reviewDraft: loaded.value.reviewDraft,
+      },
+      dependencies({
+        captureDraftRepository: captureRepository,
+        moneyRecordRepository: moneyRepository,
+        receiptParseJobRepository: jobRepository,
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(moneyRepository.records).toHaveLength(1);
+    if (result.ok) {
+      expect(result.value.record.amountMinor).toBe(1200);
+      expect(result.value.record.source).toBe('receipt');
+      expect(result.value.record.sourceOfTruth).toBe('parsed');
+      expect(result.value.record.userCorrectedAt).toBeNull();
+      expect(result.value.parseJob.normalizedResult?.totalMinor.value).toBe(1200);
+    }
+  });
+
   it('allows total-only save when line items are ignored', async () => {
     const moneyRepository = new FakeMoneyRecordRepository();
     const loaded = await loadReceiptReviewData(
@@ -378,6 +420,8 @@ describe('receipt review service', () => {
     if (result.ok) {
       expect(result.value.ignoredLineItems).toBe(true);
       expect(result.value.record.amountMinor).toBe(1200);
+      expect(result.value.record.sourceOfTruth).toBe('manual');
+      expect(result.value.record.userCorrectedAt).toBe(fixedNow.toISOString());
     }
   });
 

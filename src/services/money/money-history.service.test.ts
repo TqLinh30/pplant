@@ -191,6 +191,35 @@ describe('money history service', () => {
     }
   });
 
+  it('preserves corrected receipt provenance and summarizes the corrected saved value', async () => {
+    const correctedReceipt = createRecord({
+      amountMinor: 2350,
+      id: 'corrected-receipt',
+      merchantOrSource: 'Corrected bookstore',
+      source: 'receipt',
+      sourceOfTruth: 'manual',
+      userCorrectedAt: fixedNow.toISOString(),
+    });
+    const { dependencies } = createDependencies({ records: [correctedReceipt] });
+
+    const result = await loadMoneyHistory({ summaryMode: 'day' }, dependencies);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.records[0]).toMatchObject({
+        amountMinor: 2350,
+        id: 'corrected-receipt',
+        source: 'receipt',
+        sourceOfTruth: 'manual',
+        userCorrectedAt: fixedNow.toISOString(),
+      });
+      expect(result.value.summaries[0]).toMatchObject({
+        expenseAmountMinor: 2350,
+        recordCount: 1,
+      });
+    }
+  });
+
   it('validates filters before querying records', async () => {
     const { dependencies, listHistoryRecords } = createDependencies();
 
