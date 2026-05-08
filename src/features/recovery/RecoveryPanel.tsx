@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import type { RecoveryTargetKind } from '@/domain/recovery/types';
 import { RecoveryActions } from '@/ui/components/RecoveryActions';
 import { ListRow } from '@/ui/primitives/ListRow';
 import { StatusBanner } from '@/ui/primitives/StatusBanner';
@@ -13,10 +15,24 @@ import {
   recoveryPanelDescription,
   recoveryPanelTitle,
 } from './recovery-copy';
+import { useRecoveryHandoff } from './recovery-handoff';
 import { useRecovery } from './useRecovery';
 
-export function RecoveryPanel() {
+type RecoveryPanelProps = {
+  targetKinds?: RecoveryTargetKind[];
+};
+
+export function RecoveryPanel({ targetKinds }: RecoveryPanelProps = {}) {
   const { runAction, state } = useRecovery();
+  const { startHandoff } = useRecoveryHandoff();
+
+  useEffect(() => {
+    if (!state.editingTarget || (state.lastAction !== 'edit' && state.lastAction !== 'reschedule')) {
+      return;
+    }
+
+    startHandoff(state.editingTarget, state.lastAction);
+  }, [startHandoff, state.editingTarget, state.lastAction]);
 
   if (state.status === 'loading') {
     return (
@@ -37,7 +53,9 @@ export function RecoveryPanel() {
     );
   }
 
-  if (state.items.length === 0) {
+  const items = targetKinds ? state.items.filter((item) => targetKinds.includes(item.targetKind)) : state.items;
+
+  if (items.length === 0) {
     return null;
   }
 
@@ -54,7 +72,7 @@ export function RecoveryPanel() {
           tone="warning"
         />
       ) : null}
-      {state.items.map((item) => {
+      {items.map((item) => {
         const copy = getRecoveryItemCopy(item);
 
         return (

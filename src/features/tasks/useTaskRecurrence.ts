@@ -582,6 +582,8 @@ export function useTaskRecurrence(services: TaskRecurrenceServices = {}) {
     [refreshAfterAction, skipOccurrence],
   );
 
+  const startEdit = useCallback((view: TaskRecurrenceRuleView) => dispatch({ type: 'edit_started', view }), []);
+
   useEffect(() => {
     isMounted.current = true;
     reload();
@@ -605,7 +607,7 @@ export function useTaskRecurrence(services: TaskRecurrenceServices = {}) {
     setKind: (kind: TaskRecurrenceKind) => dispatch({ kind, type: 'kind_changed' }),
     setPriority: (priority: TaskPriority) => dispatch({ priority, type: 'priority_changed' }),
     skipNextOccurrence,
-    startEdit: (view: TaskRecurrenceRuleView) => dispatch({ type: 'edit_started', view }),
+    startEdit,
     state,
     stopRule: (id: string) => runRuleAction(id, 'stopped', stopRule),
     toggleTopic: (topicId: string) => dispatch({ topicId, type: 'topic_toggled' }),

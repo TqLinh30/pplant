@@ -424,6 +424,8 @@ export function useTaskCapture(services: TaskCaptureServices = {}) {
     });
   }, [deleteTaskDependency, state.editingTaskId]);
 
+  const startEdit = useCallback((task: Task) => dispatch({ task, type: 'edit_started' }), []);
+
   useEffect(() => {
     isMounted.current = true;
     reload();
@@ -441,7 +443,7 @@ export function useTaskCapture(services: TaskCaptureServices = {}) {
     selectCategory: (categoryId: string | null) => dispatch({ categoryId, type: 'category_selected' }),
     setPriority: (priority: TaskPriority) => dispatch({ priority, type: 'priority_changed' }),
     setState: (taskState: TaskState) => dispatch({ state: taskState, type: 'state_changed' }),
-    startEdit: (task: Task) => dispatch({ task, type: 'edit_started' }),
+    startEdit,
     state,
     toggleTopic: (topicId: string) => dispatch({ topicId, type: 'topic_toggled' }),
     updateField: (field: 'deadlineLocalDate' | 'notes' | 'title', value: string) =>

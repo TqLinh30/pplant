@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import type { RecurrenceFrequency } from '@/domain/recurrence/types';
@@ -15,6 +16,7 @@ import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
+import { isRecoveryHandoffForTarget, useRecoveryHandoff } from '../recovery/recovery-handoff';
 import { useTaskRecurrence } from './useTaskRecurrence';
 
 const kindOptions: { label: string; value: TaskRecurrenceKind }[] = [
@@ -65,8 +67,27 @@ function formatOccurrenceState(occurrence: TaskRecurrenceOccurrence): string {
 export function TaskRecurrenceForm() {
   const recurrence = useTaskRecurrence();
   const { state } = recurrence;
+  const startEdit = recurrence.startEdit;
+  const { consumeHandoff, handoff } = useRecoveryHandoff();
   const saving = state.status === 'saving';
   const isEditing = state.editingRuleId !== null;
+
+  useEffect(() => {
+    if (!handoff) {
+      return;
+    }
+
+    const view = state.rules.find((item) =>
+      isRecoveryHandoffForTarget(handoff, 'task_recurrence_occurrence', item.rule.id, ['edit']),
+    );
+
+    if (!view) {
+      return;
+    }
+
+    startEdit(view);
+    consumeHandoff(handoff.sequence);
+  }, [consumeHandoff, handoff, startEdit, state.rules]);
 
   if (state.status === 'loading') {
     return (

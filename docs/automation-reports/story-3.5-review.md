@@ -27,12 +27,20 @@
 - `src/domain/recovery/schemas.ts`
 - `src/domain/recovery/types.ts`
 - `src/features/recovery/RecoveryPanel.tsx`
+- `src/features/recovery/recovery-handoff.tsx`
+- `src/features/recovery/recovery-handoff.test.ts`
 - `src/features/recovery/recovery-copy.ts`
 - `src/features/recovery/recovery-copy.test.ts`
 - `src/features/recovery/useRecovery.ts`
 - `src/features/recovery/useRecovery.test.ts`
+- `src/features/reminders/ReminderForm.tsx`
 - `src/features/reminders/ReminderRouteScreen.tsx`
+- `src/features/reminders/useReminderCapture.ts`
+- `src/features/tasks/TaskForm.tsx`
+- `src/features/tasks/TaskRecurrenceForm.tsx`
 - `src/features/tasks/TaskRouteScreen.tsx`
+- `src/features/tasks/useTaskCapture.ts`
+- `src/features/tasks/useTaskRecurrence.ts`
 - `src/services/recovery/recovery.service.ts`
 - `src/services/recovery/recovery.service.test.ts`
 
@@ -52,10 +60,12 @@
 - Updated reminder repository tests for marking overdue notification rows missed.
 - Added recovery service tests for missed detection, event recording, source updates, and hidden resolved items.
 - Added recovery hook reducer and neutral-copy tests.
+- Added recovery handoff matching tests for edit/reschedule routing.
 
 ## Commands Run
 
 - `npm test -- --runTestsByPath src/domain/recovery/recovery.test.ts src/data/repositories/recovery.repository.test.ts src/data/repositories/reminders.repository.test.ts src/services/recovery/recovery.service.test.ts src/features/recovery/useRecovery.test.ts src/features/recovery/recovery-copy.test.ts src/data/db/migrations/migrate.test.ts`
+- `npm test -- --runTestsByPath src/features/recovery/recovery-handoff.test.ts src/features/recovery/useRecovery.test.ts src/features/tasks/useTaskCapture.test.ts src/features/tasks/useTaskRecurrence.test.ts src/features/reminders/useReminderCapture.test.ts`
 - `npm run typecheck`
 - `npm run lint`
 - `npm test`
@@ -76,15 +86,16 @@
 - Repository code owns SQLite persistence and parsing boundaries.
 - Service code orchestrates existing task recurrence and reminder actions instead of duplicating scheduling logic.
 - React components consume hook/service state and do not import SQLite, migrations, repositories, or notification adapters.
+- Edit/reschedule recovery routing is handled at the feature layer through a provider and existing edit hooks, without duplicating scheduling or task update logic.
 - Story 4 Today overview was not implemented early; the recovery panel is only mounted on existing task/reminder route surfaces.
 
 ## Known Risks
 
 - Native notification delivery behavior still needs real device/emulator validation.
 - The reusable recovery panel is mounted in route surfaces but not visually verified with screenshots in this pass.
-- Reschedule/edit actions expose/record handoff state; richer form handoff UX can be refined when Story 4 Today surfaces consume recovery items.
+- Reschedule/edit actions now open existing edit surfaces; richer visual affordances can be refined when Story 4 Today surfaces consume recovery items.
 - `.claude/worktrees/` remains untracked and was not committed.
 
 ## Final Verdict
 
-APPROVED_WITH_MINOR_NOTES
+APPROVED

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import type {
@@ -14,6 +15,7 @@ import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
+import { isRecoveryHandoffForTarget, useRecoveryHandoff } from '../recovery/recovery-handoff';
 import { useReminderCapture, type ReminderCaptureMutation } from './useReminderCapture';
 
 const ownerOptions: { label: string; value: ReminderOwnerKind }[] = [
@@ -127,7 +129,26 @@ function savedMutationTitle(lastMutation: ReminderCaptureMutation | null): strin
 export function ReminderForm() {
   const reminders = useReminderCapture();
   const { state } = reminders;
+  const startEdit = reminders.startEdit;
+  const { consumeHandoff, handoff } = useRecoveryHandoff();
   const saving = state.status === 'saving';
+
+  useEffect(() => {
+    if (!handoff) {
+      return;
+    }
+
+    const view = state.reminders.find((item) =>
+      isRecoveryHandoffForTarget(handoff, 'reminder_occurrence', item.reminder.id),
+    );
+
+    if (!view) {
+      return;
+    }
+
+    startEdit(view);
+    consumeHandoff(handoff.sequence);
+  }, [consumeHandoff, handoff, startEdit, state.reminders]);
 
   if (state.status === 'loading') {
     return (

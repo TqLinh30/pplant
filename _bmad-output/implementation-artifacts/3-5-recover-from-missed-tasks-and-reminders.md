@@ -1,6 +1,6 @@
 # Story 3.5: Recover From Missed Tasks And Reminders
 
-Status: review
+Status: done
 
 ## Story
 
@@ -68,7 +68,7 @@ so that I can continue without feeling punished.
 
 ### Review Findings
 
-- [ ] [Review][Patch] Edit/reschedule recovery actions resolve the prompt without performing recovery [src/features/recovery/useRecovery.ts:186] — `edit` and `reschedule` currently call `recordHandoff`, which records a recovery event and reloads the recovery list. Because `RecoveryPanel` ignores `state.editingTarget` and no task, recurrence, or reminder form consumes the handoff, the prompt can disappear as resolved without opening an edit surface or updating the source task/reminder state. This violates AC3 and the story requirement to route edit/reschedule into existing edit/update flows.
+- [x] [Review][Patch] Edit/reschedule recovery actions resolve the prompt without performing recovery [src/features/recovery/useRecovery.ts:186] — Resolved by adding a recovery handoff provider, routing successful edit/reschedule handoffs into task, recurrence, and reminder edit surfaces, filtering reminder-route recovery prompts to reminder targets, and adding focused handoff matching tests.
 
 ## Dev Notes
 
@@ -191,6 +191,8 @@ GPT-5 Codex.
 - 2026-05-08: Resolved Story 3.4 notification cleanup finding in commit `e7ee971`; code review report updated in `521e2ae`.
 - 2026-05-08: Added recovery domain rules, migration 012, recovery repository, recovery service, hook state, compact UI panel, and focused tests.
 - 2026-05-08: Verification passed: `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- 2026-05-08: Addressed independent Story 3.5 review finding for edit/reschedule handoff routing.
+- 2026-05-08: Re-verification passed: focused recovery/form tests, `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ### Completion Notes List
 
@@ -199,6 +201,8 @@ GPT-5 Codex.
 - Recovery loading detects overdue daily tasks, virtual recurring task/habit occurrences, overdue reminder notifications, and non-active reminder schedule states.
 - Recovery actions update source data where applicable and append outcome events for later Today/Review surfaces.
 - A reusable `RecoveryPanel` is mounted on task and reminder route surfaces with neutral text and existing 44 px-safe primitives.
+- Edit and reschedule recovery actions now route into existing task, recurring task/habit, and reminder edit surfaces through a feature-level handoff provider.
+- Independent re-review approved Story 3.5 after the handoff fix.
 
 ### File List
 
@@ -222,12 +226,20 @@ GPT-5 Codex.
 - `src/domain/recovery/schemas.ts`
 - `src/domain/recovery/types.ts`
 - `src/features/recovery/RecoveryPanel.tsx`
+- `src/features/recovery/recovery-handoff.tsx`
+- `src/features/recovery/recovery-handoff.test.ts`
 - `src/features/recovery/recovery-copy.ts`
 - `src/features/recovery/recovery-copy.test.ts`
 - `src/features/recovery/useRecovery.ts`
 - `src/features/recovery/useRecovery.test.ts`
+- `src/features/reminders/ReminderForm.tsx`
 - `src/features/reminders/ReminderRouteScreen.tsx`
+- `src/features/reminders/useReminderCapture.ts`
+- `src/features/tasks/TaskForm.tsx`
+- `src/features/tasks/TaskRecurrenceForm.tsx`
 - `src/features/tasks/TaskRouteScreen.tsx`
+- `src/features/tasks/useTaskCapture.ts`
+- `src/features/tasks/useTaskRecurrence.ts`
 - `src/services/recovery/recovery.service.ts`
 - `src/services/recovery/recovery.service.test.ts`
 
@@ -236,3 +248,4 @@ GPT-5 Codex.
 - 2026-05-08: Created Story 3.5 ready-for-dev from Epic 3 recovery requirements, PRD/architecture/UX context, and Story 3.4 implementation review.
 - 2026-05-08: Started implementation and recorded resolved Story 3.4 notification cleanup prerequisite.
 - 2026-05-08: Implemented missed task/reminder recovery and moved story to review.
+- 2026-05-08: Resolved independent review finding for edit/reschedule handoff routing and moved story to done.

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import type { TaskPriority, TaskState } from '@/domain/tasks/types';
@@ -11,6 +12,7 @@ import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
 import { ReminderForm } from '../reminders/ReminderForm';
+import { isRecoveryHandoffForTarget, useRecoveryHandoff } from '../recovery/recovery-handoff';
 import { useTaskCapture } from './useTaskCapture';
 import { TaskRecurrenceForm } from './TaskRecurrenceForm';
 
@@ -40,8 +42,27 @@ function formatTaskState(state: TaskState): string {
 export function TaskForm() {
   const tasks = useTaskCapture();
   const { state } = tasks;
+  const startEdit = tasks.startEdit;
+  const { consumeHandoff, handoff } = useRecoveryHandoff();
   const saving = state.status === 'saving';
   const isEditing = state.editingTaskId !== null;
+
+  useEffect(() => {
+    if (!handoff) {
+      return;
+    }
+
+    const task = state.recentTasks.find((item) =>
+      isRecoveryHandoffForTarget(handoff, 'task', item.id, ['edit']),
+    );
+
+    if (!task) {
+      return;
+    }
+
+    startEdit(task);
+    consumeHandoff(handoff.sequence);
+  }, [consumeHandoff, handoff, startEdit, state.recentTasks]);
 
   if (state.status === 'loading') {
     return (

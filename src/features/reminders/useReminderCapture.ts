@@ -678,6 +678,8 @@ export function useReminderCapture(services: ReminderCaptureServices = {}) {
     [deleteReminderDependency, runReminderMutation],
   );
 
+  const startEdit = useCallback((view: ReminderRuleView) => dispatch({ type: 'edit_started', view }), []);
+
   useEffect(() => {
     isMounted.current = true;
     reload();
@@ -705,7 +707,7 @@ export function useReminderCapture(services: ReminderCaptureServices = {}) {
     setOwnerKind: (ownerKind: ReminderOwnerKind) => dispatch({ ownerKind, type: 'owner_changed' }),
     skipNextOccurrence,
     snoozeNextOccurrence,
-    startEdit: (view: ReminderRuleView) => dispatch({ type: 'edit_started', view }),
+    startEdit,
     state,
     updateField: (
       field: 'endsOnLocalDate' | 'notes' | 'reminderLocalTime' | 'skipLocalDate' | 'startsOnLocalDate' | 'title',
