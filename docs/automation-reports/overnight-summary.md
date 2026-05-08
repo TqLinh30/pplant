@@ -25,7 +25,7 @@
 - Story 3.2: Manage Recurring Tasks And Habits. Commit: `2294db0 feat: complete story 3.2 - recurring tasks and habits`
 - Story 3.3: Create Deadline And Repeat Reminders. Commit: `2ec9c65 feat: complete story 3.3 - deadline and repeat reminders`
 - Story 3.4: Control Reminder Timing And Reminder Fatigue. Commit: `6d6989f feat: complete story 3.4 - reminder timing controls`
-- Story 3.5: Recover From Missed Tasks And Reminders. Commit: `cc99922 feat: complete story 3.5 - recovery actions`
+- Story 3.5: Recover From Missed Tasks And Reminders. Commits: `cc99922 feat: complete story 3.5 - recovery actions`, `10651cb fix: address story 3.5 recovery handoff`
 
 ## Stories Skipped
 
@@ -33,8 +33,8 @@
 
 ## Stop Reason
 
-- Stopped after completing Story 3.5 and moving it to `review`.
-- Independent Story 3.5 self-review verdict is `APPROVED_WITH_MINOR_NOTES`.
+- Stopped after completing Story 3.5, resolving the independent review finding, and marking it `done`.
+- Independent Story 3.5 re-review verdict is `APPROVED`.
 
 ## Commits Created
 
@@ -60,6 +60,8 @@
 - `e7ee971 fix: address story 3.4 notification cleanup`
 - `521e2ae docs: record story 3.4 review resolution`
 - `cc99922 feat: complete story 3.5 - recovery actions`
+- `50403cc docs: record story 3.5 independent review`
+- `10651cb fix: address story 3.5 recovery handoff`
 
 ## Commands Run
 
@@ -86,6 +88,7 @@
 - Focused Story 3.5 checks:
   - `npm test -- --runTestsByPath src/domain/recovery/recovery.test.ts src/data/repositories/recovery.repository.test.ts src/data/repositories/reminders.repository.test.ts src/services/recovery/recovery.service.test.ts src/features/recovery/useRecovery.test.ts src/features/recovery/recovery-copy.test.ts src/data/db/migrations/migrate.test.ts`
   - `npm test -- --runTestsByPath src/services/recovery/recovery.service.test.ts`
+  - `npm test -- --runTestsByPath src/features/recovery/recovery-handoff.test.ts src/features/recovery/useRecovery.test.ts src/features/tasks/useTaskCapture.test.ts src/features/tasks/useTaskRecurrence.test.ts src/features/reminders/useReminderCapture.test.ts`
 
 ## Test Results
 
@@ -95,6 +98,8 @@
 - Story 3.4 final verification passed after the P2 fix: 51 suites, 269 tests.
 - Story 3.5 focused verification passed: 7 suites, 26 tests.
 - Story 3.5 final verification passed: 56 suites, 286 tests.
+- Story 3.5 handoff fix focused verification passed: 5 suites, 16 tests.
+- Story 3.5 handoff fix final verification passed: 57 suites, 288 tests.
 - `npm run typecheck`: passed.
 - `npm run lint`: passed.
 - `npx expo install --check`: passed.
@@ -109,11 +114,10 @@
 - UI component rendering is indirectly covered because the current Jest config only matches `.test.ts` files.
 - `.claude/worktrees/` remains untracked and was not committed.
 - Story 3.4 independent code review P2 is resolved in `e7ee971`; native notification cancellation now happens before local rows are cleared.
-- Story 3.5 reschedule/edit actions expose and record handoff state; richer form handoff UX can be refined when Story 4 Today surfaces consume recovery items.
+- Story 3.5 reschedule/edit actions now open existing edit surfaces through the recovery handoff provider; richer visual affordances can be refined when Story 4 Today surfaces consume recovery items.
 
 ## What I Should Do Next When I Wake Up
 
-- Review Story 3.5 commit `cc99922` and self-review report `docs/automation-reports/story-3.5-review.md`.
-- Run an independent code review for Story 3.5 before marking it done.
-- After approval, create the next ready story from Epic 4 or start Story 4.1 through BMAD story creation.
+- Review Story 3.5 commits `cc99922` and `10651cb`, plus `docs/automation-reports/story-3.5-review.md`.
+- Create the next ready story from Epic 4 or start Story 4.1 through BMAD story creation.
 - Continue on branch `auto/codex-overnight-1`.
