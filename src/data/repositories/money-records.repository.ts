@@ -41,6 +41,11 @@ export type MoneyRecordRepository = {
     workspaceId: WorkspaceId,
     query: MoneyHistoryQuery,
   ): Promise<AppResult<MoneyHistoryPage>>;
+  findByRecurrenceOccurrence(
+    workspaceId: WorkspaceId,
+    recurrenceRuleId: EntityId,
+    recurrenceOccurrenceDate: string,
+  ): Promise<AppResult<MoneyRecord | null>>;
 };
 
 type MoneyRecordSqlClient = PplantDatabase['$client'] & {
@@ -62,6 +67,8 @@ SELECT
   source,
   source_of_truth AS sourceOfTruth,
   user_corrected_at AS userCorrectedAt,
+  recurrence_rule_id AS recurrenceRuleId,
+  recurrence_occurrence_date AS recurrenceOccurrenceDate,
   created_at AS createdAt,
   updated_at AS updatedAt,
   deleted_at AS deletedAt
@@ -228,6 +235,8 @@ export function createMoneyRecordRepository(database: PplantDatabase): MoneyReco
           localDate: input.localDate,
           merchantOrSource: input.merchantOrSource ?? null,
           note: input.note ?? null,
+          recurrenceOccurrenceDate: input.recurrenceOccurrenceDate ?? null,
+          recurrenceRuleId: input.recurrenceRuleId ?? null,
           source: input.source,
           sourceOfTruth: input.sourceOfTruth,
           updatedAt: input.updatedAt,
@@ -248,8 +257,9 @@ export function createMoneyRecordRepository(database: PplantDatabase): MoneyReco
           database.$client.runSync(
             `INSERT INTO money_records
               (id, workspace_id, kind, amount_minor, currency_code, local_date, category_id,
-               merchant_or_source, note, source, source_of_truth, user_corrected_at, created_at, updated_at, deleted_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               merchant_or_source, note, source, source_of_truth, user_corrected_at, recurrence_rule_id,
+               recurrence_occurrence_date, created_at, updated_at, deleted_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             record.id,
             record.workspaceId,
             record.kind,
@@ -262,6 +272,8 @@ export function createMoneyRecordRepository(database: PplantDatabase): MoneyReco
             record.source,
             record.sourceOfTruth,
             record.userCorrectedAt,
+            record.recurrenceRuleId,
+            record.recurrenceOccurrenceDate,
             record.createdAt,
             record.updatedAt,
             record.deletedAt,
@@ -309,6 +321,8 @@ export function createMoneyRecordRepository(database: PplantDatabase): MoneyReco
           localDate: input.localDate,
           merchantOrSource: input.merchantOrSource ?? null,
           note: input.note ?? null,
+          recurrenceOccurrenceDate: existing.value.recurrenceOccurrenceDate,
+          recurrenceRuleId: existing.value.recurrenceRuleId,
           source: existing.value.source,
           sourceOfTruth: 'manual',
           updatedAt: input.updatedAt,
@@ -541,6 +555,36 @@ export function createMoneyRecordRepository(database: PplantDatabase): MoneyReco
         });
       } catch (cause) {
         return err(createAppError('unavailable', 'Local money history could not be loaded.', 'retry', cause));
+      }
+    },
+
+    async findByRecurrenceOccurrence(workspaceId, recurrenceRuleId, recurrenceOccurrenceDate) {
+      try {
+        const row = database.$client.getFirstSync<MoneyRecordRow>(
+          `${selectMoneyRecordColumnsSql()}
+           WHERE workspace_id = ?
+             AND recurrence_rule_id = ?
+             AND recurrence_occurrence_date = ?
+             AND deleted_at IS NULL
+           LIMIT 1`,
+          workspaceId,
+          recurrenceRuleId,
+          recurrenceOccurrenceDate,
+        );
+
+        if (!row) {
+          return ok(null);
+        }
+
+        const topicIds = await getTopicIdsForRecord(database, workspaceId, row.id as EntityId);
+
+        if (!topicIds.ok) {
+          return topicIds;
+        }
+
+        return parseRecord(row, topicIds.value);
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local recurring money record could not be loaded.', 'retry', cause));
       }
     },
   };

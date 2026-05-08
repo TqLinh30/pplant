@@ -25,6 +25,7 @@ export const categoryTopicMigrationId = '003_create_categories_topics';
 export const budgetPlanningMigrationId = '004_create_budgets_savings_goals';
 export const moneyRecordsMigrationId = '005_create_money_records';
 export const moneyRecordCorrectionsMigrationId = '006_add_money_record_corrections';
+export const recurringMoneyMigrationId = '007_create_recurring_money_rules';
 
 const createMigrationTrackingTableSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -164,6 +165,68 @@ const moneyRecordCorrectionsMigrationSql = `
 ALTER TABLE money_records ADD COLUMN user_corrected_at TEXT;
 `;
 
+const recurringMoneyMigrationSql = `
+CREATE TABLE IF NOT EXISTS recurrence_rules (
+  id TEXT PRIMARY KEY NOT NULL,
+  workspace_id TEXT NOT NULL,
+  owner_kind TEXT NOT NULL,
+  frequency TEXT NOT NULL,
+  starts_on_local_date TEXT NOT NULL,
+  ends_on_local_date TEXT,
+  last_generated_local_date TEXT,
+  paused_at TEXT,
+  stopped_at TEXT,
+  deleted_at TEXT,
+  money_kind TEXT NOT NULL,
+  amount_minor INTEGER NOT NULL,
+  currency_code TEXT NOT NULL,
+  category_id TEXT,
+  merchant_or_source TEXT,
+  note TEXT,
+  source TEXT NOT NULL,
+  source_of_truth TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_recurrence_rules_workspace_owner_active
+  ON recurrence_rules (workspace_id, owner_kind, deleted_at, paused_at, stopped_at);
+
+CREATE INDEX IF NOT EXISTS idx_recurrence_rules_workspace_due
+  ON recurrence_rules (workspace_id, deleted_at, paused_at, stopped_at, starts_on_local_date);
+
+CREATE TABLE IF NOT EXISTS recurrence_rule_topics (
+  recurrence_rule_id TEXT NOT NULL,
+  topic_id TEXT NOT NULL,
+  workspace_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (recurrence_rule_id, topic_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_recurrence_rule_topics_rule
+  ON recurrence_rule_topics (recurrence_rule_id);
+
+CREATE TABLE IF NOT EXISTS recurrence_exceptions (
+  id TEXT PRIMARY KEY NOT NULL,
+  recurrence_rule_id TEXT NOT NULL,
+  workspace_id TEXT NOT NULL,
+  occurrence_local_date TEXT NOT NULL,
+  action TEXT NOT NULL,
+  money_record_id TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_recurrence_exceptions_rule_date
+  ON recurrence_exceptions (recurrence_rule_id, occurrence_local_date);
+
+ALTER TABLE money_records ADD COLUMN recurrence_rule_id TEXT;
+ALTER TABLE money_records ADD COLUMN recurrence_occurrence_date TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_money_records_recurrence_occurrence
+  ON money_records (workspace_id, recurrence_rule_id, recurrence_occurrence_date, deleted_at);
+`;
+
 const migrations = [
   {
     id: workspaceMigrationId,
@@ -188,6 +251,10 @@ const migrations = [
   {
     id: moneyRecordCorrectionsMigrationId,
     sql: moneyRecordCorrectionsMigrationSql,
+  },
+  {
+    id: recurringMoneyMigrationId,
+    sql: recurringMoneyMigrationSql,
   },
 ] as const;
 

@@ -47,7 +47,9 @@ export const moneyRecordRowSchema = z.object({
   localDate: z.string(),
   merchantOrSource: z.string().nullable(),
   note: z.string().nullable(),
-  source: z.enum(['manual', 'receipt']),
+  recurrenceOccurrenceDate: z.string().nullable(),
+  recurrenceRuleId: z.string().nullable(),
+  source: z.enum(['manual', 'receipt', 'recurring']),
   sourceOfTruth: z.enum(['manual', 'parsed']),
   updatedAt: isoTimestampSchema,
   userCorrectedAt: isoTimestampSchema.nullable(),
@@ -181,6 +183,10 @@ export function parseMoneyRecordRow(row: unknown, topicIds: string[] = []): AppR
   const parsedTopicIds = asMoneyRecordTopicIds(topicIds);
   const merchantOrSource = asMoneyRecordMerchantOrSource(parsed.data.merchantOrSource);
   const note = asMoneyRecordNote(parsed.data.note);
+  const recurrenceRuleId = parsed.data.recurrenceRuleId ? asEntityId(parsed.data.recurrenceRuleId) : ok(null);
+  const recurrenceOccurrenceDate = parsed.data.recurrenceOccurrenceDate
+    ? asLocalDate(parsed.data.recurrenceOccurrenceDate)
+    : ok(null);
 
   if (!id.ok) {
     return id;
@@ -214,6 +220,14 @@ export function parseMoneyRecordRow(row: unknown, topicIds: string[] = []): AppR
     return note;
   }
 
+  if (!recurrenceRuleId.ok) {
+    return recurrenceRuleId;
+  }
+
+  if (!recurrenceOccurrenceDate.ok) {
+    return recurrenceOccurrenceDate;
+  }
+
   return ok({
     amountMinor: parsed.data.amountMinor,
     categoryId: categoryId.value,
@@ -225,6 +239,8 @@ export function parseMoneyRecordRow(row: unknown, topicIds: string[] = []): AppR
     localDate: localDate.value,
     merchantOrSource: merchantOrSource.value,
     note: note.value,
+    recurrenceOccurrenceDate: recurrenceOccurrenceDate.value,
+    recurrenceRuleId: recurrenceRuleId.value,
     source: parsed.data.source,
     sourceOfTruth: parsed.data.sourceOfTruth,
     topicIds: parsedTopicIds.value,

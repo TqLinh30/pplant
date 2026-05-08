@@ -4,7 +4,7 @@ import type { LocalDate } from '@/domain/common/date-rules';
 import type { WorkspaceId } from '@/domain/workspace/types';
 
 export type MoneyRecordKind = 'expense' | 'income';
-export type MoneyRecordSource = 'manual' | 'receipt';
+export type MoneyRecordSource = 'manual' | 'receipt' | 'recurring';
 export type MoneyRecordSourceOfTruth = 'manual' | 'parsed';
 export type MoneyHistorySort = 'amount_asc' | 'amount_desc' | 'date_asc' | 'date_desc';
 export type MoneyHistorySummaryMode = 'day' | 'month' | 'week';
@@ -35,6 +35,8 @@ export type MoneyRecord = {
   source: MoneyRecordSource;
   sourceOfTruth: MoneyRecordSourceOfTruth;
   userCorrectedAt: string | null;
+  recurrenceRuleId: EntityId | null;
+  recurrenceOccurrenceDate: LocalDate | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -54,6 +56,8 @@ export type SaveManualMoneyRecordInput = {
   source: MoneyRecordSource;
   sourceOfTruth: MoneyRecordSourceOfTruth;
   userCorrectedAt?: string | null;
+  recurrenceRuleId?: string | null;
+  recurrenceOccurrenceDate?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;

@@ -113,6 +113,8 @@ function createMoneyRecord(input: SaveManualMoneyRecordInput): AppResult<MoneyRe
       localDate: input.localDate,
       merchantOrSource: input.merchantOrSource ?? null,
       note: input.note ?? null,
+      recurrenceOccurrenceDate: input.recurrenceOccurrenceDate ?? null,
+      recurrenceRuleId: input.recurrenceRuleId ?? null,
       source: input.source,
       sourceOfTruth: input.sourceOfTruth,
       updatedAt: input.updatedAt,

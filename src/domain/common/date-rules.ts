@@ -66,6 +66,52 @@ export function asLocalDate(value: string): AppResult<LocalDate> {
   return ok(value as LocalDate);
 }
 
+export function formatDateAsLocalDate(date: Date): LocalDate {
+  return formatLocalDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
+}
+
+export function addLocalDays(localDate: string, days: number): AppResult<LocalDate> {
+  const parsed = parseLocalDateParts(localDate);
+
+  if (!parsed.ok) {
+    return parsed;
+  }
+
+  if (!Number.isInteger(days)) {
+    return err(createAppError('validation_failed', 'Day offset must be an integer.', 'edit'));
+  }
+
+  const date = new Date(Date.UTC(parsed.value.year, parsed.value.month - 1, parsed.value.day));
+  date.setUTCDate(date.getUTCDate() + days);
+
+  return ok(formatLocalDate(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()));
+}
+
+export function addLocalMonthsClamped(
+  localDate: string,
+  months: number,
+  anchorDay?: number,
+): AppResult<LocalDate> {
+  const parsed = parseLocalDateParts(localDate);
+
+  if (!parsed.ok) {
+    return parsed;
+  }
+
+  if (!Number.isInteger(months)) {
+    return err(createAppError('validation_failed', 'Month offset must be an integer.', 'edit'));
+  }
+
+  const target = addMonths(parsed.value.year, parsed.value.month, months);
+  const day = anchorDay ?? parsed.value.day;
+
+  if (!Number.isInteger(day) || day < 1 || day > 31) {
+    return err(createAppError('validation_failed', 'Month anchor day must be between 1 and 31.', 'edit'));
+  }
+
+  return ok(formatLocalDate(target.year, target.month, Math.min(day, daysInMonth(target.year, target.month))));
+}
+
 export function resolveBudgetPeriodForDate(localDate: string, resetDay: number): AppResult<BudgetPeriod> {
   const dateResult = parseLocalDateParts(localDate);
 

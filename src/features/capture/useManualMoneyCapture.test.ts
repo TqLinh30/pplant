@@ -67,6 +67,8 @@ function createRecord(): MoneyRecord {
     localDate: '2026-05-08',
     merchantOrSource: 'Campus cafe',
     note: null,
+    recurrenceOccurrenceDate: null,
+    recurrenceRuleId: null,
     source: 'manual',
     sourceOfTruth: 'manual',
     updatedAt: fixedNow,

@@ -65,6 +65,8 @@ function createRecord(overrides: Partial<SaveManualMoneyRecordInput> = {}): Mone
       localDate: overrides.localDate ?? '2026-05-08',
       merchantOrSource: overrides.merchantOrSource ?? 'Campus cafe',
       note: overrides.note ?? null,
+      recurrenceOccurrenceDate: overrides.recurrenceOccurrenceDate ?? null,
+      recurrenceRuleId: overrides.recurrenceRuleId ?? null,
       source: overrides.source ?? 'manual',
       sourceOfTruth: overrides.sourceOfTruth ?? 'manual',
       updatedAt: fixedNow.toISOString(),

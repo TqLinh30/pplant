@@ -52,6 +52,8 @@ class FakeMoneyRecordClient {
         sourceValue,
         sourceOfTruth,
         userCorrectedAt,
+        recurrenceRuleId,
+        recurrenceOccurrenceDate,
         createdAt,
         updatedAt,
         deletedAt,
@@ -68,7 +70,9 @@ class FakeMoneyRecordClient {
         localDate: localDate as string,
         merchantOrSource: merchantOrSource as string | null,
         note: note as string | null,
-        source: sourceValue as 'manual' | 'receipt',
+        recurrenceOccurrenceDate: recurrenceOccurrenceDate as string | null,
+        recurrenceRuleId: recurrenceRuleId as string | null,
+        source: sourceValue as 'manual' | 'receipt' | 'recurring',
         sourceOfTruth: sourceOfTruth as 'manual' | 'parsed',
         updatedAt: updatedAt as string,
         userCorrectedAt: userCorrectedAt as string | null,
@@ -124,7 +128,7 @@ class FakeMoneyRecordClient {
           localDate: localDate as string,
           merchantOrSource: merchantOrSource as string | null,
           note: note as string | null,
-          source: sourceValue as 'manual' | 'receipt',
+          source: sourceValue as 'manual' | 'receipt' | 'recurring',
           sourceOfTruth: sourceOfTruth as 'manual' | 'parsed',
           updatedAt: updatedAt as string,
           userCorrectedAt: userCorrectedAt as string | null,
@@ -166,6 +170,20 @@ class FakeMoneyRecordClient {
   getFirstSync<T>(_source: string, ...params: unknown[]): T | null {
     if (_source.includes('COUNT(*) AS totalCount')) {
       return { totalCount: this.filterHistoryRows(_source, params).length } as T;
+    }
+
+    if (_source.includes('recurrence_rule_id = ?')) {
+      const [workspaceId, recurrenceRuleId, recurrenceOccurrenceDate] = params;
+      const record =
+        this.records.find(
+          (candidate) =>
+            candidate.workspaceId === workspaceId &&
+            candidate.recurrenceRuleId === recurrenceRuleId &&
+            candidate.recurrenceOccurrenceDate === recurrenceOccurrenceDate &&
+            candidate.deletedAt === null,
+        ) ?? null;
+
+      return record as T | null;
     }
 
     const [workspaceId, id] = params;
@@ -293,6 +311,8 @@ function createInput(overrides: Partial<SaveManualMoneyRecordInput> = {}): SaveM
     localDate: '2026-05-08',
     merchantOrSource: 'Campus cafe',
     note: 'Lunch',
+    recurrenceOccurrenceDate: null,
+    recurrenceRuleId: null,
     source: 'manual',
     sourceOfTruth: 'manual',
     topicIds: ['topic-campus'],
@@ -321,6 +341,35 @@ describe('money records repository', () => {
       expect(loaded.value?.amountMinor).toBe(1250);
       expect(loaded.value?.topicIds).toEqual(['topic-campus']);
       expect(loaded.value?.sourceOfTruth).toBe('manual');
+      expect(loaded.value?.recurrenceRuleId).toBeNull();
+    }
+  });
+
+  it('creates generated recurring records with recurrence occurrence metadata', async () => {
+    const client = new FakeMoneyRecordClient();
+    const repository = createRepository(client);
+
+    const created = await repository.createManualRecord(
+      createInput({
+        id: 'money-recurring',
+        recurrenceOccurrenceDate: '2026-05-15',
+        recurrenceRuleId: 'rule-rent',
+        source: 'recurring',
+        topicIds: [],
+      }),
+    );
+    const duplicateLookup = await repository.findByRecurrenceOccurrence(
+      localWorkspaceId,
+      'rule-rent' as never,
+      '2026-05-15',
+    );
+
+    expect(created.ok).toBe(true);
+    expect(duplicateLookup.ok).toBe(true);
+    if (duplicateLookup.ok) {
+      expect(duplicateLookup.value?.id).toBe('money-recurring');
+      expect(duplicateLookup.value?.source).toBe('recurring');
+      expect(duplicateLookup.value?.recurrenceOccurrenceDate).toBe('2026-05-15');
     }
   });
 

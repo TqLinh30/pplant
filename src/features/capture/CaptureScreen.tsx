@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatMinorUnitsForInput } from '@/domain/common/money';
 import type { MoneyRecordKind, MoneyRecord } from '@/domain/money/types';
+import type { RecurrenceFrequency } from '@/domain/recurrence/types';
 import { Button } from '@/ui/primitives/Button';
 import { ListRow } from '@/ui/primitives/ListRow';
 import { SegmentedControl } from '@/ui/primitives/SegmentedControl';
@@ -13,17 +14,41 @@ import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
 import { useManualMoneyCapture } from './useManualMoneyCapture';
+import { useRecurringMoney } from './useRecurringMoney';
 
 const kindOptions: { label: string; value: MoneyRecordKind }[] = [
   { label: 'Expense', value: 'expense' },
   { label: 'Income', value: 'income' },
 ];
 
+const frequencyOptions: { label: string; value: RecurrenceFrequency }[] = [
+  { label: 'Daily', value: 'daily' },
+  { label: 'Weekly', value: 'weekly' },
+  { label: 'Monthly', value: 'monthly' },
+];
+
+function formatFrequency(frequency: RecurrenceFrequency): string {
+  switch (frequency) {
+    case 'daily':
+      return 'Daily';
+    case 'weekly':
+      return 'Weekly';
+    case 'monthly':
+      return 'Monthly';
+    default:
+      return frequency;
+  }
+}
+
 export function CaptureScreen() {
   const capture = useManualMoneyCapture();
+  const recurring = useRecurringMoney();
   const { state } = capture;
+  const recurringState = recurring.state;
   const saving = state.status === 'saving';
   const isEditing = state.editingRecordId !== null;
+  const recurringSaving = recurringState.status === 'saving';
+  const isEditingRecurring = recurringState.editingRuleId !== null;
 
   const formatRecordAmount = (record: MoneyRecord) => {
     const formatted = state.preferences
@@ -35,6 +60,16 @@ export function CaptureScreen() {
     return `${record.kind === 'expense' ? 'Expense' : 'Income'} · ${
       formatted.ok ? formatted.value : record.amountMinor
     } ${record.currencyCode}`;
+  };
+
+  const formatRecurringAmount = (amountMinor: number, currencyCode: string) => {
+    const formatted = recurringState.preferences
+      ? formatMinorUnitsForInput(amountMinor, currencyCode, {
+          locale: recurringState.preferences.locale,
+        })
+      : { ok: false as const };
+
+    return `${formatted.ok ? formatted.value : amountMinor} ${currencyCode}`;
   };
 
   const savedTitle =
@@ -52,6 +87,29 @@ export function CaptureScreen() {
         : state.savedRecord
           ? `${formatRecordAmount(state.savedRecord)} is ready for budget, history, and summary inputs.`
         : '';
+
+  const recurringSavedDescription =
+    recurringState.lastMutation === 'generated'
+      ? recurringState.generatedCount && recurringState.generatedCount > 0
+        ? `${recurringState.generatedCount} due occurrence${
+            recurringState.generatedCount === 1 ? '' : 's'
+          } materialized as money records.`
+        : 'No due occurrences were available to generate.'
+      : recurringState.lastMutation === 'skipped' && recurringState.skippedDate
+        ? `Skipped next occurrence on ${recurringState.skippedDate}.`
+        : recurringState.lastMutation === 'paused'
+          ? 'Series paused. No new occurrences will generate until resumed.'
+          : recurringState.lastMutation === 'resumed'
+            ? 'Series resumed. Future due occurrences can generate again.'
+            : recurringState.lastMutation === 'stopped'
+              ? 'Series stopped. Already materialized records stay unchanged.'
+              : recurringState.lastMutation === 'deleted'
+                ? 'Series deleted from active recurring money.'
+                : recurringState.lastMutation === 'updated'
+                  ? 'Recurring money template updated for future unmaterialized occurrences.'
+                  : recurringState.lastMutation === 'created'
+                    ? 'Recurring money item saved. Future occurrences are previewed until generated.'
+                    : '';
 
   if (state.status === 'loading') {
     return (
@@ -262,6 +320,265 @@ export function CaptureScreen() {
             ))}
           </View>
         </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.section}>
+          <View style={styles.header}>
+            <Text style={styles.sectionTitle}>Recurring money</Text>
+            <Text style={styles.description}>
+              Save predictable expenses or income as templates, then materialize only due occurrences.
+            </Text>
+          </View>
+
+          {recurringState.status === 'loading' ? (
+            <View accessibilityLabel="Loading recurring money" accessibilityRole="summary" style={styles.inlineLoading}>
+              <ActivityIndicator color={colors.primary} />
+              <Text style={styles.helper}>Loading recurring money.</Text>
+            </View>
+          ) : null}
+
+          {recurringState.status === 'failed' ? (
+            <StatusBanner
+              title="Recurring money could not load"
+              description="Your local money records are unchanged. Try again when local data is available."
+              tone="warning"
+            />
+          ) : null}
+
+          {recurringState.status === 'preferences_needed' ? (
+            <StatusBanner
+              title="Preferences needed"
+              description="Recurring money uses your saved currency and locale."
+              tone="warning"
+            />
+          ) : null}
+
+          {recurringState.status !== 'loading' &&
+          recurringState.status !== 'failed' &&
+          recurringState.status !== 'preferences_needed' ? (
+            <>
+              {recurringState.status === 'saved' && recurringSavedDescription ? (
+                <StatusBanner title="Recurring money updated" description={recurringSavedDescription} />
+              ) : null}
+
+              {recurringState.actionError ? (
+                <StatusBanner
+                  title="Recurring money action did not finish"
+                  description="Try again. Current recurring edits are still on screen."
+                  tone="warning"
+                />
+              ) : null}
+
+              {Object.keys(recurringState.fieldErrors).length > 0 ? (
+                <StatusBanner
+                  title="Check recurring fields"
+                  description="Each highlighted field includes the next correction to make."
+                  tone="warning"
+                />
+              ) : null}
+
+              <View style={styles.form}>
+                <SegmentedControl
+                  options={kindOptions}
+                  selectedValue={recurringState.draft.kind}
+                  onChange={recurring.setKind}
+                />
+
+                <SegmentedControl
+                  options={frequencyOptions}
+                  selectedValue={recurringState.draft.frequency}
+                  onChange={recurring.setFrequency}
+                />
+
+                <TextField
+                  errorText={recurringState.fieldErrors.amount}
+                  helperText={
+                    recurringState.preferences ? `Uses ${recurringState.preferences.currencyCode}.` : undefined
+                  }
+                  keyboardType="decimal-pad"
+                  label="Recurring amount"
+                  onChangeText={(value) => recurring.updateField('amount', value)}
+                  value={recurringState.draft.amount}
+                />
+
+                <TextField
+                  autoCapitalize="none"
+                  errorText={recurringState.fieldErrors.startsOnLocalDate}
+                  helperText="Use YYYY-MM-DD."
+                  label="Starts on"
+                  onChangeText={(value) => recurring.updateField('startsOnLocalDate', value)}
+                  value={recurringState.draft.startsOnLocalDate}
+                />
+
+                <TextField
+                  autoCapitalize="none"
+                  errorText={recurringState.fieldErrors.endsOnLocalDate}
+                  helperText="Optional. Use YYYY-MM-DD."
+                  label="Ends on"
+                  onChangeText={(value) => recurring.updateField('endsOnLocalDate', value)}
+                  value={recurringState.draft.endsOnLocalDate}
+                />
+
+                <View style={styles.optionGroup}>
+                  <Text style={styles.label}>Recurring category</Text>
+                  <ListRow
+                    title="No category"
+                    description="Optional for quick setup."
+                    meta={recurringState.draft.categoryId === null ? 'Selected' : 'Available'}
+                    onPress={() => recurring.selectCategory(null)}
+                  />
+                  {recurringState.categories.map((category) => (
+                    <ListRow
+                      key={category.id}
+                      title={category.name}
+                      meta={recurringState.draft.categoryId === category.id ? 'Selected' : 'Available'}
+                      onPress={() => recurring.selectCategory(category.id)}
+                    />
+                  ))}
+                  {recurringState.fieldErrors.categoryId ? (
+                    <Text style={styles.error}>{recurringState.fieldErrors.categoryId}</Text>
+                  ) : null}
+                </View>
+
+                <View style={styles.optionGroup}>
+                  <Text style={styles.label}>Recurring topics</Text>
+                  {recurringState.topics.length === 0 ? (
+                    <Text style={styles.helper}>Topics are optional. Add them later in Settings.</Text>
+                  ) : null}
+                  {recurringState.topics.map((topic) => {
+                    const selected = recurringState.draft.topicIds.includes(topic.id);
+
+                    return (
+                      <ListRow
+                        key={topic.id}
+                        title={topic.name}
+                        meta={selected ? 'Selected' : 'Available'}
+                        onPress={() => recurring.toggleTopic(topic.id)}
+                      />
+                    );
+                  })}
+                  {recurringState.fieldErrors.topicIds ? (
+                    <Text style={styles.error}>{recurringState.fieldErrors.topicIds}</Text>
+                  ) : null}
+                </View>
+
+                <TextField
+                  autoCapitalize="words"
+                  errorText={recurringState.fieldErrors.merchantOrSource}
+                  helperText={
+                    recurringState.draft.kind === 'expense'
+                      ? 'Optional recurring merchant.'
+                      : 'Optional recurring income source.'
+                  }
+                  label={recurringState.draft.kind === 'expense' ? 'Merchant' : 'Source'}
+                  onChangeText={(value) => recurring.updateField('merchantOrSource', value)}
+                  value={recurringState.draft.merchantOrSource}
+                />
+
+                <TextField
+                  errorText={recurringState.fieldErrors.note}
+                  helperText="Optional note, kept local."
+                  label="Recurring note"
+                  multiline
+                  onChangeText={(value) => recurring.updateField('note', value)}
+                  value={recurringState.draft.note}
+                />
+
+                <Button
+                  disabled={recurringSaving}
+                  label={
+                    recurringSaving
+                      ? 'Saving'
+                      : isEditingRecurring
+                        ? 'Save series changes'
+                        : `Save recurring ${recurringState.draft.kind}`
+                  }
+                  onPress={recurring.save}
+                />
+
+                {isEditingRecurring ? (
+                  <Button
+                    disabled={recurringSaving}
+                    label="Cancel recurring edit"
+                    onPress={recurring.cancelEdit}
+                    variant="secondary"
+                  />
+                ) : null}
+              </View>
+
+              <View style={styles.ruleToolbar}>
+                <Button
+                  disabled={recurringSaving}
+                  label={recurringSaving ? 'Working' : 'Generate due'}
+                  onPress={recurring.generateDueOccurrences}
+                  variant="secondary"
+                />
+              </View>
+
+              {recurringState.rules.length === 0 ? (
+                <StatusBanner
+                  title="No recurring money yet"
+                  description="Save a recurring expense or income template above."
+                />
+              ) : null}
+
+              <View style={styles.listGroup}>
+                {recurringState.rules.map((view) => {
+                  const rule = view.rule;
+                  const paused = rule.pausedAt !== null;
+                  const stopped = rule.stoppedAt !== null;
+                  const status = paused
+                    ? 'Paused'
+                    : stopped
+                      ? 'Stopped'
+                      : view.nextOccurrences.length > 0
+                        ? `Next: ${view.nextOccurrences.join(', ')}`
+                        : 'No due preview';
+
+                  return (
+                    <View key={rule.id} style={styles.ruleBlock}>
+                      <ListRow
+                        title={rule.merchantOrSource ?? (rule.moneyKind === 'expense' ? 'Recurring expense' : 'Recurring income')}
+                        description={`${formatFrequency(rule.frequency)} from ${rule.startsOnLocalDate}${
+                          rule.endsOnLocalDate ? ` until ${rule.endsOnLocalDate}` : ''
+                        }`}
+                        meta={`${formatRecurringAmount(rule.amountMinor, rule.currencyCode)} - ${status}`}
+                        onPress={() => recurring.startEdit(view)}
+                      />
+                      <View style={styles.ruleActions}>
+                        <Button
+                          disabled={recurringSaving || stopped}
+                          label={paused ? 'Resume' : 'Pause'}
+                          onPress={() => (paused ? recurring.resumeRule(rule.id) : recurring.pauseRule(rule.id))}
+                          variant="secondary"
+                        />
+                        <Button
+                          disabled={recurringSaving || paused || stopped}
+                          label="Skip next"
+                          onPress={() => recurring.skipNextOccurrence(rule.id)}
+                          variant="secondary"
+                        />
+                        <Button
+                          disabled={recurringSaving || stopped}
+                          label="Stop series"
+                          onPress={() => recurring.stopRule(rule.id)}
+                          variant="secondary"
+                        />
+                        <Button
+                          disabled={recurringSaving}
+                          label="Delete series"
+                          onPress={() => recurring.deleteRule(rule.id)}
+                          variant="danger"
+                        />
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          ) : null}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -308,6 +625,11 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.muted,
   },
+  inlineLoading: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
   label: {
     ...typography.caption,
     color: colors.ink,
@@ -317,6 +639,16 @@ const styles = StyleSheet.create({
   },
   optionGroup: {
     gap: spacing.xs,
+  },
+  ruleActions: {
+    gap: spacing.sm,
+    paddingBottom: spacing.sm,
+  },
+  ruleBlock: {
+    gap: spacing.xs,
+  },
+  ruleToolbar: {
+    gap: spacing.sm,
   },
   safeArea: {
     backgroundColor: colors.canvas,

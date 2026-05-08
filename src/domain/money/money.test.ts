@@ -26,6 +26,8 @@ function createRow(overrides: Record<string, unknown> = {}) {
     localDate: '2026-05-08',
     merchantOrSource: 'Campus cafe',
     note: 'Lunch',
+    recurrenceOccurrenceDate: null,
+    recurrenceRuleId: null,
     source: 'manual',
     sourceOfTruth: 'manual',
     updatedAt: fixedNow,
@@ -104,10 +106,29 @@ describe('money record domain', () => {
     }
   });
 
+  it('parses generated recurring money provenance and recurrence links', () => {
+    const parsed = parseMoneyRecordRow(
+      createRow({
+        recurrenceOccurrenceDate: '2026-05-15',
+        recurrenceRuleId: 'rule-rent',
+        source: 'recurring',
+      }),
+    );
+
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.source).toBe('recurring');
+      expect(parsed.value.sourceOfTruth).toBe('manual');
+      expect(parsed.value.recurrenceRuleId).toBe('rule-rent');
+      expect(parsed.value.recurrenceOccurrenceDate).toBe('2026-05-15');
+    }
+  });
+
   it('rejects unsupported provenance rows and impossible dates', () => {
     expect(parseMoneyRecordRow(createRow({ source: 'bank' }))).toMatchObject({ ok: false });
     expect(parseMoneyRecordRow(createRow({ sourceOfTruth: 'synced' }))).toMatchObject({ ok: false });
     expect(parseMoneyRecordRow(createRow({ localDate: '2026-02-30' }))).toMatchObject({ ok: false });
+    expect(parseMoneyRecordRow(createRow({ recurrenceOccurrenceDate: '2026-02-30' }))).toMatchObject({ ok: false });
     expect(parseMoneyRecordRow(createRow({ amountMinor: 0 }))).toMatchObject({ ok: false });
   });
 
