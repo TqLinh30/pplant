@@ -27,7 +27,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   safeArea: {
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.appBackground,
     flex: 1,
   },
 });

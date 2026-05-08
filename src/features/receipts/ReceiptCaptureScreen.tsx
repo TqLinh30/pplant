@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   safeArea: {
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.appBackground,
     flex: 1,
   },
   title: {

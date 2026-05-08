@@ -30,12 +30,12 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   neutral: {
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: colors.primaryPale,
   },
   success: {
-    backgroundColor: colors.signatureMint,
+    backgroundColor: colors.successSoft,
   },
   warning: {
-    backgroundColor: colors.signatureCream,
+    backgroundColor: colors.warningSoft,
   },
 });

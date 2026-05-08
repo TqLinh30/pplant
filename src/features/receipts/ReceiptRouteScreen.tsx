@@ -1047,7 +1047,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   safeArea: {
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.appBackground,
     flex: 1,
   },
   sectionTitle: {

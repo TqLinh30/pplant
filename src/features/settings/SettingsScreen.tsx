@@ -854,6 +854,7 @@ const styles = StyleSheet.create({
   content: {
     gap: spacing.lg,
     padding: spacing.lg,
+    paddingBottom: spacing.xxl + spacing.xl,
   },
   description: {
     ...typography.body,
@@ -902,7 +903,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   safeArea: {
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.appBackground,
     flex: 1,
   },
   section: {

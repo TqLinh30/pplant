@@ -25,7 +25,7 @@ const styles = StyleSheet.create({
   },
   container: {
     alignItems: 'center',
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.appBackground,
     flex: 1,
     gap: spacing.md,
     justifyContent: 'center',

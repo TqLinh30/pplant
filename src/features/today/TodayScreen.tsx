@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   content: {
     gap: spacing.lg,
     padding: spacing.lg,
-    paddingBottom: spacing.xxl,
+    paddingBottom: spacing.xxl + spacing.xl,
   },
   description: {
     ...typography.body,
@@ -456,11 +456,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
   },
   listGroup: {
-    backgroundColor: colors.canvas,
-    borderColor: colors.hairline,
-    borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: spacing.md,
+    gap: spacing.xs,
   },
   metric: {
     backgroundColor: colors.surfaceSoft,
@@ -489,7 +485,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   safeArea: {
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.appBackground,
     flex: 1,
   },
   section: {

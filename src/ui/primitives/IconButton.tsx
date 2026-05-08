@@ -26,20 +26,20 @@ export function IconButton({ icon, label, disabled, ...pressableProps }: IconBut
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
-    backgroundColor: colors.canvas,
-    borderColor: colors.hairline,
+    backgroundColor: colors.primaryPale,
+    borderColor: colors.borderSoft,
     borderRadius: radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    height: 44,
+    borderWidth: 1,
+    height: 48,
     justifyContent: 'center',
-    width: 44,
+    width: 48,
   },
   disabled: {
     opacity: 0.5,
   },
   icon: {
     ...typography.label,
-    color: colors.ink,
+    color: colors.primary,
   },
   pressed: {
     opacity: 0.78,

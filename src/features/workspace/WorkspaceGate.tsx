@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
   safeArea: {
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.appBackground,
     flex: 1,
   },
   title: {

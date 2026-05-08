@@ -48,8 +48,10 @@ export function SegmentedControl<T extends string>({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: colors.primaryPale,
+    borderColor: colors.borderSoft,
     borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     gap: spacing.xs,
     padding: spacing.xs,
@@ -70,6 +72,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   selectedLabel: {
-    color: colors.ink,
+    color: colors.primary,
   },
 });

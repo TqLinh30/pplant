@@ -27,13 +27,13 @@ export function BottomSheet({ title, visible, onClose, children }: BottomSheetPr
 
 const styles = StyleSheet.create({
   scrim: {
-    backgroundColor: 'rgba(24, 29, 38, 0.28)',
+    backgroundColor: 'rgba(37, 48, 48, 0.28)',
     flex: 1,
   },
   sheet: {
     backgroundColor: colors.canvas,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    borderTopLeftRadius: radius.xxl,
+    borderTopRightRadius: radius.xxl,
     gap: spacing.md,
     padding: spacing.lg,
   },

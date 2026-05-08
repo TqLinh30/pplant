@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 
 import { colors } from '@/ui/tokens/colors';
+import { typography } from '@/ui/tokens/typography';
 
 export default function TabLayout() {
   return (
@@ -9,10 +10,24 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarIcon: () => null,
-        tabBarInactiveTintColor: colors.muted,
+        tabBarIconStyle: {
+          display: 'none',
+        },
+        tabBarInactiveTintColor: colors.body,
+        tabBarItemStyle: {
+          justifyContent: 'center',
+          paddingVertical: 8,
+        },
+        tabBarLabelStyle: {
+          ...typography.tabLabel,
+          marginTop: 0,
+        },
         tabBarStyle: {
           backgroundColor: colors.canvas,
           borderTopColor: colors.hairline,
+          height: 68,
+          paddingBottom: 8,
+          paddingTop: 8,
         },
       }}>
       <Tabs.Screen name="index" options={{ title: 'Today' }} />

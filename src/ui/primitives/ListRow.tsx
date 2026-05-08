@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/ui/tokens/colors';
+import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
@@ -61,13 +62,16 @@ const styles = StyleSheet.create({
     opacity: 0.78,
   },
   row: {
+    backgroundColor: colors.canvas,
     borderColor: colors.hairline,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     gap: spacing.md,
     justifyContent: 'space-between',
-    minHeight: 44,
-    paddingVertical: spacing.md,
+    minHeight: 56,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   textGroup: {
     flex: 1,

@@ -30,7 +30,9 @@ export function StatusBanner({ accessibilityLabel, title, description, tone = 'n
 
 const styles = StyleSheet.create({
   banner: {
-    borderRadius: radius.md,
+    borderColor: colors.hairline,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
     gap: spacing.xs,
     padding: spacing.md,
   },
@@ -39,16 +41,16 @@ const styles = StyleSheet.create({
     color: colors.body,
   },
   neutral: {
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: colors.primaryPale,
   },
   success: {
-    backgroundColor: colors.signatureMint,
+    backgroundColor: colors.successSoft,
   },
   title: {
     ...typography.label,
     color: colors.ink,
   },
   warning: {
-    backgroundColor: colors.signatureCream,
+    backgroundColor: colors.warningSoft,
   },
 });
