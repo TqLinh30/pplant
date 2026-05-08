@@ -13,6 +13,7 @@ import type {
 } from './types';
 
 export const recoveryTargetKindSchema = z.enum([
+  'receipt_parse_job',
   'task',
   'task_recurrence_occurrence',
   'reminder_occurrence',
@@ -20,11 +21,14 @@ export const recoveryTargetKindSchema = z.enum([
 
 export const recoveryActionSchema = z.enum([
   'complete',
+  'discard',
   'snooze',
   'reschedule',
   'pause',
   'dismiss',
   'edit',
+  'manual_entry',
+  'retry',
 ]);
 
 const isoTimestampSchema = z.string().refine((value) => !Number.isNaN(Date.parse(value)), {

@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -27,7 +28,23 @@ export function RecoveryPanel({ targetKinds }: RecoveryPanelProps = {}) {
   const { startHandoff } = useRecoveryHandoff();
 
   useEffect(() => {
-    if (!state.editingTarget || (state.lastAction !== 'edit' && state.lastAction !== 'reschedule')) {
+    if (!state.editingTarget) {
+      return;
+    }
+
+    if (state.editingTarget.targetKind === 'receipt_parse_job') {
+      if (state.lastAction === 'edit' && state.editingTarget.relatedDraftId) {
+        router.push(`/receipt/${encodeURIComponent(state.editingTarget.relatedDraftId)}`);
+        return;
+      }
+
+      if (state.lastAction === 'manual_entry') {
+        router.push(`/(tabs)/capture?draft=expense&draftSeq=${Date.now().toString(36)}`);
+        return;
+      }
+    }
+
+    if (state.lastAction !== 'edit' && state.lastAction !== 'reschedule') {
       return;
     }
 

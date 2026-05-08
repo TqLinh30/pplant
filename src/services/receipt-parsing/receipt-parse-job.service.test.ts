@@ -106,7 +106,16 @@ class FakeReceiptParseJobRepository implements ReceiptParseJobRepository {
   }
 
   async listPendingOrRetryableJobs() {
-    return ok(this.jobs.filter((job) => job.status === 'pending' || job.status === 'failed'));
+    return ok(
+      this.jobs.filter(
+        (job) =>
+          job.deletedAt === null &&
+          (job.status === 'pending' ||
+            job.status === 'running' ||
+            job.status === 'failed' ||
+            job.status === 'retry_exhausted'),
+      ),
+    );
   }
 
   async markFailed(
@@ -119,6 +128,14 @@ class FakeReceiptParseJobRepository implements ReceiptParseJobRepository {
     job.lastErrorCategory = input.lastErrorCategory;
     job.status = input.status;
     job.updatedAt = input.completedAt;
+
+    return ok({ ...job });
+  }
+
+  async markDeleted(_workspaceId: WorkspaceId, id: EntityId, deletedAt: string) {
+    const job = this.requireJob(id);
+    job.deletedAt = deletedAt;
+    job.updatedAt = deletedAt;
 
     return ok({ ...job });
   }

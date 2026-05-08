@@ -1,6 +1,6 @@
 # Story 7.3: Manage Pending Network-Dependent Records
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -18,36 +18,36 @@ so that failed services never leave my data stuck.
 
 ## Tasks / Subtasks
 
-- [ ] Extend recovery contracts for receipt parsing jobs. (AC: 1, 2, 3)
-  - [ ] Add a `receipt_parse_job` recovery target kind and receipt-specific recovery reasons for parsing queued, running, failed, and retry exhausted states.
-  - [ ] Add recovery actions needed for network-dependent jobs: retry, manual entry, edit, and discard, while preserving existing task/reminder recovery actions.
-  - [ ] Keep recovery copy neutral, text-first, and free of receipt image URI, OCR text, merchant, amount, note, or raw draft payload content.
+- [x] Extend recovery contracts for receipt parsing jobs. (AC: 1, 2, 3)
+  - [x] Add a `receipt_parse_job` recovery target kind and receipt-specific recovery reasons for parsing queued, running, failed, and retry exhausted states.
+  - [x] Add recovery actions needed for network-dependent jobs: retry, manual entry, edit, and discard, while preserving existing task/reminder recovery actions.
+  - [x] Keep recovery copy neutral, text-first, and free of receipt image URI, OCR text, merchant, amount, note, or raw draft payload content.
 
-- [ ] Load pending receipt parsing jobs into Recovery and Today. (AC: 1)
-  - [ ] Extend recovery data loading to include active receipt drafts whose latest local parse job is pending, running, failed, or retry exhausted.
-  - [ ] Join jobs to active receipt drafts safely so discarded/saved drafts and soft-deleted jobs do not appear.
-  - [ ] Show receipt parse job recovery in the existing `RecoveryPanel` and add a Today recovery surface limited to pending network-dependent records.
-  - [ ] Do not include parsed/low-confidence/reviewed receipt jobs as network-pending unless they are still blocked by network-dependent processing.
+- [x] Load pending receipt parsing jobs into Recovery and Today. (AC: 1)
+  - [x] Extend recovery data loading to include active receipt drafts whose latest local parse job is pending, running, failed, or retry exhausted.
+  - [x] Join jobs to active receipt drafts safely so discarded/saved drafts and soft-deleted jobs do not appear.
+  - [x] Show receipt parse job recovery in the existing `RecoveryPanel` and add a Today recovery surface limited to pending network-dependent records.
+  - [x] Do not include parsed/low-confidence/reviewed receipt jobs as network-pending unless they are still blocked by network-dependent processing.
 
-- [ ] Implement receipt recovery actions. (AC: 1, 2, 3)
-  - [ ] Retry should call existing receipt parse job execution with an explicit user action and respect the 3 automatic retries per 24 hours policy.
-  - [ ] Retry-exhausted jobs must not retry automatically; recovery retry is allowed only because the user chose it.
-  - [ ] Edit should record a recovery event and route to the receipt draft/review screen.
-  - [ ] Manual entry should route to manual expense capture while keeping existing receipt draft linkage behavior.
-  - [ ] Discard should soft-discard the draft, soft-hide or delete the related parse job, remove retained receipt image references through existing safe file cleanup, and record a recovery event.
-  - [ ] Action failures must leave the recovery item visible and must not log sensitive payloads.
+- [x] Implement receipt recovery actions. (AC: 1, 2, 3)
+  - [x] Retry should call existing receipt parse job execution with an explicit user action and respect the 3 automatic retries per 24 hours policy.
+  - [x] Retry-exhausted jobs must not retry automatically; recovery retry is allowed only because the user chose it.
+  - [x] Edit should record a recovery event and route to the receipt draft/review screen.
+  - [x] Manual entry should route to manual expense capture while keeping existing receipt draft linkage behavior.
+  - [x] Discard should soft-discard the draft, soft-hide or delete the related parse job, remove retained receipt image references through existing safe file cleanup, and record a recovery event.
+  - [x] Action failures must leave the recovery item visible and must not log sensitive payloads.
 
-- [ ] Preserve data and architecture boundaries. (AC: 1, 2, 3)
-  - [ ] Do not add a new queue, background worker, cloud sync, OCR provider, auth, or external service dependency.
-  - [ ] Do not create expenses automatically from parser output.
-  - [ ] Do not delete arbitrary external files; only app-managed receipt image references may be deleted through existing receipt file services.
-  - [ ] Preserve existing task/reminder recovery behavior and tests.
+- [x] Preserve data and architecture boundaries. (AC: 1, 2, 3)
+  - [x] Do not add a new queue, background worker, cloud sync, OCR provider, auth, or external service dependency.
+  - [x] Do not create expenses automatically from parser output.
+  - [x] Do not delete arbitrary external files; only app-managed receipt image references may be deleted through existing receipt file services.
+  - [x] Preserve existing task/reminder recovery behavior and tests.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Add domain/feature copy tests for receipt recovery item reasons and action labels.
-  - [ ] Add recovery service tests for loading pending receipt jobs, retry action, edit/manual handoff recording, discard cleanup, retry exhaustion, and failure visibility.
-  - [ ] Add hook/UI reducer tests where reasonable for new receipt recovery actions.
-  - [ ] Run `npm run typecheck -- --pretty false`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Add domain/feature copy tests for receipt recovery item reasons and action labels.
+  - [x] Add recovery service tests for loading pending receipt jobs, retry action, edit/manual handoff recording, discard cleanup, retry exhaustion, and failure visibility.
+  - [x] Add hook/UI reducer tests where reasonable for new receipt recovery actions.
+  - [x] Run `npm run typecheck -- --pretty false`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -167,16 +167,41 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-09: Created Story 7.3 ready-for-dev from Epic 7, PRD, architecture, UX recovery guidance, Story 7.2 results, and current recovery/receipt services.
+- 2026-05-09: Started implementation. Plan: extend recovery types/actions for receipt parse jobs, load recoverable parse jobs, wire retry/edit/manual/discard actions, surface receipt recovery on Today, then verify with focused and full gates.
+- 2026-05-09: Completed implementation and verification. Focused receipt recovery tests, full test suite, typecheck, lint, Expo dependency check, build-if-present, and whitespace check passed.
 
 ### Completion Notes List
 
-- Pending implementation.
+- Added receipt parse job recovery target/actions with neutral copy and no raw receipt payload exposure.
+- Recovery now surfaces active pending, running, failed, and retry-exhausted receipt parse jobs when a linked active receipt draft exists.
+- Today shows a receipt-only recovery surface next to capture draft recovery.
+- Retry uses the existing receipt parse execution path with `userInitiated: true`; running jobs do not expose retry.
+- Edit routes to the receipt draft, manual entry routes to expense capture, and discard safely deletes app-managed receipt image references, discards the draft, soft-hides the parse job, and records a recovery event.
+- Full verification passed: typecheck, lint, Jest, Expo install check, build-if-present, and `git diff --check`.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/7-3-manage-pending-network-dependent-records.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-7.3-review.md`
+- `src/data/repositories/receipt-parse-jobs.repository.test.ts`
+- `src/data/repositories/receipt-parse-jobs.repository.ts`
+- `src/domain/recovery/recovery.test.ts`
+- `src/domain/recovery/schemas.ts`
+- `src/domain/recovery/types.ts`
+- `src/features/recovery/RecoveryPanel.tsx`
+- `src/features/recovery/recovery-copy.test.ts`
+- `src/features/recovery/recovery-copy.ts`
+- `src/features/recovery/useRecovery.test.ts`
+- `src/features/recovery/useRecovery.ts`
+- `src/features/today/TodayScreen.tsx`
+- `src/services/receipt-parsing/receipt-parse-job.service.test.ts`
+- `src/services/receipt-parsing/receipt-review.service.test.ts`
+- `src/services/recovery/recovery.service.test.ts`
+- `src/services/recovery/recovery.service.ts`
 
 ## Change Log
 
 - 2026-05-09: Created Story 7.3 ready-for-dev.
+- 2026-05-09: Started implementation.
+- 2026-05-09: Completed pending network-dependent receipt recovery and marked story done.

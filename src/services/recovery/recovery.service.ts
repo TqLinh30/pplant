@@ -5,6 +5,14 @@ import {
   type MigrationReport,
 } from '@/data/db/migrations/migrate';
 import {
+  createCaptureDraftRepository,
+  type CaptureDraftRepository,
+} from '@/data/repositories/capture-drafts.repository';
+import {
+  createReceiptParseJobRepository,
+  type ReceiptParseJobRepository,
+} from '@/data/repositories/receipt-parse-jobs.repository';
+import {
   createRecoveryRepository,
   type RecoveryRepository,
 } from '@/data/repositories/recovery.repository';
@@ -24,8 +32,10 @@ import { createAppError } from '@/domain/common/app-error';
 import { asLocalDate, formatDateAsLocalDate, type LocalDate } from '@/domain/common/date-rules';
 import { asEntityId, type EntityId } from '@/domain/common/ids';
 import { err, isErr, ok, type AppResult } from '@/domain/common/result';
+import { isReceiptCaptureDraftPayload } from '@/features/capture-drafts/captureDraftPayloads';
 import { combineReminderFireAtLocal } from '@/domain/reminders/schemas';
 import type { Reminder, ReminderScheduledNotification } from '@/domain/reminders/types';
+import type { ReceiptParseJob } from '@/domain/receipts/types';
 import {
   buildMissedTaskRecurrenceOccurrences,
   defaultRecoveryLookbackDays,
@@ -53,8 +63,17 @@ import {
   type ReminderMutationResult,
   type ReminderRequest,
 } from '@/services/reminders/reminder.service';
+import {
+  runReceiptParseJob as runReceiptParseJobService,
+  type RunReceiptParseJobRequest,
+} from '@/services/receipt-parsing/receipt-parse-job.service';
+import { deleteReceiptDraftImage as deleteReceiptDraftImageService } from '@/services/files/receipt-retention.service';
 
 export type RecoveryItemReason =
+  | 'receipt_parsing_failed'
+  | 'receipt_parsing_queued'
+  | 'receipt_parsing_retry_exhausted'
+  | 'receipt_parsing_running'
   | 'reminder_not_active'
   | 'reminder_time_passed'
   | 'task_deadline_passed'
@@ -66,6 +85,7 @@ export type RecoveryItem = {
   id: string;
   occurrenceLocalDate: LocalDate | null;
   reason: RecoveryItemReason;
+  relatedDraftId?: EntityId;
   targetId: EntityId;
   targetKind: RecoveryTargetKind;
   title: string;
@@ -86,11 +106,14 @@ export type RecoveryServiceDependencies = {
   completeTaskRecurrenceOccurrence?: (
     input: TaskRecurrenceDatedOccurrenceActionRequest,
   ) => Promise<AppResult<LocalDate>>;
+  createCaptureDraftRepository?: (database: unknown) => CaptureDraftRepository;
   createEventId?: () => string;
+  createReceiptParseJobRepository?: (database: unknown) => ReceiptParseJobRepository;
   createRecoveryRepository?: (database: unknown) => RecoveryRepository;
   createReminderRepository?: (database: unknown) => ReminderRepository;
   createTaskRecurrenceRepository?: (database: unknown) => TaskRecurrenceRepository;
   createTaskRepository?: (database: unknown) => TaskRepository;
+  deleteReceiptDraftImage?: (input: { deletionReason?: 'user_deleted'; draftId: string }) => Promise<AppResult<unknown>>;
   migrateDatabase?: (database: unknown, now: Date) => Promise<AppResult<MigrationReport>>;
   now?: () => Date;
   openDatabase?: () => unknown;
@@ -100,11 +123,14 @@ export type RecoveryServiceDependencies = {
     minutes?: number;
     occurrenceLocalDate?: string | null;
   }) => Promise<AppResult<ReminderMutationResult>>;
+  runReceiptParseJob?: (input: RunReceiptParseJobRequest) => Promise<AppResult<ReceiptParseJob>>;
   updateReminder?: (input: ReminderRequest & { id: string }) => Promise<AppResult<ReminderMutationResult>>;
 };
 
 type PreparedRecoveryAccess = {
+  captureDraftRepository: CaptureDraftRepository;
   now: Date;
+  receiptParseJobRepository: ReceiptParseJobRepository;
   recoveryRepository: RecoveryRepository;
   reminderRepository: ReminderRepository;
   taskRecurrenceRepository: TaskRecurrenceRepository;
@@ -116,6 +142,10 @@ function defaultCreateId(): string {
 }
 
 async function prepareRecoveryAccess({
+  createCaptureDraftRepository: createCaptureDraftRepositoryDependency = (database) =>
+    createCaptureDraftRepository(database as PplantDatabase),
+  createReceiptParseJobRepository: createReceiptParseJobRepositoryDependency = (database) =>
+    createReceiptParseJobRepository(database as PplantDatabase),
   createRecoveryRepository: createRecoveryRepositoryDependency = (database) =>
     createRecoveryRepository(database as PplantDatabase),
   createReminderRepository: createReminderRepositoryDependency = (database) =>
@@ -145,7 +175,9 @@ async function prepareRecoveryAccess({
   }
 
   return ok({
+    captureDraftRepository: createCaptureDraftRepositoryDependency(database),
     now,
+    receiptParseJobRepository: createReceiptParseJobRepositoryDependency(database),
     recoveryRepository: createRecoveryRepositoryDependency(database),
     reminderRepository: createReminderRepositoryDependency(database),
     taskRecurrenceRepository: createTaskRecurrenceRepositoryDependency(database),
@@ -415,6 +447,93 @@ async function addReminderRecoveryItems(
   return ok(undefined);
 }
 
+function receiptReasonForStatus(status: ReceiptParseJob['status']): RecoveryItemReason | null {
+  switch (status) {
+    case 'pending':
+      return 'receipt_parsing_queued';
+    case 'running':
+      return 'receipt_parsing_running';
+    case 'failed':
+      return 'receipt_parsing_failed';
+    case 'retry_exhausted':
+      return 'receipt_parsing_retry_exhausted';
+    case 'low_confidence':
+    case 'parsed':
+    case 'reviewed':
+    case 'saved':
+      return null;
+    default:
+      status satisfies never;
+      return null;
+  }
+}
+
+function receiptActionsForJob(job: ReceiptParseJob): RecoveryAction[] {
+  if (job.status === 'running') {
+    return ['edit', 'manual_entry', 'discard'];
+  }
+
+  return ['retry', 'edit', 'manual_entry', 'discard'];
+}
+
+async function addReceiptParseJobRecoveryItems(
+  access: PreparedRecoveryAccess,
+  items: RecoveryItem[],
+): Promise<AppResult<void>> {
+  const jobs = await access.receiptParseJobRepository.listPendingOrRetryableJobs(localWorkspaceId);
+
+  if (isErr(jobs)) {
+    return jobs;
+  }
+
+  for (const job of jobs.value) {
+    const reason = receiptReasonForStatus(job.status);
+
+    if (!reason) {
+      continue;
+    }
+
+    const draft = await access.captureDraftRepository.getDraft(localWorkspaceId, job.receiptDraftId);
+
+    if (isErr(draft)) {
+      return draft;
+    }
+
+    if (
+      !draft.value ||
+      draft.value.status !== 'active' ||
+      draft.value.kind !== 'expense' ||
+      !isReceiptCaptureDraftPayload(draft.value.payload)
+    ) {
+      continue;
+    }
+
+    const resolved = await targetIsResolved(access.recoveryRepository, 'receipt_parse_job', job.id, null);
+
+    if (isErr(resolved)) {
+      return resolved;
+    }
+
+    if (resolved.value) {
+      continue;
+    }
+
+    items.push({
+      availableActions: receiptActionsForJob(job),
+      createdFromState: job.status,
+      id: itemId('receipt_parse_job', job.id, null),
+      occurrenceLocalDate: null,
+      reason,
+      relatedDraftId: draft.value.id,
+      targetId: job.id,
+      targetKind: 'receipt_parse_job',
+      title: 'Receipt parsing',
+    });
+  }
+
+  return ok(undefined);
+}
+
 function eventWindowStart(now: Date, lookbackDays: number): string {
   return new Date(now.getTime() - lookbackDays * 24 * 60 * 60 * 1000).toISOString();
 }
@@ -447,6 +566,12 @@ export async function loadRecoveryData(
 
   if (isErr(reminderItems)) {
     return reminderItems;
+  }
+
+  const receiptItems = await addReceiptParseJobRecoveryItems(access.value, items);
+
+  if (isErr(receiptItems)) {
+    return receiptItems;
   }
 
   const events = await access.value.recoveryRepository.listEventsSince(
@@ -636,6 +761,164 @@ export async function recordRecoveryHandoff(
     occurrenceLocalDate: target.value.occurrenceLocalDate,
     targetId: target.value.targetId,
     targetKind: target.value.targetKind,
+  });
+}
+
+function requireReceiptParseJobTarget(
+  input: RecoveryTargetRequest,
+): AppResult<{ targetId: EntityId; targetKind: 'receipt_parse_job' }> {
+  const target = parseRecoveryTarget(input);
+
+  if (isErr(target)) {
+    return target;
+  }
+
+  if (target.value.targetKind !== 'receipt_parse_job') {
+    return err(createAppError('validation_failed', 'Choose a receipt parsing recovery item.', 'edit'));
+  }
+
+  return ok({
+    targetId: target.value.targetId,
+    targetKind: target.value.targetKind,
+  });
+}
+
+export async function retryRecoveryReceiptParseJob(
+  input: RecoveryTargetRequest,
+  dependencies: RecoveryServiceDependencies = {},
+): Promise<AppResult<ReceiptParseJob>> {
+  const access = await prepareRecoveryAccess(dependencies);
+
+  if (isErr(access)) {
+    return access;
+  }
+
+  const target = requireReceiptParseJobTarget(input);
+
+  if (isErr(target)) {
+    return target;
+  }
+
+  const runReceiptParseJob = dependencies.runReceiptParseJob;
+
+  if (runReceiptParseJob) {
+    return runReceiptParseJob({
+      jobId: target.value.targetId,
+      userInitiated: true,
+    });
+  }
+
+  return runReceiptParseJobService(
+    {
+      jobId: target.value.targetId,
+      userInitiated: true,
+    },
+    {
+      captureDraftRepository: access.value.captureDraftRepository,
+      now: () => access.value.now,
+      receiptParseJobRepository: access.value.receiptParseJobRepository,
+    },
+  );
+}
+
+export async function recordRecoveryManualEntry(
+  input: RecoveryTargetRequest,
+  dependencies: RecoveryServiceDependencies = {},
+): Promise<AppResult<null>> {
+  const access = await prepareRecoveryAccess(dependencies);
+
+  if (isErr(access)) {
+    return access;
+  }
+
+  const target = requireReceiptParseJobTarget(input);
+
+  if (isErr(target)) {
+    return target;
+  }
+
+  return ok(null);
+}
+
+export async function discardRecoveryReceiptParseJob(
+  input: RecoveryTargetRequest,
+  dependencies: RecoveryServiceDependencies = {},
+): Promise<AppResult<RecoveryEvent>> {
+  const access = await prepareRecoveryAccess(dependencies);
+
+  if (isErr(access)) {
+    return access;
+  }
+
+  const target = requireReceiptParseJobTarget(input);
+
+  if (isErr(target)) {
+    return target;
+  }
+
+  const job = await access.value.receiptParseJobRepository.getJobById(localWorkspaceId, target.value.targetId);
+
+  if (isErr(job)) {
+    return job;
+  }
+
+  if (!job.value) {
+    return err(createAppError('not_found', 'Receipt parse job was not found.', 'discard'));
+  }
+
+  const draft = await access.value.captureDraftRepository.getDraft(localWorkspaceId, job.value.receiptDraftId);
+
+  if (isErr(draft)) {
+    return draft;
+  }
+
+  if (draft.value?.status === 'active' && isReceiptCaptureDraftPayload(draft.value.payload)) {
+    const deleteImage = dependencies.deleteReceiptDraftImage
+      ? await dependencies.deleteReceiptDraftImage({
+          deletionReason: 'user_deleted',
+          draftId: draft.value.id,
+        })
+      : await deleteReceiptDraftImageService(
+          {
+            deletionReason: 'user_deleted',
+            draftId: draft.value.id,
+          },
+          {
+            now: () => access.value.now,
+            repository: access.value.captureDraftRepository,
+          },
+        );
+
+    if (isErr(deleteImage)) {
+      return deleteImage;
+    }
+
+    const discarded = await access.value.captureDraftRepository.discardDraft(
+      localWorkspaceId,
+      draft.value.id,
+      access.value.now.toISOString(),
+    );
+
+    if (isErr(discarded)) {
+      return discarded;
+    }
+  }
+
+  const deleted = await access.value.receiptParseJobRepository.markDeleted(
+    localWorkspaceId,
+    job.value.id,
+    access.value.now.toISOString(),
+  );
+
+  if (isErr(deleted)) {
+    return deleted;
+  }
+
+  return recordRecoveryEvent(access.value, dependencies, {
+    action: 'discard',
+    occurrenceLocalDate: null,
+    targetId: target.value.targetId,
+    targetKind: 'receipt_parse_job',
   });
 }
 

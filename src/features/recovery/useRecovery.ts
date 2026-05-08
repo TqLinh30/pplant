@@ -5,10 +5,13 @@ import { isErr, type AppResult } from '@/domain/common/result';
 import type { RecoveryAction } from '@/domain/recovery/types';
 import {
   completeRecoveryItem,
+  discardRecoveryReceiptParseJob,
   dismissRecoveryItem,
   loadRecoveryData,
   pauseRecoveryReminder,
+  recordRecoveryManualEntry,
   recordRecoveryHandoff,
+  retryRecoveryReceiptParseJob,
   snoozeRecoveryReminder,
   type RecoveryData,
   type RecoveryItem,
@@ -28,13 +31,16 @@ export type RecoveryState = {
 
 export type RecoveryServices = {
   completeItem?: (input: RecoveryTargetRequest) => Promise<AppResult<unknown>>;
+  discardReceiptParseJob?: (input: RecoveryTargetRequest) => Promise<AppResult<unknown>>;
   dismissItem?: (input: RecoveryTargetRequest) => Promise<AppResult<unknown>>;
   loadData?: () => Promise<AppResult<RecoveryData>>;
+  manualEntryReceiptParseJob?: (input: RecoveryTargetRequest) => Promise<AppResult<unknown>>;
   pauseReminder?: (input: RecoveryTargetRequest) => Promise<AppResult<unknown>>;
   recordHandoff?: (
     input: RecoveryTargetRequest,
     action: Extract<RecoveryAction, 'edit' | 'reschedule'>,
   ) => Promise<AppResult<unknown>>;
+  retryReceiptParseJob?: (input: RecoveryTargetRequest) => Promise<AppResult<unknown>>;
   snoozeReminder?: (input: RecoveryTargetRequest & { minutes?: number }) => Promise<AppResult<unknown>>;
 };
 
@@ -42,7 +48,12 @@ type RecoveryHookAction =
   | { type: 'action_failed'; error: AppError }
   | { type: 'action_started' }
   | { type: 'action_succeeded'; action: RecoveryAction; data: RecoveryData }
-  | { type: 'handoff_succeeded'; action: Extract<RecoveryAction, 'edit' | 'reschedule'>; data: RecoveryData; item: RecoveryItem }
+  | {
+      type: 'handoff_succeeded';
+      action: Extract<RecoveryAction, 'edit' | 'manual_entry' | 'reschedule'>;
+      data: RecoveryData;
+      item: RecoveryItem;
+    }
   | { type: 'load_failed'; error: AppError }
   | { type: 'load_started' }
   | { type: 'load_succeeded'; data: RecoveryData };
@@ -133,9 +144,12 @@ export function useRecovery(services: RecoveryServices = {}) {
   const isMounted = useRef(false);
   const loadData = services.loadData ?? loadRecoveryData;
   const completeItem = services.completeItem ?? completeRecoveryItem;
+  const discardReceiptParseJob = services.discardReceiptParseJob ?? discardRecoveryReceiptParseJob;
   const dismissItem = services.dismissItem ?? dismissRecoveryItem;
+  const manualEntryReceiptParseJob = services.manualEntryReceiptParseJob ?? recordRecoveryManualEntry;
   const pauseReminder = services.pauseReminder ?? pauseRecoveryReminder;
   const recordHandoff = services.recordHandoff ?? recordRecoveryHandoff;
+  const retryReceiptParseJob = services.retryReceiptParseJob ?? retryRecoveryReceiptParseJob;
   const snoozeReminder = services.snoozeReminder ?? snoozeRecoveryReminder;
 
   const reload = useCallback(() => {
@@ -166,7 +180,7 @@ export function useRecovery(services: RecoveryServices = {}) {
           return;
         }
 
-        if (item && (action === 'edit' || action === 'reschedule')) {
+        if (item && (action === 'edit' || action === 'manual_entry' || action === 'reschedule')) {
           dispatch({ action, data: result.value, item, type: 'handoff_succeeded' });
           return;
         }
@@ -186,10 +200,16 @@ export function useRecovery(services: RecoveryServices = {}) {
       const request =
         action === 'complete'
           ? completeItem(target)
+          : action === 'discard'
+            ? discardReceiptParseJob(target)
           : action === 'dismiss'
             ? dismissItem(target)
+            : action === 'manual_entry'
+              ? manualEntryReceiptParseJob(target)
             : action === 'pause'
               ? pauseReminder(target)
+              : action === 'retry'
+                ? retryReceiptParseJob(target)
               : action === 'snooze'
                 ? snoozeReminder({ ...target, minutes: 30 })
                 : recordHandoff(target, action);
@@ -204,10 +224,23 @@ export function useRecovery(services: RecoveryServices = {}) {
           return;
         }
 
-        refreshAfterAction(action, action === 'edit' || action === 'reschedule' ? item : null);
+        refreshAfterAction(
+          action,
+          action === 'edit' || action === 'manual_entry' || action === 'reschedule' ? item : null,
+        );
       });
     },
-    [completeItem, dismissItem, pauseReminder, recordHandoff, refreshAfterAction, snoozeReminder],
+    [
+      completeItem,
+      discardReceiptParseJob,
+      dismissItem,
+      manualEntryReceiptParseJob,
+      pauseReminder,
+      recordHandoff,
+      refreshAfterAction,
+      retryReceiptParseJob,
+      snoozeReminder,
+    ],
   );
 
   useEffect(() => {

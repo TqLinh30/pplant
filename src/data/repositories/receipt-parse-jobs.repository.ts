@@ -57,6 +57,7 @@ export type ReceiptParseJobRepository = {
     id: EntityId,
     input: MarkReceiptParseJobFailedInput,
   ): Promise<AppResult<ReceiptParseJob>>;
+  markDeleted(workspaceId: WorkspaceId, id: EntityId, deletedAt: string): Promise<AppResult<ReceiptParseJob>>;
   markParsed(
     workspaceId: WorkspaceId,
     id: EntityId,
@@ -205,7 +206,7 @@ export function createReceiptParseJobRepository(database: PplantDatabase): Recei
       try {
         const rows = database.$client.getAllSync<ReceiptParseJobRow>(
           `${selectReceiptParseJobColumnsSql()}
-           WHERE workspace_id = ? AND deleted_at IS NULL AND status IN ('pending', 'failed')
+           WHERE workspace_id = ? AND deleted_at IS NULL AND status IN ('pending', 'running', 'failed', 'retry_exhausted')
            ORDER BY updated_at ASC, id ASC`,
           workspaceId,
         );
@@ -236,6 +237,37 @@ export function createReceiptParseJobRepository(database: PplantDatabase): Recei
         return requireJob(database, workspaceId, id);
       } catch (cause) {
         return err(createAppError('unavailable', 'Local receipt parse job could not be marked failed.', 'retry', cause));
+      }
+    },
+
+    async markDeleted(workspaceId, id, deletedAt) {
+      try {
+        database.$client.runSync(
+          `UPDATE receipt_parse_jobs
+           SET deleted_at = ?,
+               updated_at = ?
+           WHERE workspace_id = ? AND id = ? AND deleted_at IS NULL`,
+          deletedAt,
+          deletedAt,
+          workspaceId,
+          id,
+        );
+
+        const row = database.$client.getFirstSync<ReceiptParseJobRow>(
+          `${selectReceiptParseJobColumnsSql()}
+           WHERE workspace_id = ? AND id = ?
+           LIMIT 1`,
+          workspaceId,
+          id,
+        );
+
+        if (!row) {
+          return err(createAppError('not_found', 'Receipt parse job was not found.', 'retry'));
+        }
+
+        return parseReceiptParseJobRow(row);
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local receipt parse job could not be deleted.', 'retry', cause));
       }
     },
 

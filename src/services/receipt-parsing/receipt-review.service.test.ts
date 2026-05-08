@@ -182,6 +182,10 @@ class FakeReceiptParseJobRepository implements ReceiptParseJobRepository {
     return err(createAppError('unavailable', 'Not used in receipt review tests.', 'none'));
   }
 
+  async markDeleted(_workspaceId: WorkspaceId, _id: EntityId, _deletedAt: string) {
+    return err(createAppError('unavailable', 'Not used in receipt review tests.', 'none'));
+  }
+
   async markParsed(
     _workspaceId: WorkspaceId,
     _id: EntityId,

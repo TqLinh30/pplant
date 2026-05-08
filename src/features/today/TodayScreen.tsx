@@ -18,6 +18,7 @@ import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 import { CaptureDraftRecoveryPanel } from '@/features/capture-drafts/CaptureDraftRecoveryPanel';
+import { RecoveryPanel } from '@/features/recovery/RecoveryPanel';
 
 import { QuickCaptureLauncher } from './QuickCaptureLauncher';
 import { todayMinimumTouchTarget, todayUxNoticeFor } from './today-ux-states';
@@ -409,6 +410,7 @@ export function TodayScreen() {
         ) : null}
 
         <CaptureDraftRecoveryPanel />
+        <RecoveryPanel targetKinds={['receipt_parse_job']} />
 
         <MoneySection data={data} summary={summary} />
         <SavingsSection data={data} summary={summary} />

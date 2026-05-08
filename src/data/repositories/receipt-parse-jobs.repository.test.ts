@@ -116,6 +116,18 @@ class FakeReceiptParseJobClient {
       return { changes: row ? 1 : 0 };
     }
 
+    if (source.includes('deleted_at = ?')) {
+      const [deletedAt, updatedAt, workspaceId, id] = params;
+      const row = this.findRow(workspaceId as string, id as string);
+
+      if (row) {
+        row.deletedAt = deletedAt as string;
+        row.updatedAt = updatedAt as string;
+      }
+
+      return { changes: row ? 1 : 0 };
+    }
+
     return { changes: 0 };
   }
 
@@ -150,14 +162,17 @@ class FakeReceiptParseJobClient {
         (row) =>
           row.workspaceId === workspaceId &&
           row.deletedAt === null &&
-          (row.status === 'pending' || row.status === 'failed'),
+          (row.status === 'pending' ||
+            row.status === 'running' ||
+            row.status === 'failed' ||
+            row.status === 'retry_exhausted'),
       )
       .sort((left, right) => left.updatedAt.localeCompare(right.updatedAt) || left.id.localeCompare(right.id))
       .map((row) => row as T);
   }
 
   private findRow(workspaceId: string, id: string): ReceiptParseJobRow | undefined {
-    return this.rows.find((row) => row.workspaceId === workspaceId && row.id === id && row.deletedAt === null);
+    return this.rows.find((row) => row.workspaceId === workspaceId && row.id === id);
   }
 }
 
@@ -247,6 +262,31 @@ describe('receipt parse job repository', () => {
     if (exhausted.ok) {
       expect(exhausted.value.status).toBe('retry_exhausted');
       expect(exhausted.value.normalizedResult).toBeNull();
+    }
+  });
+
+  it('soft-deletes receipt parse jobs so recovery listings ignore them', async () => {
+    const client = new FakeReceiptParseJobClient();
+    const repository = createReceiptParseJobRepository({ $client: client } as never);
+
+    await repository.createPendingJob({
+      id: 'job-1' as never,
+      receiptDraftId: 'draft-receipt' as never,
+      requestedAt: fixedNow,
+      workspaceId: localWorkspaceId,
+    });
+    const deleted = await repository.markDeleted(
+      localWorkspaceId,
+      'job-1' as never,
+      '2026-05-08T00:05:00.000Z',
+    );
+    const retryable = await repository.listPendingOrRetryableJobs(localWorkspaceId);
+
+    expect(deleted.ok).toBe(true);
+    expect(retryable.ok).toBe(true);
+    if (deleted.ok && retryable.ok) {
+      expect(deleted.value.deletedAt).toBe('2026-05-08T00:05:00.000Z');
+      expect(retryable.value).toEqual([]);
     }
   });
 

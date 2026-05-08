@@ -2,8 +2,21 @@ import type { LocalDate } from '@/domain/common/date-rules';
 import type { EntityId } from '@/domain/common/ids';
 import type { WorkspaceId } from '@/domain/workspace/types';
 
-export type RecoveryTargetKind = 'reminder_occurrence' | 'task' | 'task_recurrence_occurrence';
-export type RecoveryAction = 'complete' | 'dismiss' | 'edit' | 'pause' | 'reschedule' | 'snooze';
+export type RecoveryTargetKind =
+  | 'receipt_parse_job'
+  | 'reminder_occurrence'
+  | 'task'
+  | 'task_recurrence_occurrence';
+export type RecoveryAction =
+  | 'complete'
+  | 'discard'
+  | 'dismiss'
+  | 'edit'
+  | 'manual_entry'
+  | 'pause'
+  | 'reschedule'
+  | 'retry'
+  | 'snooze';
 
 export type RecoveryEvent = {
   action: RecoveryAction;

@@ -47,6 +47,26 @@ describe('recovery domain rules', () => {
     }
   });
 
+  it('validates receipt parse job recovery events without occurrence dates', () => {
+    const parsed = parseRecoveryEventRow({
+      action: 'discard',
+      createdAt: now.toISOString(),
+      id: 'recovery-receipt-1',
+      occurredAt: now.toISOString(),
+      occurrenceLocalDate: null,
+      targetId: 'receipt-job-1',
+      targetKind: 'receipt_parse_job',
+      workspaceId: 'local',
+    });
+
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.targetKind).toBe('receipt_parse_job');
+      expect(parsed.value.action).toBe('discard');
+      expect(parsed.value.occurrenceLocalDate).toBeNull();
+    }
+  });
+
   it('detects missed daily tasks from local dates', () => {
     expect(
       isMissedDailyTask(

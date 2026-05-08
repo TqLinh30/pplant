@@ -1,5 +1,9 @@
 import { ok, type AppResult } from '@/domain/common/result';
+import type { EntityId } from '@/domain/common/ids';
+import type { CaptureDraft } from '@/domain/capture-drafts/types';
+import { toCaptureDraftPayload, buildReceiptCaptureDraftPayload } from '@/features/capture-drafts/captureDraftPayloads';
 import type { Reminder, ReminderScheduledNotification } from '@/domain/reminders/types';
+import type { ReceiptParseJob } from '@/domain/receipts/types';
 import type { RecoveryEvent, SaveRecoveryEventInput } from '@/domain/recovery/types';
 import type {
   Task,
@@ -12,9 +16,12 @@ import type { ReminderMutationResult } from '@/services/reminders/reminder.servi
 
 import {
   completeRecoveryItem,
+  discardRecoveryReceiptParseJob,
   dismissRecoveryItem,
   loadRecoveryData,
   pauseRecoveryReminder,
+  recordRecoveryHandoff,
+  retryRecoveryReceiptParseJob,
   snoozeRecoveryReminder,
   type RecoveryServiceDependencies,
 } from './recovery.service';
@@ -111,11 +118,57 @@ function createNotification(overrides: Partial<ReminderScheduledNotification> = 
   };
 }
 
+function createReceiptDraft(overrides: Partial<CaptureDraft> = {}): CaptureDraft {
+  return {
+    createdAt: '2026-05-07T00:00:00.000Z',
+    discardedAt: null,
+    id: 'draft-receipt' as never,
+    kind: 'expense',
+    lastSavedAt: '2026-05-07T00:00:00.000Z',
+    payload: toCaptureDraftPayload(
+      buildReceiptCaptureDraftPayload({
+        capturedAt: '2026-05-07T00:00:00.000Z',
+        retainedImageUri: 'file:///app/documents/receipts/receipt-1.jpg',
+        source: 'camera',
+      }),
+    ),
+    savedAt: null,
+    savedRecordId: null,
+    savedRecordKind: null,
+    status: 'active',
+    updatedAt: '2026-05-07T00:00:00.000Z',
+    workspaceId: localWorkspaceId,
+    ...overrides,
+  };
+}
+
+function createReceiptJob(overrides: Partial<ReceiptParseJob> = {}): ReceiptParseJob {
+  return {
+    attemptCount: 0,
+    completedAt: null,
+    createdAt: '2026-05-07T00:00:00.000Z',
+    deletedAt: null,
+    id: 'receipt-job-1' as never,
+    lastErrorCategory: null,
+    normalizedResult: null,
+    receiptDraftId: 'draft-receipt' as never,
+    requestedAt: '2026-05-07T00:00:00.000Z',
+    retryWindowStartedAt: null,
+    startedAt: null,
+    status: 'pending',
+    updatedAt: '2026-05-07T00:00:00.000Z',
+    workspaceId: localWorkspaceId,
+    ...overrides,
+  };
+}
+
 function createDependencies() {
   const tasks = [createTask()];
   const rules = [createRule()];
   const completions: TaskRecurrenceCompletion[] = [];
   const exceptions: TaskRecurrenceException[] = [];
+  const drafts: CaptureDraft[] = [];
+  const receiptJobs: ReceiptParseJob[] = [];
   const reminders = [
     createReminder(),
     createReminder({
@@ -129,7 +182,55 @@ function createDependencies() {
   const events: RecoveryEvent[] = [];
 
   const dependencies: RecoveryServiceDependencies = {
+    createCaptureDraftRepository: () =>
+      ({
+        discardDraft: jest.fn(async (_workspaceId, id: EntityId, timestamp: string) => {
+          const draft = drafts.find((candidate) => candidate.id === id && candidate.status === 'active');
+
+          if (draft) {
+            draft.status = 'discarded';
+            draft.discardedAt = timestamp;
+            draft.updatedAt = timestamp;
+          }
+
+          return ok(draft ? { ...draft } : null);
+        }),
+        getDraft: jest.fn(async (_workspaceId, id) => {
+          const draft = drafts.find((candidate) => candidate.id === id);
+
+          return ok(draft ? { ...draft } : null);
+        }),
+      }) as never,
     createEventId: () => `recovery-${events.length + 1}`,
+    createReceiptParseJobRepository: () =>
+      ({
+        getJobById: jest.fn(async (_workspaceId, id) =>
+          ok(receiptJobs.find((job) => job.id === id && job.deletedAt === null) ?? null),
+        ),
+        listPendingOrRetryableJobs: jest.fn(async () =>
+          ok(
+            receiptJobs
+              .filter((job) =>
+                job.deletedAt === null &&
+                (job.status === 'pending' ||
+                  job.status === 'running' ||
+                  job.status === 'failed' ||
+                  job.status === 'retry_exhausted'),
+              )
+              .map((job) => ({ ...job })),
+          ),
+        ),
+        markDeleted: jest.fn(async (_workspaceId, id, deletedAt) => {
+          const job = receiptJobs.find((candidate) => candidate.id === id && candidate.deletedAt === null);
+
+          if (job) {
+            job.deletedAt = deletedAt;
+            job.updatedAt = deletedAt;
+          }
+
+          return ok(job ? { ...job } : null);
+        }),
+      }) as never,
     createRecoveryRepository: () =>
       ({
         createEvent: jest.fn(async (input: SaveRecoveryEventInput): Promise<AppResult<RecoveryEvent>> => {
@@ -213,8 +314,10 @@ function createDependencies() {
   return {
     completions,
     dependencies,
+    drafts,
     events,
     notifications,
+    receiptJobs,
     reminders,
     rules,
     tasks,
@@ -329,5 +432,162 @@ describe('recovery service', () => {
     ]);
     expect(pausedInputs).toEqual([{ id: 'reminder-1' }]);
     expect(events.map((event) => event.action)).toEqual(['snooze', 'pause']);
+  });
+
+  it('loads pending receipt parse jobs with recovery actions and safe generic copy', async () => {
+    const { dependencies, drafts, receiptJobs } = createDependencies();
+    drafts.push(createReceiptDraft());
+    receiptJobs.push(
+      createReceiptJob({ id: 'receipt-job-pending' as never, status: 'pending' }),
+      createReceiptJob({ id: 'receipt-job-running' as never, status: 'running' }),
+      createReceiptJob({ id: 'receipt-job-failed' as never, status: 'failed' }),
+      createReceiptJob({
+        attemptCount: 3,
+        id: 'receipt-job-exhausted' as never,
+        lastErrorCategory: 'unavailable',
+        status: 'retry_exhausted',
+      }),
+      createReceiptJob({ id: 'receipt-job-parsed' as never, status: 'parsed' }),
+    );
+
+    const result = await loadRecoveryData(dependencies, { lookbackDays: 2 });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const receiptItems = result.value.items.filter((item) => item.targetKind === 'receipt_parse_job');
+
+      expect(receiptItems.map((item) => item.reason)).toEqual([
+        'receipt_parsing_queued',
+        'receipt_parsing_running',
+        'receipt_parsing_failed',
+        'receipt_parsing_retry_exhausted',
+      ]);
+      expect(receiptItems[0]).toMatchObject({
+        availableActions: ['retry', 'edit', 'manual_entry', 'discard'],
+        relatedDraftId: 'draft-receipt',
+        title: 'Receipt parsing',
+      });
+      expect(receiptItems[1].availableActions).toEqual(['edit', 'manual_entry', 'discard']);
+      expect(receiptItems.map((item) => item.title).join(' ')).not.toContain('file://');
+    }
+  });
+
+  it('does not load receipt jobs whose draft is inactive or missing', async () => {
+    const { dependencies, drafts, receiptJobs } = createDependencies();
+    drafts.push(createReceiptDraft({ id: 'discarded-draft' as never, status: 'discarded' }));
+    receiptJobs.push(
+      createReceiptJob({
+        id: 'receipt-job-discarded' as never,
+        receiptDraftId: 'discarded-draft' as never,
+      }),
+      createReceiptJob({
+        id: 'receipt-job-missing' as never,
+        receiptDraftId: 'missing-draft' as never,
+      }),
+    );
+
+    const result = await loadRecoveryData(dependencies, { lookbackDays: 2 });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.items.some((item) => item.targetKind === 'receipt_parse_job')).toBe(false);
+    }
+  });
+
+  it('retries receipt parse jobs as explicit user actions without resolving the recovery item', async () => {
+    const { dependencies, drafts, receiptJobs } = createDependencies();
+    const runReceiptParseJob = jest.fn(async (input) => {
+      const job = receiptJobs.find((candidate) => candidate.id === input.jobId);
+
+      if (!job) {
+        throw new Error('missing job fixture');
+      }
+
+      job.attemptCount = 1;
+      job.status = 'failed';
+      return ok({ ...job });
+    });
+    drafts.push(createReceiptDraft());
+    receiptJobs.push(createReceiptJob({ attemptCount: 3, status: 'retry_exhausted' }));
+
+    const retried = await retryRecoveryReceiptParseJob(
+      {
+        targetId: 'receipt-job-1',
+        targetKind: 'receipt_parse_job',
+      },
+      {
+        ...dependencies,
+        runReceiptParseJob,
+      },
+    );
+    const reloaded = await loadRecoveryData(dependencies, { lookbackDays: 2 });
+
+    expect(retried.ok).toBe(true);
+    expect(runReceiptParseJob).toHaveBeenCalledWith({
+      jobId: 'receipt-job-1',
+      userInitiated: true,
+    });
+    expect(reloaded.ok).toBe(true);
+    if (reloaded.ok) {
+      expect(reloaded.value.items.some((item) => item.targetId === 'receipt-job-1')).toBe(true);
+    }
+  });
+
+  it('discards receipt recovery by deleting retained image, draft, and parse job before recording resolution', async () => {
+    const { dependencies, drafts, events, receiptJobs } = createDependencies();
+    const deleteReceiptDraftImage = jest.fn(async () => ok({ deleted: true }));
+    drafts.push(createReceiptDraft());
+    receiptJobs.push(createReceiptJob({ status: 'failed' }));
+
+    const discarded = await discardRecoveryReceiptParseJob(
+      {
+        targetId: 'receipt-job-1',
+        targetKind: 'receipt_parse_job',
+      },
+      {
+        ...dependencies,
+        deleteReceiptDraftImage,
+      },
+    );
+    const reloaded = await loadRecoveryData(dependencies, { lookbackDays: 2 });
+
+    expect(discarded.ok).toBe(true);
+    expect(deleteReceiptDraftImage).toHaveBeenCalledWith({
+      deletionReason: 'user_deleted',
+      draftId: 'draft-receipt',
+    });
+    expect(drafts[0].status).toBe('discarded');
+    expect(receiptJobs[0].deletedAt).toBe(fixedNow.toISOString());
+    expect(events[0]).toMatchObject({
+      action: 'discard',
+      targetId: 'receipt-job-1',
+      targetKind: 'receipt_parse_job',
+    });
+    expect(reloaded.ok).toBe(true);
+    if (reloaded.ok) {
+      expect(reloaded.value.items.some((item) => item.targetKind === 'receipt_parse_job')).toBe(false);
+    }
+  });
+
+  it('records receipt edit handoff as a safe recovery resolution', async () => {
+    const { dependencies, drafts, receiptJobs } = createDependencies();
+    drafts.push(createReceiptDraft());
+    receiptJobs.push(createReceiptJob({ status: 'failed' }));
+
+    const edit = await recordRecoveryHandoff(
+      {
+        targetId: 'receipt-job-1',
+        targetKind: 'receipt_parse_job',
+      },
+      'edit',
+      dependencies,
+    );
+    const reloaded = await loadRecoveryData(dependencies, { lookbackDays: 2 });
+
+    expect(edit.ok).toBe(true);
+    expect(reloaded.ok).toBe(true);
+    if (reloaded.ok) {
+      expect(reloaded.value.items.some((item) => item.targetId === 'receipt-job-1')).toBe(false);
+    }
   });
 });
