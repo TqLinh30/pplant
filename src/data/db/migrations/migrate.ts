@@ -26,6 +26,7 @@ export const budgetPlanningMigrationId = '004_create_budgets_savings_goals';
 export const moneyRecordsMigrationId = '005_create_money_records';
 export const moneyRecordCorrectionsMigrationId = '006_add_money_record_corrections';
 export const recurringMoneyMigrationId = '007_create_recurring_money_rules';
+export const workEntriesMigrationId = '008_create_work_entries';
 
 const createMigrationTrackingTableSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -227,6 +228,50 @@ CREATE INDEX IF NOT EXISTS idx_money_records_recurrence_occurrence
   ON money_records (workspace_id, recurrence_rule_id, recurrence_occurrence_date, deleted_at);
 `;
 
+const workEntriesMigrationSql = `
+CREATE TABLE IF NOT EXISTS work_entries (
+  id TEXT PRIMARY KEY NOT NULL,
+  workspace_id TEXT NOT NULL,
+  entry_mode TEXT NOT NULL,
+  local_date TEXT NOT NULL,
+  duration_minutes INTEGER NOT NULL,
+  started_at_local_date TEXT,
+  started_at_local_time TEXT,
+  ended_at_local_date TEXT,
+  ended_at_local_time TEXT,
+  break_minutes INTEGER NOT NULL,
+  paid INTEGER NOT NULL,
+  wage_minor_per_hour INTEGER NOT NULL,
+  wage_currency_code TEXT NOT NULL,
+  wage_source TEXT NOT NULL,
+  earned_income_minor INTEGER NOT NULL,
+  category_id TEXT,
+  note TEXT,
+  source TEXT NOT NULL,
+  source_of_truth TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_work_entries_workspace_date
+  ON work_entries (workspace_id, deleted_at, local_date, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_work_entries_workspace_mode
+  ON work_entries (workspace_id, deleted_at, entry_mode, local_date);
+
+CREATE TABLE IF NOT EXISTS work_entry_topics (
+  work_entry_id TEXT NOT NULL,
+  topic_id TEXT NOT NULL,
+  workspace_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (work_entry_id, topic_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_work_entry_topics_entry
+  ON work_entry_topics (work_entry_id);
+`;
+
 const migrations = [
   {
     id: workspaceMigrationId,
@@ -255,6 +300,10 @@ const migrations = [
   {
     id: recurringMoneyMigrationId,
     sql: recurringMoneyMigrationSql,
+  },
+  {
+    id: workEntriesMigrationId,
+    sql: workEntriesMigrationSql,
   },
 ] as const;
 

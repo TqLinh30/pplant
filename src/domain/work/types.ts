@@ -1,7 +1,63 @@
-export type WorkEntryDraft = {
-  startedAtLocal: string;
-  endedAtLocal?: string;
-  breakMinutes?: number;
-  wageMinorPerHour?: number;
+import type { LocalDate } from '@/domain/common/date-rules';
+import type { EntityId } from '@/domain/common/ids';
+import type { CurrencyCode } from '@/domain/common/money';
+import type { WorkspaceId } from '@/domain/workspace/types';
+
+export type LocalTime = string & { readonly __brand: 'LocalTime' };
+export type WorkEntryMode = 'hours' | 'shift';
+export type WorkEntrySource = 'manual';
+export type WorkEntrySourceOfTruth = 'manual';
+export type WorkEntryWageSource = 'default' | 'override';
+export type WorkEntryNote = string & { readonly __brand: 'WorkEntryNote' };
+
+export type WorkEntry = {
+  breakMinutes: number;
+  categoryId: EntityId | null;
+  createdAt: string;
+  deletedAt: string | null;
+  durationMinutes: number;
+  earnedIncomeMinor: number;
+  endedAtLocalDate: LocalDate | null;
+  endedAtLocalTime: LocalTime | null;
+  entryMode: WorkEntryMode;
+  id: EntityId;
+  localDate: LocalDate;
+  note: WorkEntryNote | null;
   paid: boolean;
+  source: WorkEntrySource;
+  sourceOfTruth: WorkEntrySourceOfTruth;
+  startedAtLocalDate: LocalDate | null;
+  startedAtLocalTime: LocalTime | null;
+  topicIds: EntityId[];
+  updatedAt: string;
+  wageCurrencyCode: CurrencyCode;
+  wageMinorPerHour: number;
+  wageSource: WorkEntryWageSource;
+  workspaceId: WorkspaceId;
+};
+
+export type SaveWorkEntryInput = {
+  breakMinutes: number;
+  categoryId?: string | null;
+  createdAt: string;
+  deletedAt?: string | null;
+  durationMinutes: number;
+  earnedIncomeMinor: number;
+  endedAtLocalDate?: string | null;
+  endedAtLocalTime?: string | null;
+  entryMode: WorkEntryMode;
+  id: string;
+  localDate: string;
+  note?: string | null;
+  paid: boolean;
+  source: WorkEntrySource;
+  sourceOfTruth: WorkEntrySourceOfTruth;
+  startedAtLocalDate?: string | null;
+  startedAtLocalTime?: string | null;
+  topicIds: string[];
+  updatedAt: string;
+  wageCurrencyCode: string;
+  wageMinorPerHour: number;
+  wageSource: WorkEntryWageSource;
+  workspaceId: string;
 };

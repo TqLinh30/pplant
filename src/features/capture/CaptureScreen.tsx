@@ -12,6 +12,7 @@ import { TextField } from '@/ui/primitives/TextField';
 import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
+import { WorkEntryForm } from '@/features/work/WorkEntryForm';
 
 import { useManualMoneyCapture } from './useManualMoneyCapture';
 import { useRecurringMoney } from './useRecurringMoney';
@@ -579,6 +580,10 @@ export function CaptureScreen() {
             </>
           ) : null}
         </View>
+
+        <View style={styles.divider} />
+
+        <WorkEntryForm />
       </ScrollView>
     </SafeAreaView>
   );

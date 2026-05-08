@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-05-07T22:57:05+08:00"
-last_updated: "2026-05-08T12:51:05+08:00"
+last_updated: "2026-05-08T13:12:09+08:00"
 project: "Pplant"
 project_key: "NOKEY"
 tracking_system: "file-system"
@@ -55,7 +55,7 @@ development_status:
   2-2-edit-and-delete-money-records-with-summary-recalculation: done
   2-3-search-filter-sort-and-review-money-history: done
   2-4-manage-recurring-expenses-and-income: done
-  2-5-create-work-hour-and-shift-entries: backlog
+  2-5-create-work-hour-and-shift-entries: done
   2-6-review-work-history-and-earned-income: backlog
   2-7-show-expense-impact-as-work-time-context: backlog
   epic-2-retrospective: optional

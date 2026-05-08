@@ -135,6 +135,38 @@ export const recurrenceExceptions = sqliteTable('recurrence_exceptions', {
   updatedAt: text('updated_at').notNull(),
 });
 
+export const workEntries = sqliteTable('work_entries', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  entryMode: text('entry_mode').notNull(),
+  localDate: text('local_date').notNull(),
+  durationMinutes: integer('duration_minutes').notNull(),
+  startedAtLocalDate: text('started_at_local_date'),
+  startedAtLocalTime: text('started_at_local_time'),
+  endedAtLocalDate: text('ended_at_local_date'),
+  endedAtLocalTime: text('ended_at_local_time'),
+  breakMinutes: integer('break_minutes').notNull(),
+  paid: integer('paid').notNull(),
+  wageMinorPerHour: integer('wage_minor_per_hour').notNull(),
+  wageCurrencyCode: text('wage_currency_code').notNull(),
+  wageSource: text('wage_source').notNull(),
+  earnedIncomeMinor: integer('earned_income_minor').notNull(),
+  categoryId: text('category_id'),
+  note: text('note'),
+  source: text('source').notNull(),
+  sourceOfTruth: text('source_of_truth').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+});
+
+export const workEntryTopics = sqliteTable('work_entry_topics', {
+  workEntryId: text('work_entry_id').notNull(),
+  topicId: text('topic_id').notNull(),
+  workspaceId: text('workspace_id').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
 export const schema = {
   budgets,
   categories,
@@ -147,6 +179,8 @@ export const schema = {
   schemaMigrations,
   topics,
   userPreferences,
+  workEntries,
+  workEntryTopics,
   workspaces,
 };
 

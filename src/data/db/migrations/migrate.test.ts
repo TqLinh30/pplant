@@ -6,6 +6,7 @@ import {
   moneyRecordsMigrationId,
   preferencesMigrationId,
   recurringMoneyMigrationId,
+  workEntriesMigrationId,
   workspaceMigrationId,
   type MigrationClient,
 } from './migrate';
@@ -56,7 +57,7 @@ describe('local database migrations', () => {
     expect(firstRun).toEqual({
       ok: true,
       value: {
-        applied: 7,
+        applied: 8,
         appliedMigrations: [
           workspaceMigrationId,
           preferencesMigrationId,
@@ -65,6 +66,7 @@ describe('local database migrations', () => {
           moneyRecordsMigrationId,
           moneyRecordCorrectionsMigrationId,
           recurringMoneyMigrationId,
+          workEntriesMigrationId,
         ],
       },
     });
@@ -82,6 +84,7 @@ describe('local database migrations', () => {
     expect(client.appliedMigrations.has(moneyRecordsMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(moneyRecordCorrectionsMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(recurringMoneyMigrationId)).toBe(true);
+    expect(client.appliedMigrations.has(workEntriesMigrationId)).toBe(true);
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS workspaces');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS user_preferences');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS categories');
@@ -96,6 +99,8 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS recurrence_exceptions');
     expect(client.executedSql.join('\n')).toContain('ALTER TABLE money_records ADD COLUMN recurrence_rule_id TEXT');
     expect(client.executedSql.join('\n')).toContain('ALTER TABLE money_records ADD COLUMN recurrence_occurrence_date TEXT');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS work_entries');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS work_entry_topics');
     expect(client.executedSql.join('\n')).toContain('idx_categories_workspace_active_order');
     expect(client.executedSql.join('\n')).toContain('idx_topics_workspace_active_order');
     expect(client.executedSql.join('\n')).toContain('idx_savings_goals_workspace_active_target_date');
@@ -104,6 +109,8 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('idx_recurrence_rules_workspace_owner_active');
     expect(client.executedSql.join('\n')).toContain('idx_recurrence_exceptions_rule_date');
     expect(client.executedSql.join('\n')).toContain('idx_money_records_recurrence_occurrence');
+    expect(client.executedSql.join('\n')).toContain('idx_work_entries_workspace_date');
+    expect(client.executedSql.join('\n')).toContain('idx_work_entry_topics_entry');
     expect(client.executedSql.join('\n')).not.toContain('DROP TABLE');
   });
 
@@ -116,7 +123,7 @@ describe('local database migrations', () => {
     expect(result).toEqual({
       ok: true,
       value: {
-        applied: 6,
+        applied: 7,
         appliedMigrations: [
           preferencesMigrationId,
           categoryTopicMigrationId,
@@ -124,6 +131,7 @@ describe('local database migrations', () => {
           moneyRecordsMigrationId,
           moneyRecordCorrectionsMigrationId,
           recurringMoneyMigrationId,
+          workEntriesMigrationId,
         ],
       },
     });
@@ -133,6 +141,7 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS budgets');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS money_records');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS recurrence_rules');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS work_entries');
   });
 
   it('returns a retryable local error when migration setup fails', async () => {
