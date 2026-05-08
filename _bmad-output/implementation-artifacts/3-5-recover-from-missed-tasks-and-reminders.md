@@ -1,6 +1,6 @@
 # Story 3.5: Recover From Missed Tasks And Reminders
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -16,30 +16,30 @@ so that I can continue without feeling punished.
 
 ## Tasks / Subtasks
 
-- [ ] Resolve Story 3.4 scheduling cleanup finding before or during this story. (AC: 1, 2)
-  - [ ] Ensure reminders that move to permission-denied, unavailable, failed, or local-only during reschedule/snooze cancel active platform notification ids before local scheduled rows are soft-deleted.
-  - [ ] Add regression tests for previously scheduled reminders entering denied/unavailable/local-only states.
+- [x] Resolve Story 3.4 scheduling cleanup finding before or during this story. (AC: 1, 2)
+  - [x] Ensure reminders that move to permission-denied, unavailable, failed, or local-only during reschedule/snooze cancel active platform notification ids before local scheduled rows are soft-deleted.
+  - [x] Add regression tests for previously scheduled reminders entering denied/unavailable/local-only states.
 
-- [ ] Define recovery domain contracts and deterministic missed rules. (AC: 1, 2, 3)
-  - [ ] Add typed recovery target kinds for `task`, `task_recurrence_occurrence`, and `reminder_occurrence`.
-  - [ ] Define missed daily task as an active non-done task with `deadlineLocalDate < todayLocalDate`.
-  - [ ] Define missed recurring task/habit occurrence as an open virtual occurrence with `localDate < todayLocalDate`, bounded to a safe lookback window.
-  - [ ] Define missed reminder occurrence as an active scheduled notification whose `fireAtLocal` is before the current local date/time and whose delivery state is `scheduled` or `snoozed`.
-  - [ ] Treat disabled, unavailable, failed, permission-denied, and local-only reminder states as in-app recovery states without calling them user failure.
-  - [ ] Do not materialize task recurrence occurrences into task rows.
+- [x] Define recovery domain contracts and deterministic missed rules. (AC: 1, 2, 3)
+  - [x] Add typed recovery target kinds for `task`, `task_recurrence_occurrence`, and `reminder_occurrence`.
+  - [x] Define missed daily task as an active non-done task with `deadlineLocalDate < todayLocalDate`.
+  - [x] Define missed recurring task/habit occurrence as an open virtual occurrence with `localDate < todayLocalDate`, bounded to a safe lookback window.
+  - [x] Define missed reminder occurrence as an active scheduled notification whose `fireAtLocal` is before the current local date/time and whose delivery state is `scheduled` or `snoozed`.
+  - [x] Treat disabled, unavailable, failed, permission-denied, and local-only reminder states as in-app recovery states without calling them user failure.
+  - [x] Do not materialize task recurrence occurrences into task rows.
 
-- [ ] Add safe recovery persistence for outcomes. (AC: 3)
-  - [ ] Add migration 012 for a focused `recovery_events` table, or an equivalent narrowly scoped recovery-outcome table, without destructive changes.
-  - [ ] Store only non-sensitive identifiers and enum values: `id`, `workspace_id`, `target_kind`, `target_id`, optional `occurrence_local_date`, `action`, `occurred_at`, `created_at`.
-  - [ ] Add indexes for workspace/time and target lookup.
-  - [ ] Do not store task title, reminder title, notes, notification platform ids, or raw diagnostic details in recovery events.
-  - [ ] Add repository methods to create/list recovery events and to determine whether a missed item has already been resolved or dismissed.
+- [x] Add safe recovery persistence for outcomes. (AC: 3)
+  - [x] Add migration 012 for a focused `recovery_events` table, or an equivalent narrowly scoped recovery-outcome table, without destructive changes.
+  - [x] Store only non-sensitive identifiers and enum values: `id`, `workspace_id`, `target_kind`, `target_id`, optional `occurrence_local_date`, `action`, `occurred_at`, `created_at`.
+  - [x] Add indexes for workspace/time and target lookup.
+  - [x] Do not store task title, reminder title, notes, notification platform ids, or raw diagnostic details in recovery events.
+  - [x] Add repository methods to create/list recovery events and to determine whether a missed item has already been resolved or dismissed.
 
-- [ ] Implement recovery service orchestration. (AC: 1, 2, 3)
-  - [ ] Add a service that loads missed task, recurring task/habit, and reminder recovery items from existing repositories.
-  - [ ] Bound lookback to avoid scanning unbounded recurrence history; default recommended lookback is 14 days unless existing patterns suggest another safe constant.
-  - [ ] Mark overdue reminder scheduled-notification rows as `missed` when recovery scan detects them.
-  - [ ] Expose recovery actions:
+- [x] Implement recovery service orchestration. (AC: 1, 2, 3)
+  - [x] Add a service that loads missed task, recurring task/habit, and reminder recovery items from existing repositories.
+  - [x] Bound lookback to avoid scanning unbounded recurrence history; default recommended lookback is 14 days unless existing patterns suggest another safe constant.
+  - [x] Mark overdue reminder scheduled-notification rows as `missed` when recovery scan detects them.
+  - [x] Expose recovery actions:
     - `complete` daily task: reuse existing task update behavior to set state to `done`.
     - `complete` recurring occurrence: reuse `completeTaskRecurrenceOccurrence`.
     - `snooze` reminder: reuse Story 3.4 `snoozeReminder`.
@@ -47,24 +47,24 @@ so that I can continue without feeling punished.
     - `pause` reminder: reuse Story 3.4 `pauseReminder`.
     - `dismiss` recovery item: record a recovery event and leave source task/reminder data intact.
     - `edit` task/reminder: open existing edit surfaces or expose hook state needed by those forms.
-  - [ ] Record a recovery event for every completed, snoozed, rescheduled, paused, dismissed, or edited recovery action.
-  - [ ] Return typed `AppResult` errors and avoid logging sensitive titles, notes, local file paths, platform notification ids, or receipt data.
+  - [x] Record a recovery event for every completed, snoozed, rescheduled, paused, dismissed, or edited recovery action.
+  - [x] Return typed `AppResult` errors and avoid logging sensitive titles, notes, local file paths, platform notification ids, or receipt data.
 
-- [ ] Add recovery UI using existing primitives. (AC: 1, 2, 3)
-  - [ ] Build a compact recovery list/panel that can be reused by later Today and Review stories.
-  - [ ] Mount the recovery panel in the current task/reminder route surfaces without replacing the Story 4 Today overview placeholder.
-  - [ ] Use neutral labels such as "Needs a next step", "Reminder did not stay active", "You can choose what to do next", and avoid shame words such as "failed", "ignored", "bad streak", or "late again" in user-facing copy.
-  - [ ] Show state using text, not color alone.
-  - [ ] Keep actions descriptive and ordered by likely recovery: complete, snooze/reschedule, pause, edit, dismiss.
-  - [ ] Ensure touch targets remain at least 44 px through existing `Button`/`ListRow` primitives.
+- [x] Add recovery UI using existing primitives. (AC: 1, 2, 3)
+  - [x] Build a compact recovery list/panel that can be reused by later Today and Review stories.
+  - [x] Mount the recovery panel in the current task/reminder route surfaces without replacing the Story 4 Today overview placeholder.
+  - [x] Use neutral labels such as "Needs a next step", "Reminder did not stay active", "You can choose what to do next", and avoid shame words such as "failed", "ignored", "bad streak", or "late again" in user-facing copy.
+  - [x] Show state using text, not color alone.
+  - [x] Keep actions descriptive and ordered by likely recovery: complete, snooze/reschedule, pause, edit, dismiss.
+  - [x] Ensure touch targets remain at least 44 px through existing `Button`/`ListRow` primitives.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Test missed detection for daily task deadlines, recurring task/habit virtual occurrences, scheduled reminder rows, and disabled/unavailable reminder states.
-  - [ ] Test recovery-event persistence and no sensitive metadata storage.
-  - [ ] Test service actions for complete, snooze, pause, dismiss, and edit/reschedule handoff.
-  - [ ] Test that dismissed/resolved recovery items do not reappear in the same lookback window.
-  - [ ] Test hook/reducer or feature state transitions for loading, empty, action success, action failure, and neutral copy.
-  - [ ] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Test missed detection for daily task deadlines, recurring task/habit virtual occurrences, scheduled reminder rows, and disabled/unavailable reminder states.
+  - [x] Test recovery-event persistence and no sensitive metadata storage.
+  - [x] Test service actions for complete, snooze, pause, dismiss, and edit/reschedule handoff.
+  - [x] Test that dismissed/resolved recovery items do not reappear in the same lookback window.
+  - [x] Test hook/reducer or feature state transitions for loading, empty, action success, action failure, and neutral copy.
+  - [x] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -180,20 +180,55 @@ Minimum coverage:
 
 ### Agent Model Used
 
-Pending.
+GPT-5 Codex.
 
 ### Debug Log References
 
-Pending.
+- 2026-05-08: Resolved Story 3.4 notification cleanup finding in commit `e7ee971`; code review report updated in `521e2ae`.
+- 2026-05-08: Added recovery domain rules, migration 012, recovery repository, recovery service, hook state, compact UI panel, and focused tests.
+- 2026-05-08: Verification passed: `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ### Completion Notes List
 
-Pending.
+- Story 3.4 scheduling cleanup prerequisite completed before beginning recovery implementation.
+- Recovery contracts now cover task, recurring occurrence, and reminder occurrence targets with non-sensitive local recovery events.
+- Recovery loading detects overdue daily tasks, virtual recurring task/habit occurrences, overdue reminder notifications, and non-active reminder schedule states.
+- Recovery actions update source data where applicable and append outcome events for later Today/Review surfaces.
+- A reusable `RecoveryPanel` is mounted on task and reminder route surfaces with neutral text and existing 44 px-safe primitives.
 
 ### File List
 
-Pending.
+- `src/services/reminders/reminder.service.ts`
+- `src/services/reminders/reminder.service.test.ts`
+- `_bmad-output/implementation-artifacts/3-5-recover-from-missed-tasks-and-reminders.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-3.4-code-review.md`
+- `docs/automation-reports/overnight-summary.md`
+- `docs/automation-reports/story-3.5-review.md`
+- `src/data/db/migrations/migrate.ts`
+- `src/data/db/migrations/migrate.test.ts`
+- `src/data/db/schema.ts`
+- `src/data/repositories/index.ts`
+- `src/data/repositories/recovery.repository.ts`
+- `src/data/repositories/recovery.repository.test.ts`
+- `src/data/repositories/reminders.repository.ts`
+- `src/data/repositories/reminders.repository.test.ts`
+- `src/domain/recovery/recovery-rules.ts`
+- `src/domain/recovery/recovery.test.ts`
+- `src/domain/recovery/schemas.ts`
+- `src/domain/recovery/types.ts`
+- `src/features/recovery/RecoveryPanel.tsx`
+- `src/features/recovery/recovery-copy.ts`
+- `src/features/recovery/recovery-copy.test.ts`
+- `src/features/recovery/useRecovery.ts`
+- `src/features/recovery/useRecovery.test.ts`
+- `src/features/reminders/ReminderRouteScreen.tsx`
+- `src/features/tasks/TaskRouteScreen.tsx`
+- `src/services/recovery/recovery.service.ts`
+- `src/services/recovery/recovery.service.test.ts`
 
 ## Change Log
 
 - 2026-05-08: Created Story 3.5 ready-for-dev from Epic 3 recovery requirements, PRD/architecture/UX context, and Story 3.4 implementation review.
+- 2026-05-08: Started implementation and recorded resolved Story 3.4 notification cleanup prerequisite.
+- 2026-05-08: Implemented missed task/reminder recovery and moved story to review.

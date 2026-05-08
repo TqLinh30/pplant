@@ -28,6 +28,11 @@ export type ReminderRepository = {
   listExceptions(workspaceId: WorkspaceId, reminderId: EntityId): Promise<AppResult<ReminderException[]>>;
   listReminders(workspaceId: WorkspaceId): Promise<AppResult<Reminder[]>>;
   listScheduledNotifications(workspaceId: WorkspaceId, reminderId: EntityId): Promise<AppResult<ReminderScheduledNotification[]>>;
+  markOverdueScheduledNotificationsMissed(
+    workspaceId: WorkspaceId,
+    beforeFireAtLocal: string,
+    updatedAt: string,
+  ): Promise<AppResult<number>>;
   replaceScheduledNotifications(
     workspaceId: WorkspaceId,
     reminderId: EntityId,
@@ -481,6 +486,26 @@ export function createReminderRepository(database: PplantDatabase): ReminderRepo
         return ok(notifications);
       } catch (cause) {
         return err(createAppError('unavailable', 'Local scheduled reminders could not be loaded.', 'retry', cause));
+      }
+    },
+
+    async markOverdueScheduledNotificationsMissed(workspaceId, beforeFireAtLocal, updatedAt) {
+      try {
+        const result = database.$client.runSync(
+          `UPDATE reminder_scheduled_notifications
+           SET delivery_state = 'missed', updated_at = ?
+           WHERE workspace_id = ?
+             AND deleted_at IS NULL
+             AND delivery_state IN ('scheduled', 'snoozed')
+             AND fire_at_local < ?`,
+          updatedAt,
+          workspaceId,
+          beforeFireAtLocal,
+        ) as { changes?: number } | undefined;
+
+        return ok(result?.changes ?? 0);
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local scheduled reminders could not be updated.', 'retry', cause));
       }
     },
 

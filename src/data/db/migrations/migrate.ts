@@ -30,6 +30,7 @@ export const workEntriesMigrationId = '008_create_work_entries';
 export const tasksMigrationId = '009_create_tasks';
 export const taskRecurrenceMigrationId = '010_create_task_recurrence';
 export const remindersMigrationId = '011_create_reminders';
+export const recoveryEventsMigrationId = '012_create_recovery_events';
 
 const createMigrationTrackingTableSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -466,6 +467,25 @@ CREATE INDEX IF NOT EXISTS idx_diagnostic_events_name_time
   ON diagnostic_events (name, occurred_at);
 `;
 
+const recoveryEventsMigrationSql = `
+CREATE TABLE IF NOT EXISTS recovery_events (
+  id TEXT PRIMARY KEY NOT NULL,
+  workspace_id TEXT NOT NULL,
+  target_kind TEXT NOT NULL,
+  target_id TEXT NOT NULL,
+  occurrence_local_date TEXT,
+  action TEXT NOT NULL,
+  occurred_at TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_recovery_events_workspace_time
+  ON recovery_events (workspace_id, occurred_at, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_recovery_events_target
+  ON recovery_events (workspace_id, target_kind, target_id, occurrence_local_date, action);
+`;
+
 const migrations = [
   {
     id: workspaceMigrationId,
@@ -510,6 +530,10 @@ const migrations = [
   {
     id: remindersMigrationId,
     sql: remindersMigrationSql,
+  },
+  {
+    id: recoveryEventsMigrationId,
+    sql: recoveryEventsMigrationSql,
   },
 ] as const;
 

@@ -5,6 +5,7 @@ import {
   moneyRecordCorrectionsMigrationId,
   moneyRecordsMigrationId,
   preferencesMigrationId,
+  recoveryEventsMigrationId,
   recurringMoneyMigrationId,
   remindersMigrationId,
   taskRecurrenceMigrationId,
@@ -60,7 +61,7 @@ describe('local database migrations', () => {
     expect(firstRun).toEqual({
       ok: true,
       value: {
-        applied: 11,
+        applied: 12,
         appliedMigrations: [
           workspaceMigrationId,
           preferencesMigrationId,
@@ -73,6 +74,7 @@ describe('local database migrations', () => {
           tasksMigrationId,
           taskRecurrenceMigrationId,
           remindersMigrationId,
+          recoveryEventsMigrationId,
         ],
       },
     });
@@ -94,6 +96,7 @@ describe('local database migrations', () => {
     expect(client.appliedMigrations.has(tasksMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(taskRecurrenceMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(remindersMigrationId)).toBe(true);
+    expect(client.appliedMigrations.has(recoveryEventsMigrationId)).toBe(true);
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS workspaces');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS user_preferences');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS categories');
@@ -120,6 +123,7 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS reminder_exceptions');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS reminder_scheduled_notifications');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS diagnostic_events');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS recovery_events');
     expect(client.executedSql.join('\n')).toContain('idx_categories_workspace_active_order');
     expect(client.executedSql.join('\n')).toContain('idx_topics_workspace_active_order');
     expect(client.executedSql.join('\n')).toContain('idx_savings_goals_workspace_active_target_date');
@@ -139,6 +143,8 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('idx_reminder_exceptions_reminder_date_action');
     expect(client.executedSql.join('\n')).toContain('idx_reminder_notifications_active_occurrence');
     expect(client.executedSql.join('\n')).toContain('idx_diagnostic_events_name_time');
+    expect(client.executedSql.join('\n')).toContain('idx_recovery_events_workspace_time');
+    expect(client.executedSql.join('\n')).toContain('idx_recovery_events_target');
     expect(client.executedSql.join('\n')).not.toContain('DROP TABLE');
     expect(client.executedSql.join('\n')).not.toContain('ALTER TABLE recurrence_rules');
     expect(client.executedSql.join('\n')).not.toContain('ALTER TABLE task_recurrence_rules');
@@ -153,7 +159,7 @@ describe('local database migrations', () => {
     expect(result).toEqual({
       ok: true,
       value: {
-        applied: 10,
+        applied: 11,
         appliedMigrations: [
           preferencesMigrationId,
           categoryTopicMigrationId,
@@ -165,6 +171,7 @@ describe('local database migrations', () => {
           tasksMigrationId,
           taskRecurrenceMigrationId,
           remindersMigrationId,
+          recoveryEventsMigrationId,
         ],
       },
     });
@@ -178,6 +185,7 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS tasks');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS task_recurrence_rules');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS reminders');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS recovery_events');
   });
 
   it('returns a retryable local error when migration setup fails', async () => {

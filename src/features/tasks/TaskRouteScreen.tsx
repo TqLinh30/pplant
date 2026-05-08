@@ -4,12 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
 
+import { RecoveryPanel } from '../recovery/RecoveryPanel';
 import { TaskForm } from './TaskForm';
 
 export function TaskRouteScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <RecoveryPanel />
         <TaskForm />
       </ScrollView>
     </SafeAreaView>

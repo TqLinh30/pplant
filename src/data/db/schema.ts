@@ -298,6 +298,17 @@ export const diagnosticEvents = sqliteTable('diagnostic_events', {
   createdAt: text('created_at').notNull(),
 });
 
+export const recoveryEvents = sqliteTable('recovery_events', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  targetKind: text('target_kind').notNull(),
+  targetId: text('target_id').notNull(),
+  occurrenceLocalDate: text('occurrence_local_date'),
+  action: text('action').notNull(),
+  occurredAt: text('occurred_at').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
 export const schema = {
   budgets,
   categories,
@@ -307,6 +318,7 @@ export const schema = {
   recurrenceExceptions,
   recurrenceRules,
   recurrenceRuleTopics,
+  recoveryEvents,
   reminderExceptions,
   reminders,
   reminderScheduledNotifications,

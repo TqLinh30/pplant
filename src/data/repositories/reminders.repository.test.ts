@@ -205,6 +205,26 @@ class FakeReminderClient {
       return { changes: 1 };
     }
 
+    if (source.includes("delivery_state = 'missed'")) {
+      const [updatedAt, workspaceId, beforeFireAtLocal] = params;
+      let changes = 0;
+
+      this.scheduledNotifications.forEach((notification) => {
+        if (
+          notification.workspaceId === workspaceId &&
+          notification.deletedAt === null &&
+          (notification.deliveryState === 'scheduled' || notification.deliveryState === 'snoozed') &&
+          notification.fireAtLocal < (beforeFireAtLocal as string)
+        ) {
+          notification.deliveryState = 'missed';
+          notification.updatedAt = updatedAt as string;
+          changes += 1;
+        }
+      });
+
+      return { changes };
+    }
+
     if (source.includes('UPDATE reminder_scheduled_notifications')) {
       const [deletedAt, updatedAt, workspaceId, reminderId] = params;
       let changes = 0;
@@ -487,5 +507,39 @@ describe('reminder repository', () => {
     expect(deleted.ok && deleted.value.deletedAt).toBe('2026-05-08T02:00:00.000Z');
     expect(client.scheduledNotifications[0].deletedAt).toBe('2026-05-08T02:00:00.000Z');
     expect(active).toEqual({ ok: true, value: null });
+  });
+
+  it('marks overdue scheduled notifications as missed without deleting platform ids', async () => {
+    const client = new FakeReminderClient();
+    const repository = createRepository(client);
+
+    await repository.createReminder(createInput());
+    await repository.replaceScheduledNotifications(localWorkspaceId, 'reminder-study' as never, fixedNow, [
+      {
+        createdAt: fixedNow,
+        deliveryState: 'scheduled',
+        fireAtLocal: '2026-05-08T09:30',
+        id: 'notification-1',
+        occurrenceLocalDate: '2026-05-08',
+        reminderId: 'reminder-study',
+        scheduleAttemptedAt: fixedNow,
+        scheduledNotificationId: 'platform-1',
+        updatedAt: fixedNow,
+        workspaceId: localWorkspaceId,
+      },
+    ]);
+
+    const updated = await repository.markOverdueScheduledNotificationsMissed(
+      localWorkspaceId,
+      '2026-05-08T10:00',
+      '2026-05-08T10:00:00.000Z',
+    );
+    const active = await repository.listScheduledNotifications(localWorkspaceId, 'reminder-study' as never);
+
+    expect(updated).toEqual({ ok: true, value: 1 });
+    expect(active.ok && active.value[0]).toMatchObject({
+      deliveryState: 'missed',
+      scheduledNotificationId: 'platform-1',
+    });
   });
 });
