@@ -75,6 +75,11 @@ export function SettingsScreen() {
   const budgetSaving = budgetPlanning.state.status === 'saving';
   const budgetPreferences = budgetPlanning.state.preferences;
   const selectedPrivacyArea = privacySettings.selectedArea;
+  const dataDeletion = privacySettings.state.dataDeletion;
+  const dataDeletionWorking = dataDeletion.status === 'previewing' || dataDeletion.status === 'executing';
+  const dataDeletionCounts = dataDeletion.result
+    ? Object.entries(dataDeletion.result.counts).filter(([, count]) => count > 0)
+    : [];
 
   const formatBudgetAmount = (amountMinor: number) => {
     if (!budgetPreferences) {
@@ -547,10 +552,119 @@ export function SettingsScreen() {
 
           <StatusBanner
             title="Local-first by default"
-            description="These controls explain current behavior. This screen does not upload, delete, enable diagnostics, or start notification scheduling."
+            description="These controls explain current behavior. Data deletion below runs locally and does not require network access."
           />
 
           <View style={styles.listGroup}>{privacySettings.areas.map((area) => renderPrivacyArea(area))}</View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.section}>
+          <View style={styles.header}>
+            <Text style={styles.eyebrow}>Data controls</Text>
+            <Text style={styles.sectionTitle}>Delete local data</Text>
+            <Text style={styles.description}>
+              Preview the impact before removing local records, drafts, receipt images, diagnostics, or workspace data.
+            </Text>
+          </View>
+
+          {dataDeletion.status === 'failed' && !dataDeletion.impact ? (
+            <StatusBanner
+              title="Deletion could not start"
+              description={dataDeletion.errorMessage ?? 'Check the selected data and try again.'}
+              tone="warning"
+            />
+          ) : null}
+
+          {dataDeletion.status === 'previewing' ? (
+            <StatusBanner title="Preparing impact" description="Pplant is checking the local deletion plan." />
+          ) : null}
+
+          <View style={styles.inlineForm}>
+            <Text style={styles.label}>Date range</Text>
+            <TextField
+              autoCapitalize="none"
+              helperText="YYYY-MM-DD"
+              label="Start"
+              onChangeText={(value) =>
+                privacySettings.updateDeletionDateRange(value, dataDeletion.dateRangeEndDate)
+              }
+              value={dataDeletion.dateRangeStartDate}
+            />
+            <TextField
+              autoCapitalize="none"
+              helperText="YYYY-MM-DD"
+              label="End"
+              onChangeText={(value) =>
+                privacySettings.updateDeletionDateRange(dataDeletion.dateRangeStartDate, value)
+              }
+              value={dataDeletion.dateRangeEndDate}
+            />
+            <Button
+              disabled={dataDeletionWorking}
+              label="Preview date range deletion"
+              onPress={privacySettings.requestDateRangeDeletion}
+              variant="secondary"
+            />
+          </View>
+
+          <View style={styles.buttonColumn}>
+            <Button
+              disabled={dataDeletionWorking}
+              label="Delete money records"
+              onPress={() => privacySettings.previewRecordsByTypeDeletion('money')}
+              variant="secondary"
+            />
+            <Button
+              disabled={dataDeletionWorking}
+              label="Delete work entries"
+              onPress={() => privacySettings.previewRecordsByTypeDeletion('work')}
+              variant="secondary"
+            />
+            <Button
+              disabled={dataDeletionWorking}
+              label="Delete tasks"
+              onPress={() => privacySettings.previewRecordsByTypeDeletion('task')}
+              variant="secondary"
+            />
+            <Button
+              disabled={dataDeletionWorking}
+              label="Delete reminders"
+              onPress={() => privacySettings.previewRecordsByTypeDeletion('reminder')}
+              variant="secondary"
+            />
+            <Button
+              disabled={dataDeletionWorking}
+              label="Delete reflections"
+              onPress={() => privacySettings.previewRecordsByTypeDeletion('reflection')}
+              variant="secondary"
+            />
+            <Button
+              disabled={dataDeletionWorking}
+              label="Discard active drafts"
+              onPress={privacySettings.previewDraftDeletion}
+              variant="secondary"
+            />
+            <Button
+              disabled={dataDeletionWorking}
+              label="Delete receipt images"
+              onPress={privacySettings.previewReceiptImageDeletion}
+              variant="secondary"
+            />
+            <Button
+              disabled={dataDeletionWorking}
+              label="Clear diagnostics"
+              onPress={privacySettings.previewDiagnosticsDeletion}
+              variant="secondary"
+            />
+            <Button
+              disabled={dataDeletionWorking}
+              label="Delete all personal data"
+              onPress={privacySettings.previewAllPersonalDataDeletion}
+              variant="danger"
+            />
+          </View>
         </View>
       </ScrollView>
 
@@ -632,6 +746,82 @@ export function SettingsScreen() {
             ) : null}
 
             <Button label="Done" onPress={privacySettings.closeDetail} variant="secondary" />
+          </>
+        ) : null}
+      </BottomSheet>
+
+      <BottomSheet
+        title={dataDeletion.impact ? dataDeletion.impact.title : 'Delete local data'}
+        visible={Boolean(dataDeletion.impact)}
+        onClose={privacySettings.closeDataDeletion}>
+        {dataDeletion.impact ? (
+          <>
+            {dataDeletion.status === 'completed' ? (
+              <StatusBanner
+                title="Local data updated"
+                description="Deleted data is hidden from active app views and summaries."
+                tone="success"
+              />
+            ) : null}
+
+            {dataDeletion.status === 'failed' ? (
+              <StatusBanner
+                title="Deletion did not finish"
+                description={dataDeletion.errorMessage ?? 'Try the local deletion again.'}
+                tone="warning"
+              />
+            ) : null}
+
+            <Text style={styles.description}>{dataDeletion.impact.description}</Text>
+
+            <View style={styles.detailGroup}>
+              <Text style={styles.label}>Affected data</Text>
+              {dataDeletion.impact.affectedDataCategories.map((category) => (
+                <Text key={category} style={styles.detailLine}>
+                  - {category}
+                </Text>
+              ))}
+            </View>
+
+            {dataDeletion.result && dataDeletionCounts.length > 0 ? (
+              <View style={styles.detailGroup}>
+                <Text style={styles.label}>Updated locally</Text>
+                {dataDeletionCounts.map(([key, count]) => (
+                  <Text key={key} style={styles.detailLine}>
+                    - {key}: {count}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+
+            {dataDeletion.result && dataDeletion.result.warnings.length > 0 ? (
+              <StatusBanner
+                title="Cleanup notes"
+                description={dataDeletion.result.warnings.join(' ')}
+                tone="warning"
+              />
+            ) : null}
+
+            <View style={styles.buttonColumn}>
+              {dataDeletion.status === 'completed' ? (
+                <Button label="Done" onPress={privacySettings.closeDataDeletion} variant="secondary" />
+              ) : (
+                <>
+                  <Button
+                    disabled={dataDeletion.status === 'executing'}
+                    label={dataDeletion.status === 'executing' ? 'Deleting locally' : dataDeletion.impact.confirmationLabel}
+                    onPress={privacySettings.confirmDeletion}
+                    variant="danger"
+                  />
+                  <Button
+                    disabled={dataDeletion.status === 'executing'}
+                    label="Cancel"
+                    onPress={privacySettings.closeDataDeletion}
+                    variant="secondary"
+                  />
+                </>
+              )}
+            </View>
           </>
         ) : null}
       </BottomSheet>

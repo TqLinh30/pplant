@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-05-07T22:57:05+08:00"
-last_updated: "2026-05-09T00:00:00+08:00"
+last_updated: "2026-05-09T00:30:00+08:00"
 project: "Pplant"
 project_key: "NOKEY"
 tracking_system: "file-system"
@@ -88,7 +88,7 @@ development_status:
   6-5-make-reviews-accessible-and-visually-calm: done
   epic-6-retrospective: optional
   epic-7: in-progress
-  7-1-delete-records-receipt-images-drafts-and-personal-data: ready-for-dev
+  7-1-delete-records-receipt-images-drafts-and-personal-data: done
   7-2-support-offline-core-capture: backlog
   7-3-manage-pending-network-dependent-records: backlog
   7-4-preserve-manual-corrections-as-source-of-truth: backlog

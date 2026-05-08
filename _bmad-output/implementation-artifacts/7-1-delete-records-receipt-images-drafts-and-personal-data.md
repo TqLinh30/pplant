@@ -1,6 +1,6 @@
 # Story 7.1: Delete Records, Receipt Images, Drafts, And Personal Data
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -18,29 +18,29 @@ so that I can control sensitive local information.
 
 ## Tasks / Subtasks
 
-- [ ] Expand deletion domain planning and validation. (AC: 1, 2)
-  - [ ] Replace the minimal `DataDeletionPlan` shape with explicit target options for record id, record type, date range, receipt image, draft id, diagnostics, and all personal data.
-  - [ ] Add pure helpers that produce neutral impact copy, confirmation requirements, and affected-data labels for Settings UI.
-  - [ ] Validate dangerous plans before executing: all-personal-data always requires confirmation; date ranges require `startDate <= endDate`; record/draft/image targets require ids.
+- [x] Expand deletion domain planning and validation. (AC: 1, 2)
+  - [x] Replace the minimal `DataDeletionPlan` shape with explicit target options for record id, record type, date range, receipt image, draft id, diagnostics, and all personal data.
+  - [x] Add pure helpers that produce neutral impact copy, confirmation requirements, and affected-data labels for Settings UI.
+  - [x] Validate dangerous plans before executing: all-personal-data always requires confirmation; date ranges require `startDate <= endDate`; record/draft/image targets require ids.
 
-- [ ] Implement local-first deletion service behavior. (AC: 2, 3)
-  - [ ] Extend `src/services/privacy/data-deletion.service.ts` to preview and execute deletion plans against the local SQLite database.
-  - [ ] Use existing soft-delete/status columns where available (`deleted_at`, `discarded_at`, `status`) and avoid destructive schema changes.
-  - [ ] Clean related local references for each target: capture drafts, receipt parse jobs/results/OCR text, scheduled notification rows, recovery rows, topic joins, and diagnostics as appropriate.
-  - [ ] Delete only app-managed stored receipt image files through existing receipt file/retention services or a safe file-delete port; never delete arbitrary external URIs.
-  - [ ] Return a structured result with counts and any non-fatal file cleanup warnings.
+- [x] Implement local-first deletion service behavior. (AC: 2, 3)
+  - [x] Extend `src/services/privacy/data-deletion.service.ts` to preview and execute deletion plans against the local SQLite database.
+  - [x] Use existing soft-delete/status columns where available (`deleted_at`, `discarded_at`, `status`) and avoid destructive schema changes.
+  - [x] Clean related local references for each target: capture drafts, receipt parse jobs/results/OCR text, scheduled notification rows, recovery rows, topic joins, and diagnostics as appropriate.
+  - [x] Delete only app-managed stored receipt image files through existing receipt file/retention services or a safe file-delete port; never delete arbitrary external URIs.
+  - [x] Return a structured result with counts and any non-fatal file cleanup warnings.
 
-- [ ] Add Settings data controls UI. (AC: 1, 3)
-  - [ ] Extend `usePrivacySettings` with deletion preview/confirm/execute state.
-  - [ ] Add a Data controls section in Settings with actions for drafts, receipt images, diagnostics, date-range records, and all personal data.
-  - [ ] Show an impact summary before execution and require explicit confirmation for data loss.
-  - [ ] Use neutral copy and preserve the existing local-first privacy explanation.
+- [x] Add Settings data controls UI. (AC: 1, 3)
+  - [x] Extend `usePrivacySettings` with deletion preview/confirm/execute state.
+  - [x] Add a Data controls section in Settings with actions for drafts, receipt images, diagnostics, date-range records, and all personal data.
+  - [x] Show an impact summary before execution and require explicit confirmation for data loss.
+  - [x] Use neutral copy and preserve the existing local-first privacy explanation.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Add domain tests for deletion-plan validation/copy.
-  - [ ] Add service/repository tests covering individual deletion, date range/type deletion, draft discard, receipt image cleanup, diagnostic redaction/removal, and all-personal-data cleanup.
-  - [ ] Add hook/UI tests for preview, confirmation, success, and failure states where reasonable.
-  - [ ] Run `npm run typecheck -- --pretty false`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Add domain tests for deletion-plan validation/copy.
+  - [x] Add service/repository tests covering individual deletion, date range/type deletion, draft discard, receipt image cleanup, diagnostic redaction/removal, and all-personal-data cleanup.
+  - [x] Add hook/UI tests for preview, confirmation, success, and failure states where reasonable.
+  - [x] Run `npm run typecheck -- --pretty false`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -147,14 +147,32 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-09: Created Story 7.1 ready-for-dev from Epic 7, PRD, architecture, Story 6.5 state, current privacy/settings/data/deletion stubs, and existing local-first repository patterns.
+- 2026-05-09: Started implementation. Plan: expand pure deletion plans, implement local SQLite/file cleanup service, add Settings data controls, then cover domain/service/hook behavior with tests.
+- 2026-05-09: Implemented deletion plans, local data deletion service, Settings data controls, and linked task/reminder cleanup; full verification passed.
 
 ### Completion Notes List
+
+- Added explicit deletion target modeling, validation, impact copy, and confirmation rules.
+- Implemented local-first deletion execution using existing soft-delete/status fields, safe receipt image cleanup, receipt parse job result clearing, draft discard cleanup, diagnostics clearing, all-personal-data reset, and native notification cancellation through the scheduler port where scheduled notification ids exist.
+- Added Settings data controls for date-range deletion, record type deletion, active draft discard, retained receipt image deletion, diagnostics clearing, and all-personal-data deletion with impact confirmation bottom sheet.
+- Added focused domain, service, and Settings reducer tests; full verification passed.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/7-1-delete-records-receipt-images-drafts-and-personal-data.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-7.1-review.md`
+- `src/domain/privacy/deletion-plan.ts`
+- `src/domain/privacy/deletion-plan.test.ts`
+- `src/domain/privacy/privacy-settings.ts`
+- `src/features/settings/SettingsScreen.tsx`
+- `src/features/settings/usePrivacySettings.ts`
+- `src/features/settings/usePrivacySettings.test.ts`
+- `src/services/privacy/data-deletion.service.ts`
+- `src/services/privacy/data-deletion.service.test.ts`
 
 ## Change Log
 
 - 2026-05-09: Created Story 7.1 ready-for-dev.
+- 2026-05-09: Started implementation.
+- 2026-05-09: Completed local data deletion controls and verification.

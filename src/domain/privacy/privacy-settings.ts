@@ -119,15 +119,15 @@ export function buildPrivacySettingAreas(environment: PrivacySettingsEnvironment
         'categories and topics',
         'budget rules',
         'savings goals',
-        'future records, drafts, receipt files, and diagnostics',
+        'records, drafts, receipt files, reflections, reminders, and diagnostics',
       ],
       currentBehavior:
-        'Pplant is local-first. Data deletion workflows are planned for later privacy stories and are not run from this setup screen.',
+        'Pplant is local-first. Data controls can preview and delete local records, drafts, receipt images, diagnostics, and workspace personal data without network access.',
       id: 'local_data',
       manualAlternative: 'Local-first use does not require an account, cloud sync, bank connection, or external finance integration.',
       status: 'local_only',
       statusLabel: 'Local-first',
-      summary: 'Current setup data is local to this app workspace; broader deletion controls arrive in privacy/data-control stories.',
+      summary: 'Current workspace data stays local and can be deleted from this device through data controls.',
       title: 'Local data',
     },
   ];
