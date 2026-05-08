@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-05-07T22:57:05+08:00"
-last_updated: "2026-05-08T20:25:29+08:00"
+last_updated: "2026-05-08T20:30:45+08:00"
 project: "Pplant"
 project_key: "NOKEY"
 tracking_system: "file-system"
@@ -75,7 +75,7 @@ development_status:
   epic-4-retrospective: optional
   epic-5: in-progress
   5-1-capture-receipt-photo-and-save-draft: done
-  5-2-parse-receipt-asynchronously-with-visible-states: backlog
+  5-2-parse-receipt-asynchronously-with-visible-states: ready-for-dev
   5-3-review-and-correct-parsed-receipt-fields: backlog
   5-4-provide-manual-fallback-and-recovery-for-receipt-failures: backlog
   5-5-warn-about-duplicates-and-manage-receipt-retention: backlog
