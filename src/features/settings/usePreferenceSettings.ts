@@ -239,7 +239,7 @@ export function usePreferenceSettings({
         return;
       }
 
-      if (result.error.code === 'not_found') {
+      if (result.error.code === 'not_found' || result.error.code === 'validation_failed') {
         dispatch({ type: 'load_missing' });
         return;
       }

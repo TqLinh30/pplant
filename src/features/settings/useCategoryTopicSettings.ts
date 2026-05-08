@@ -66,6 +66,7 @@ export type CategoryTopicSettingsServices = {
   getDeletionImpact?: (
     input: { kind: CategoryTopicKind; id: string },
   ) => Promise<AppResult<CategoryTopicDeletionImpact>>;
+  enabled?: boolean;
   loadSettings?: () => Promise<AppResult<CategoryTopicSettingsData>>;
   reorderItems?: (
     input: { kind: CategoryTopicKind; orderedIds: string[] },
@@ -312,6 +313,7 @@ export function categoryTopicSettingsReducer(
 export function useCategoryTopicSettings({
   createItem = createCategoryTopicItem,
   deleteItem = deleteCategoryTopicItem,
+  enabled = true,
   getDeletionImpact = getCategoryTopicDeletionImpact,
   loadSettings = loadCategoryTopicSettings,
   reorderItems = reorderCategoryTopicItems,
@@ -324,6 +326,10 @@ export function useCategoryTopicSettings({
   const isMounted = useRef(false);
 
   const reload = useCallback(() => {
+    if (!enabled) {
+      return;
+    }
+
     dispatch({ type: 'load_started' });
 
     void loadSettings().then((result) => {
@@ -342,7 +348,7 @@ export function useCategoryTopicSettings({
 
       dispatch({ error: result.error, type: 'load_failed' });
     });
-  }, [loadSettings]);
+  }, [enabled, loadSettings]);
 
   const selectKind = useCallback((kind: CategoryTopicKind) => {
     dispatch({ kind, type: 'selected_kind_changed' });

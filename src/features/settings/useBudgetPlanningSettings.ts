@@ -88,6 +88,7 @@ export type BudgetPlanningSettingsServices = {
     targetAmountMinor: number;
     targetDate?: string | null;
   }) => Promise<AppResult<SavingsGoal>>;
+  enabled?: boolean;
   loadSettings?: () => Promise<AppResult<BudgetPlanningSettingsData>>;
   saveBudget?: (input: { monthlyBudgetAmountMinor: number }) => Promise<AppResult<BudgetRules>>;
   updateGoal?: (input: {
@@ -357,6 +358,7 @@ export function budgetPlanningSettingsReducer(
 
 export function useBudgetPlanningSettings({
   createGoal = createSavingsGoal,
+  enabled = true,
   loadSettings = loadBudgetPlanningSettings,
   saveBudget = saveBudgetRules,
   updateGoal = updateSavingsGoal,
@@ -368,6 +370,14 @@ export function useBudgetPlanningSettings({
   const isMounted = useRef(false);
 
   const reload = useCallback(() => {
+    if (!enabled) {
+      dispatch({
+        error: createAppError('not_found', 'Save preferences before setting budgets.', 'settings'),
+        type: 'preferences_needed',
+      });
+      return;
+    }
+
     dispatch({ type: 'load_started' });
 
     void loadSettings().then((result) => {
@@ -392,7 +402,7 @@ export function useBudgetPlanningSettings({
 
       dispatch({ error: result.error, type: 'load_failed' });
     });
-  }, [loadSettings]);
+  }, [enabled, loadSettings]);
 
   const updateBudgetAmount = useCallback((value: string) => {
     dispatch({ field: 'budgetAmount', type: 'budget_field_changed', value });

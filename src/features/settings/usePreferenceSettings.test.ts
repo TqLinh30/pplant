@@ -62,6 +62,26 @@ describe('preference settings form state', () => {
     });
   });
 
+  it('uses the same safe setup state when saved preferences need recovery', () => {
+    const invalid = preferenceSettingsReducer(initialPreferenceSettingsState, {
+      error: createAppError('validation_failed', 'Local preferences data is invalid.', 'retry'),
+      type: 'load_failed',
+    });
+
+    const recovered = preferenceSettingsReducer(invalid, {
+      type: 'load_missing',
+    });
+
+    expect(recovered).toEqual({
+      fieldErrors: {},
+      form: defaultPreferenceSettingsForm,
+      hasSavedPreferences: false,
+      loadError: undefined,
+      saveError: undefined,
+      status: 'ready',
+    });
+  });
+
   it('keeps edits visible when save fails', () => {
     const edited = preferenceSettingsReducer(initialPreferenceSettingsState, {
       field: 'currencyCode',

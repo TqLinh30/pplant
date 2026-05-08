@@ -9,7 +9,15 @@ export type PplantDatabase = ExpoSQLiteDatabase<DatabaseSchema> & {
   $client: SQLite.SQLiteDatabase;
 };
 
+let pplantDatabase: PplantDatabase | null = null;
+
 export function openPplantDatabase(): PplantDatabase {
+  if (pplantDatabase) {
+    return pplantDatabase;
+  }
+
   const sqlite = SQLite.openDatabaseSync(databaseName);
-  return drizzle(sqlite, { schema });
+  sqlite.execSync('PRAGMA busy_timeout = 5000;');
+  pplantDatabase = drizzle(sqlite, { schema });
+  return pplantDatabase;
 }

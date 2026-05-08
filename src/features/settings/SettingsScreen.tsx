@@ -28,10 +28,14 @@ const organizationOptions: { label: string; value: CategoryTopicKind }[] = [
 ];
 
 export function SettingsScreen() {
-  const budgetPlanning = useBudgetPlanningSettings();
-  const categoryTopics = useCategoryTopicSettings();
-  const privacySettings = usePrivacySettings();
   const { reload, save, state, updateField } = usePreferenceSettings();
+  const categoryTopics = useCategoryTopicSettings({
+    enabled: state.status !== 'failed' && state.status !== 'loading',
+  });
+  const budgetPlanning = useBudgetPlanningSettings({
+    enabled: state.hasSavedPreferences,
+  });
+  const privacySettings = usePrivacySettings();
 
   if (state.status === 'loading') {
     return (
@@ -55,7 +59,7 @@ export function SettingsScreen() {
           <Text style={styles.eyebrow}>Preferences</Text>
           <Text style={styles.title}>Settings could not open.</Text>
           <Text style={styles.description}>
-            Your preferences stay on this device. Try loading them again.
+            {state.loadError?.message ?? 'Your preferences stay on this device. Try loading them again.'}
           </Text>
           <Button label="Retry" onPress={reload} variant="secondary" />
         </View>
