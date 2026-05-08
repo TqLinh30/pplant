@@ -3,13 +3,14 @@ import { createAppError } from '@/domain/common/app-error';
 import type { EntityId } from '@/domain/common/ids';
 import { err, ok, type AppResult } from '@/domain/common/result';
 import { parseWorkEntryRow, type WorkEntryRow } from '@/domain/work/schemas';
-import type { SaveWorkEntryInput, WorkEntry } from '@/domain/work/types';
+import type { SaveWorkEntryInput, WorkEntry, WorkHistoryPage, WorkHistoryQuery, WorkHistorySort } from '@/domain/work/types';
 import type { WorkspaceId } from '@/domain/workspace/types';
 
 export type WorkEntryRepository = {
   createEntry(input: SaveWorkEntryInput): Promise<AppResult<WorkEntry>>;
   deleteEntry(workspaceId: WorkspaceId, id: EntityId, options: { now: Date }): Promise<AppResult<WorkEntry>>;
   getEntry(workspaceId: WorkspaceId, id: EntityId, options?: { includeDeleted?: boolean }): Promise<AppResult<WorkEntry | null>>;
+  listHistoryEntries(workspaceId: WorkspaceId, query: WorkHistoryQuery): Promise<AppResult<WorkHistoryPage>>;
   listRecentEntries(workspaceId: WorkspaceId, options?: { limit?: number }): Promise<AppResult<WorkEntry[]>>;
   updateEntry(input: SaveWorkEntryInput): Promise<AppResult<WorkEntry>>;
 };
@@ -129,6 +130,75 @@ async function loadEntry(
   } catch (cause) {
     return err(createAppError('unavailable', 'Local work entry could not be loaded.', 'retry', cause));
   }
+}
+
+function orderBySql(sort: WorkHistorySort): string {
+  switch (sort) {
+    case 'date_asc':
+      return 'local_date ASC, created_at ASC, id ASC';
+    case 'duration_asc':
+      return 'duration_minutes ASC, local_date DESC, created_at DESC, id DESC';
+    case 'duration_desc':
+      return 'duration_minutes DESC, local_date DESC, created_at DESC, id DESC';
+    case 'earned_asc':
+      return 'earned_income_minor ASC, local_date DESC, created_at DESC, id DESC';
+    case 'earned_desc':
+      return 'earned_income_minor DESC, local_date DESC, created_at DESC, id DESC';
+    case 'date_desc':
+    default:
+      return 'local_date DESC, created_at DESC, id DESC';
+  }
+}
+
+function buildHistoryWhereClause(workspaceId: WorkspaceId, query: WorkHistoryQuery) {
+  const clauses = ['workspace_id = ?', 'deleted_at IS NULL'];
+  const params: unknown[] = [workspaceId];
+
+  if (query.entryMode) {
+    clauses.push('entry_mode = ?');
+    params.push(query.entryMode);
+  }
+
+  if (query.paid) {
+    clauses.push('paid = ?');
+    params.push(query.paid === 'paid' ? 1 : 0);
+  }
+
+  if (query.dateFrom) {
+    clauses.push('local_date >= ?');
+    params.push(query.dateFrom);
+  }
+
+  if (query.dateTo) {
+    clauses.push('local_date <= ?');
+    params.push(query.dateTo);
+  }
+
+  if (query.categoryId) {
+    clauses.push('category_id = ?');
+    params.push(query.categoryId);
+  }
+
+  if (query.topicId) {
+    clauses.push(`EXISTS (
+      SELECT 1
+      FROM work_entry_topics AS history_topics
+      WHERE history_topics.workspace_id = work_entries.workspace_id
+        AND history_topics.work_entry_id = work_entries.id
+        AND history_topics.topic_id = ?
+    )`);
+    params.push(query.topicId);
+  }
+
+  if (query.noteSearch) {
+    clauses.push("LOWER(COALESCE(note, '')) LIKE ?");
+    params.push(`%${query.noteSearch.toLowerCase()}%`);
+  }
+
+  return {
+    params,
+    sql: clauses.join(' AND '),
+  };
 }
 
 function parseInput(input: SaveWorkEntryInput): AppResult<WorkEntry> {
@@ -262,6 +332,50 @@ export function createWorkEntryRepository(database: PplantDatabase): WorkEntryRe
 
     async getEntry(workspaceId, id, options = {}) {
       return loadEntry(database, workspaceId, id, options);
+    },
+
+    async listHistoryEntries(workspaceId, query) {
+      try {
+        const where = buildHistoryWhereClause(workspaceId, query);
+        const countRow = database.$client.getFirstSync<{ totalCount: number }>(
+          `SELECT COUNT(*) AS totalCount
+           FROM work_entries
+           WHERE ${where.sql}`,
+          ...(where.params as never[]),
+        );
+        const rows = database.$client.getAllSync<WorkEntryRow>(
+          `${selectWorkEntryColumnsSql()}
+           WHERE ${where.sql}
+           ORDER BY ${orderBySql(query.sort)}
+           LIMIT ? OFFSET ?`,
+          ...(where.params as never[]),
+          query.limit,
+          query.offset,
+        );
+        const records: WorkEntry[] = [];
+
+        for (const row of rows) {
+          const parsed = await parseEntryWithTopics(database, workspaceId, row);
+
+          if (!parsed.ok) {
+            return parsed;
+          }
+
+          records.push(parsed.value);
+        }
+
+        const totalCount = countRow?.totalCount ?? 0;
+
+        return ok({
+          hasMore: query.offset + records.length < totalCount,
+          limit: query.limit,
+          offset: query.offset,
+          records,
+          totalCount,
+        });
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local work history could not be loaded.', 'retry', cause));
+      }
     },
 
     async listRecentEntries(workspaceId, { limit = 10 } = {}) {

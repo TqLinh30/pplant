@@ -1,4 +1,5 @@
 import { parseWorkEntryRow } from './schemas';
+import { calculateWorkHistorySummaries } from './work-history';
 import { calculateEarnedIncomeMinor, calculateShiftDurationMinutes } from './work-time';
 
 const fixedNow = '2026-05-08T00:00:00.000Z';
@@ -129,5 +130,62 @@ describe('work entry parsing', () => {
     );
 
     expect(parsed.ok).toBe(false);
+  });
+});
+
+describe('work history summaries', () => {
+  it('groups active work entries by day, week, and month', () => {
+    const first = parseWorkEntryRow(createRow({ durationMinutes: 60, earnedIncomeMinor: 1500, id: 'work-1' }));
+    const second = parseWorkEntryRow(
+      createRow({
+        durationMinutes: 120,
+        earnedIncomeMinor: 0,
+        id: 'work-2',
+        localDate: '2026-05-09',
+        paid: false,
+      }),
+    );
+    const deleted = parseWorkEntryRow(
+      createRow({
+        deletedAt: '2026-05-10T00:00:00.000Z',
+        durationMinutes: 999,
+        earnedIncomeMinor: 999,
+        id: 'work-3',
+        localDate: '2026-05-10',
+      }),
+    );
+
+    if (!first.ok || !second.ok || !deleted.ok) {
+      throw new Error('summary fixture failed');
+    }
+
+    const day = calculateWorkHistorySummaries([first.value, second.value, deleted.value], 'day');
+    const week = calculateWorkHistorySummaries([first.value, second.value], 'week');
+    const month = calculateWorkHistorySummaries([first.value, second.value], 'month');
+
+    expect(day).toHaveLength(2);
+    expect(day[0]).toMatchObject({
+      earnedIncomeMinor: 0,
+      totalDurationMinutes: 120,
+      unpaidDurationMinutes: 120,
+    });
+    expect(week).toEqual([
+      expect.objectContaining({
+        earnedIncomeMinor: 1500,
+        key: '2026-05-04',
+        paidDurationMinutes: 60,
+        recordCount: 2,
+        totalDurationMinutes: 180,
+        unpaidDurationMinutes: 120,
+      }),
+    ]);
+    expect(month).toEqual([
+      expect.objectContaining({
+        earnedIncomeMinor: 1500,
+        key: '2026-05',
+        recordCount: 2,
+        totalDurationMinutes: 180,
+      }),
+    ]);
   });
 });

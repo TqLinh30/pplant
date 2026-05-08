@@ -185,6 +185,10 @@ class FakeWorkEntryClient {
   }
 
   getFirstSync<T>(_source: string, ...params: unknown[]): T | null {
+    if (_source.includes('COUNT(*) AS totalCount')) {
+      return { totalCount: this.filterHistoryRows(_source, params).length } as T;
+    }
+
     const [workspaceId, id] = params;
     const includeDeleted = !_source.includes('deleted_at IS NULL');
 
@@ -196,6 +200,43 @@ class FakeWorkEntryClient {
     );
   }
 
+  private filterHistoryRows(source: string, params: unknown[]): WorkEntryRow[] {
+    const [workspaceId] = params;
+    let paramIndex = 1;
+    const entryMode = source.includes('entry_mode = ?') ? (params[paramIndex++] as string) : null;
+    const paid = source.includes('paid = ?') ? Boolean(params[paramIndex++]) : null;
+    const dateFrom = source.includes('local_date >= ?') ? (params[paramIndex++] as string) : null;
+    const dateTo = source.includes('local_date <= ?') ? (params[paramIndex++] as string) : null;
+    const categoryId = source.includes('category_id = ?') ? (params[paramIndex++] as string) : null;
+    const topicId = source.includes('history_topics.topic_id = ?') ? (params[paramIndex++] as string) : null;
+    const noteSearch = source.includes('LIKE ?')
+      ? String(params[paramIndex++]).replace(/%/g, '').toLowerCase()
+      : null;
+
+    return this.records.filter((record) => {
+      const topicMatched =
+        !topicId ||
+        this.topics.some(
+          (topic) =>
+            topic.workspaceId === workspaceId &&
+            topic.workEntryId === record.id &&
+            topic.topicId === topicId,
+        );
+
+      return (
+        record.workspaceId === workspaceId &&
+        record.deletedAt === null &&
+        (!entryMode || record.entryMode === entryMode) &&
+        (paid === null || record.paid === paid) &&
+        (!dateFrom || record.localDate >= dateFrom) &&
+        (!dateTo || record.localDate <= dateTo) &&
+        (!categoryId || record.categoryId === categoryId) &&
+        topicMatched &&
+        (!noteSearch || (record.note ?? '').toLowerCase().includes(noteSearch))
+      );
+    });
+  }
+
   getAllSync<T>(source: string, ...params: unknown[]): T[] {
     if (source.includes('SELECT topic_id AS topicId')) {
       const [workspaceId, workEntryId] = params;
@@ -204,6 +245,28 @@ class FakeWorkEntryClient {
         .filter((topic) => topic.workspaceId === workspaceId && topic.workEntryId === workEntryId)
         .sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.topicId.localeCompare(right.topicId))
         .map((topic) => ({ topicId: topic.topicId }) as T);
+    }
+
+    if (source.includes('LIMIT ? OFFSET ?')) {
+      const limit = params[params.length - 2] as number;
+      const offset = params[params.length - 1] as number;
+      let rows = this.filterHistoryRows(source, params.slice(0, -2));
+
+      if (source.includes('duration_minutes DESC')) {
+        rows = rows.sort((left, right) => right.durationMinutes - left.durationMinutes || right.localDate.localeCompare(left.localDate));
+      } else if (source.includes('duration_minutes ASC')) {
+        rows = rows.sort((left, right) => left.durationMinutes - right.durationMinutes || right.localDate.localeCompare(left.localDate));
+      } else if (source.includes('earned_income_minor DESC')) {
+        rows = rows.sort((left, right) => right.earnedIncomeMinor - left.earnedIncomeMinor || right.localDate.localeCompare(left.localDate));
+      } else if (source.includes('earned_income_minor ASC')) {
+        rows = rows.sort((left, right) => left.earnedIncomeMinor - right.earnedIncomeMinor || right.localDate.localeCompare(left.localDate));
+      } else if (source.includes('local_date ASC')) {
+        rows = rows.sort((left, right) => left.localDate.localeCompare(right.localDate));
+      } else {
+        rows = rows.sort((left, right) => right.localDate.localeCompare(left.localDate));
+      }
+
+      return rows.slice(offset, offset + limit).map((record) => record as T);
     }
 
     const [workspaceId, limit] = params;
@@ -304,5 +367,77 @@ describe('work entry repository', () => {
       expect(deleted.value.deletedAt).toBe('2026-05-08T02:00:00.000Z');
     }
     expect(recent).toEqual({ ok: true, value: [] });
+  });
+
+  it('filters, sorts, paginates, and counts history entries', async () => {
+    const client = new FakeWorkEntryClient();
+    const repository = createWorkEntryRepository({ $client: client } as never);
+
+    await repository.createEntry(createInput({ id: 'work-1', note: 'Library', topicIds: ['topic-job'] }));
+    await repository.createEntry(
+      createInput({
+        durationMinutes: 180,
+        earnedIncomeMinor: 4500,
+        entryMode: 'shift',
+        endedAtLocalDate: '2026-05-09',
+        endedAtLocalTime: '01:00',
+        id: 'work-2',
+        localDate: '2026-05-09',
+        note: 'Cafe close',
+        paid: true,
+        startedAtLocalDate: '2026-05-08',
+        startedAtLocalTime: '22:00',
+        topicIds: ['topic-cafe'],
+      }),
+    );
+    await repository.createEntry(
+      createInput({
+        durationMinutes: 30,
+        earnedIncomeMinor: 0,
+        id: 'work-3',
+        localDate: '2026-05-10',
+        note: 'Volunteer',
+        paid: false,
+        topicIds: [],
+      }),
+    );
+
+    const page = await repository.listHistoryEntries(localWorkspaceId, {
+      categoryId: null,
+      dateFrom: '2026-05-08' as never,
+      dateTo: '2026-05-10' as never,
+      entryMode: null,
+      limit: 1,
+      noteSearch: null,
+      offset: 0,
+      paid: 'paid',
+      sort: 'duration_desc',
+      topicId: null,
+    });
+    const noteFiltered = await repository.listHistoryEntries(localWorkspaceId, {
+      categoryId: null,
+      dateFrom: null,
+      dateTo: null,
+      entryMode: 'shift',
+      limit: 10,
+      noteSearch: 'cafe',
+      offset: 0,
+      paid: null,
+      sort: 'date_desc',
+      topicId: 'topic-cafe' as never,
+    });
+
+    expect(page.ok).toBe(true);
+    if (page.ok) {
+      expect(page.value).toMatchObject({
+        hasMore: true,
+        totalCount: 2,
+      });
+      expect(page.value.records[0].id).toBe('work-2');
+    }
+    expect(noteFiltered.ok).toBe(true);
+    if (noteFiltered.ok) {
+      expect(noteFiltered.value.records.map((entry) => entry.id)).toEqual(['work-2']);
+    }
   });
 });

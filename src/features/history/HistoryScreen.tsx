@@ -12,6 +12,7 @@ import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
+import { WorkHistoryPanel } from '../work/WorkHistoryPanel';
 import { useMoneyHistory } from './useMoneyHistory';
 
 const kindOptions: { label: string; value: MoneyRecordKind | 'all' }[] = [
@@ -274,6 +275,9 @@ export function HistoryScreen() {
             <Button label="Load more" onPress={history.loadMore} variant="secondary" />
           ) : null}
         </View>
+
+        <View style={styles.divider} />
+        <WorkHistoryPanel />
       </ScrollView>
     </SafeAreaView>
   );
@@ -294,6 +298,10 @@ const styles = StyleSheet.create({
   description: {
     ...typography.body,
     color: colors.body,
+  },
+  divider: {
+    backgroundColor: colors.hairline,
+    height: StyleSheet.hairlineWidth,
   },
   eyebrow: {
     ...typography.caption,

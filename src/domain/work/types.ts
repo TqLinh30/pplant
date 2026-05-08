@@ -9,6 +9,9 @@ export type WorkEntrySource = 'manual';
 export type WorkEntrySourceOfTruth = 'manual';
 export type WorkEntryWageSource = 'default' | 'override';
 export type WorkEntryNote = string & { readonly __brand: 'WorkEntryNote' };
+export type WorkHistoryPaidFilter = 'paid' | 'unpaid';
+export type WorkHistorySort = 'date_asc' | 'date_desc' | 'duration_asc' | 'duration_desc' | 'earned_asc' | 'earned_desc';
+export type WorkHistorySummaryMode = 'day' | 'week' | 'month';
 
 export type WorkEntry = {
   breakMinutes: number;
@@ -60,4 +63,25 @@ export type SaveWorkEntryInput = {
   wageMinorPerHour: number;
   wageSource: WorkEntryWageSource;
   workspaceId: string;
+};
+
+export type WorkHistoryQuery = {
+  categoryId: EntityId | null;
+  dateFrom: LocalDate | null;
+  dateTo: LocalDate | null;
+  entryMode: WorkEntryMode | null;
+  limit: number;
+  noteSearch: string | null;
+  offset: number;
+  paid: WorkHistoryPaidFilter | null;
+  sort: WorkHistorySort;
+  topicId: EntityId | null;
+};
+
+export type WorkHistoryPage = {
+  hasMore: boolean;
+  limit: number;
+  offset: number;
+  records: WorkEntry[];
+  totalCount: number;
 };
