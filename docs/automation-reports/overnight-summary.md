@@ -6,7 +6,7 @@
 
 ## Last Completed Story
 
-- Story 2.7: Show Expense Impact As Work-Time Context
+- Story 3.1: Create And Manage Daily Tasks
 
 ## Stories Completed
 
@@ -21,22 +21,23 @@
 - Story 2.5: Create Work-Hour And Shift Entries. Commit: `9549002 feat: complete story 2.5 - work entries`
 - Story 2.6: Review Work History And Earned Income. Commit: `4b73039 feat: complete story 2.6 - work history`
 - Story 2.7: Show Expense Impact As Work-Time Context. Commit: `8cccc4f feat: complete story 2.7 - work-time context`
+- Story 3.1: Create And Manage Daily Tasks. Commit: `8bfaa8b feat: complete story 3.1 - daily tasks`
 
 ## Stories Skipped
 
-- Story 3.1 and later were not implemented.
-- Remaining backlog starts at `3-1-create-and-manage-daily-tasks`.
+- Story 3.2 and later were not implemented.
+- Remaining backlog starts at `3-2-manage-recurring-tasks-and-habits`.
 
 ## Stop Reason
 
-- Stopped before Story 3.1 due to hard stop condition #1.
-- Story 3.1 requires a new persisted task model, but the current docs do not fully define schema-affecting decisions:
-  - whether task deadline is a local date, local datetime, or ISO `due_at` timestamp,
-  - whether categories/topics are required in the first task story or deferred,
-  - how task summary inputs should be represented for later Today/Review stories,
-  - which provenance/source fields should be stored for user-edited task data,
-  - how Story 3.1 should prepare for recurrence/reminder behavior without implementing future stories early.
-- These choices affect database schema, business logic, and future user data, so automation stopped instead of guessing.
+- Stopped after Story 3.1 due to hard stop condition #1.
+- Story 3.2 is still `backlog` in `sprint-status.yaml` and has no ready-for-dev story file.
+- Story 3.2 requires schema-affecting decisions that are not safe to guess:
+  - whether to extend the existing money-specific `recurrence_rules` table or create task/habit-specific recurrence tables,
+  - whether generated task occurrences should materialize into `tasks` rows or remain virtual until completed,
+  - how completion-by-day should be stored for recurring tasks versus habits,
+  - how pause, skip-one, stop, delete, and edit apply to occurrence versus series data,
+  - how this should prepare for Story 3.3 reminders without implementing reminder scheduling early.
 
 ## Commits Created
 
@@ -54,13 +55,15 @@
 - `9549002 feat: complete story 2.5 - work entries`
 - `4b73039 feat: complete story 2.6 - work history`
 - `8cccc4f feat: complete story 2.7 - work-time context`
+- `ed96011 docs: update overnight automation summary`
+- `8bfaa8b feat: complete story 3.1 - daily tasks`
 
 ## Commands Run
 
 - Git safety and publishing:
   - `git branch --show-current`
   - `git status --short`
-  - `git log --oneline --max-count=20`
+  - `git log --oneline --max-count=8`
   - `git push origin auto/codex-overnight-1`
 - Story verification gates used repeatedly:
   - `npm run typecheck`
@@ -69,13 +72,10 @@
   - `npx expo install --check`
   - `npm run build --if-present`
   - `git diff --check`
-- Focused Story 2.6 checks:
-  - `npm test -- src/domain/work/work.test.ts src/data/repositories/work-entries.repository.test.ts src/services/work/work-history.service.test.ts src/features/work/useWorkHistory.test.ts`
-  - `npm test -- src/features/work/useWorkHistory.test.ts src/services/work/work-history.service.test.ts`
-- Focused Story 2.7 checks:
-  - `npm test -- src/domain/work/work-time-equivalent.test.ts src/features/work/workTimeContextText.test.ts`
-- Story 3.1 readiness analysis:
-  - Read `sprint-status.yaml`, `epics.md`, `prd.md`, `architecture.md`, `ux-design-specification.md`, task skeleton files, current schema, and recent story artifacts.
+- Focused Story 3.1 checks:
+  - `npx jest src/domain/tasks/tasks.test.ts src/data/repositories/tasks.repository.test.ts src/services/tasks/task.service.test.ts src/features/tasks/useTaskCapture.test.ts src/data/db/migrations/migrate.test.ts --runInBand`
+- Story 3.2 readiness analysis:
+  - Read `sprint-status.yaml`, `epics.md`, recurrence domain/repository/service code, and Story 3.1 task model.
 
 ## Test Results
 
@@ -83,6 +83,8 @@
 - Story 2.5 final verification passed: 35 suites, 191 tests.
 - Story 2.6 final verification passed: 37 suites, 199 tests.
 - Story 2.7 final verification passed: 39 suites, 206 tests.
+- Story 3.1 focused verification passed: 5 suites, 20 tests.
+- Story 3.1 final verification passed: 43 suites, 222 tests.
 - `npm run typecheck`: passed for each completed story.
 - `npm run lint`: passed for each completed story.
 - `npx expo install --check`: passed for each completed story.
@@ -95,14 +97,15 @@
 - Mobile visual and screen-reader behavior was not manually device-tested.
 - UI component rendering is indirectly covered because the current Jest config only matches `.test.ts` files.
 - `.claude/worktrees/` remains untracked and was not committed.
-- Story 3.1 needs product/architecture clarification before implementation because it introduces persisted task data.
+- Story 3.2 needs product/architecture clarification before implementation because it introduces recurring task/habit persisted data.
 
 ## What I Should Do Next When I Wake Up
 
-- Decide Story 3.1 task schema choices:
-  - Deadline storage: local date only, local date/time fields, or ISO `due_at` timestamp?
-  - Should tasks include category and topic fields in Story 3.1?
-  - Should tasks store `source`, `source_of_truth`, and `user_corrected_at` like money records?
-  - Should task deletion be soft-delete from the start?
-  - What summary inputs must later Today/Review stories read from tasks?
-- After those decisions, continue on `auto/codex-overnight-1` from Story 3.1.
+- Review Story 3.1 commit `8bfaa8b` and self-review report `docs/automation-reports/story-3.1-review.md`.
+- Make Story 3.2 decisions:
+  - Use a new task/habit recurrence table or generalize existing recurrence tables?
+  - Materialize generated occurrences as task rows, virtual occurrence views, or a hybrid?
+  - Store habit completion-by-day in a separate completion table?
+  - Define exact series versus occurrence behavior for edit, pause, skip, stop, and delete.
+  - Decide what schema fields are needed now for Story 3.3 reminders.
+- Create a ready-for-dev Story 3.2 file, then continue on `auto/codex-overnight-1`.
