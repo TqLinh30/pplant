@@ -11,6 +11,7 @@ import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
 import { useTaskCapture } from './useTaskCapture';
+import { TaskRecurrenceForm } from './TaskRecurrenceForm';
 
 const stateOptions: { label: string; value: TaskState }[] = [
   { label: 'To Do', value: 'todo' },
@@ -202,6 +203,10 @@ export function TaskForm() {
           ))}
         </View>
       </View>
+
+      <View style={styles.divider} />
+
+      <TaskRecurrenceForm />
     </View>
   );
 }
@@ -217,6 +222,10 @@ const styles = StyleSheet.create({
   error: {
     ...typography.caption,
     color: colors.signatureCoral,
+  },
+  divider: {
+    backgroundColor: colors.hairline,
+    height: StyleSheet.hairlineWidth,
   },
   form: {
     gap: spacing.md,

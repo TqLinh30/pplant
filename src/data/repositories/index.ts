@@ -8,5 +8,6 @@ export { createMoneyRecordRepository, type MoneyRecordRepository } from './money
 export { createPreferencesRepository, type PreferencesRepository } from './preferences.repository';
 export { createRecurrenceRuleRepository, type RecurrenceRuleRepository } from './recurrence-rules.repository';
 export { createTaskRepository, type TaskRepository } from './tasks.repository';
+export { createTaskRecurrenceRepository, type TaskRecurrenceRepository } from './task-recurrence.repository';
 export { createWorkEntryRepository, type WorkEntryRepository } from './work-entries.repository';
 export { createWorkspaceRepository, type WorkspaceRepository } from './workspace.repository';

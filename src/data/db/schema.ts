@@ -192,6 +192,56 @@ export const taskTopics = sqliteTable('task_topics', {
   createdAt: text('created_at').notNull(),
 });
 
+export const taskRecurrenceRules = sqliteTable('task_recurrence_rules', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  kind: text('kind').notNull(),
+  title: text('title').notNull(),
+  notes: text('notes'),
+  priority: text('priority').notNull(),
+  frequency: text('frequency').notNull(),
+  startsOnLocalDate: text('starts_on_local_date').notNull(),
+  endsOnLocalDate: text('ends_on_local_date'),
+  categoryId: text('category_id'),
+  source: text('source').notNull(),
+  sourceOfTruth: text('source_of_truth').notNull(),
+  userCorrectedAt: text('user_corrected_at'),
+  pausedAt: text('paused_at'),
+  stoppedAt: text('stopped_at'),
+  stoppedOnLocalDate: text('stopped_on_local_date'),
+  deletedAt: text('deleted_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const taskRecurrenceTopics = sqliteTable('task_recurrence_topics', {
+  ruleId: text('rule_id').notNull(),
+  topicId: text('topic_id').notNull(),
+  workspaceId: text('workspace_id').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const taskRecurrenceExceptions = sqliteTable('task_recurrence_exceptions', {
+  id: text('id').primaryKey(),
+  ruleId: text('rule_id').notNull(),
+  workspaceId: text('workspace_id').notNull(),
+  occurrenceLocalDate: text('occurrence_local_date').notNull(),
+  action: text('action').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const taskRecurrenceCompletions = sqliteTable('task_recurrence_completions', {
+  id: text('id').primaryKey(),
+  ruleId: text('rule_id').notNull(),
+  workspaceId: text('workspace_id').notNull(),
+  occurrenceLocalDate: text('occurrence_local_date').notNull(),
+  completedAt: text('completed_at').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+});
+
 export const schema = {
   budgets,
   categories,
@@ -202,6 +252,10 @@ export const schema = {
   recurrenceRuleTopics,
   savingsGoals,
   schemaMigrations,
+  taskRecurrenceCompletions,
+  taskRecurrenceExceptions,
+  taskRecurrenceRules,
+  taskRecurrenceTopics,
   tasks,
   taskTopics,
   topics,

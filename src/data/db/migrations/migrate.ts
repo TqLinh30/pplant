@@ -28,6 +28,7 @@ export const moneyRecordCorrectionsMigrationId = '006_add_money_record_correctio
 export const recurringMoneyMigrationId = '007_create_recurring_money_rules';
 export const workEntriesMigrationId = '008_create_work_entries';
 export const tasksMigrationId = '009_create_tasks';
+export const taskRecurrenceMigrationId = '010_create_task_recurrence';
 
 const createMigrationTrackingTableSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -313,6 +314,80 @@ CREATE INDEX IF NOT EXISTS idx_task_topics_workspace_topic
   ON task_topics (workspace_id, topic_id);
 `;
 
+const taskRecurrenceMigrationSql = `
+CREATE TABLE IF NOT EXISTS task_recurrence_rules (
+  id TEXT PRIMARY KEY NOT NULL,
+  workspace_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  title TEXT NOT NULL,
+  notes TEXT,
+  priority TEXT NOT NULL,
+  frequency TEXT NOT NULL,
+  starts_on_local_date TEXT NOT NULL,
+  ends_on_local_date TEXT,
+  category_id TEXT,
+  source TEXT NOT NULL,
+  source_of_truth TEXT NOT NULL,
+  user_corrected_at TEXT,
+  paused_at TEXT,
+  stopped_at TEXT,
+  stopped_on_local_date TEXT,
+  deleted_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_recurrence_rules_workspace_active
+  ON task_recurrence_rules (workspace_id, deleted_at, paused_at, stopped_at, starts_on_local_date);
+
+CREATE INDEX IF NOT EXISTS idx_task_recurrence_rules_workspace_kind
+  ON task_recurrence_rules (workspace_id, deleted_at, kind, frequency);
+
+CREATE TABLE IF NOT EXISTS task_recurrence_topics (
+  rule_id TEXT NOT NULL,
+  topic_id TEXT NOT NULL,
+  workspace_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (rule_id, topic_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_recurrence_topics_rule
+  ON task_recurrence_topics (rule_id);
+
+CREATE INDEX IF NOT EXISTS idx_task_recurrence_topics_workspace_topic
+  ON task_recurrence_topics (workspace_id, topic_id);
+
+CREATE TABLE IF NOT EXISTS task_recurrence_exceptions (
+  id TEXT PRIMARY KEY NOT NULL,
+  rule_id TEXT NOT NULL,
+  workspace_id TEXT NOT NULL,
+  occurrence_local_date TEXT NOT NULL,
+  action TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_task_recurrence_exceptions_rule_date_action
+  ON task_recurrence_exceptions (workspace_id, rule_id, occurrence_local_date, action);
+
+CREATE TABLE IF NOT EXISTS task_recurrence_completions (
+  id TEXT PRIMARY KEY NOT NULL,
+  rule_id TEXT NOT NULL,
+  workspace_id TEXT NOT NULL,
+  occurrence_local_date TEXT NOT NULL,
+  completed_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_task_recurrence_completions_rule_date
+  ON task_recurrence_completions (workspace_id, rule_id, occurrence_local_date);
+
+CREATE INDEX IF NOT EXISTS idx_task_recurrence_completions_rule_active
+  ON task_recurrence_completions (rule_id, deleted_at, occurrence_local_date);
+`;
+
 const migrations = [
   {
     id: workspaceMigrationId,
@@ -349,6 +424,10 @@ const migrations = [
   {
     id: tasksMigrationId,
     sql: tasksMigrationSql,
+  },
+  {
+    id: taskRecurrenceMigrationId,
+    sql: taskRecurrenceMigrationSql,
   },
 ] as const;
 

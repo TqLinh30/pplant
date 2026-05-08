@@ -6,6 +6,7 @@ import {
   moneyRecordsMigrationId,
   preferencesMigrationId,
   recurringMoneyMigrationId,
+  taskRecurrenceMigrationId,
   tasksMigrationId,
   workEntriesMigrationId,
   workspaceMigrationId,
@@ -58,7 +59,7 @@ describe('local database migrations', () => {
     expect(firstRun).toEqual({
       ok: true,
       value: {
-        applied: 9,
+        applied: 10,
         appliedMigrations: [
           workspaceMigrationId,
           preferencesMigrationId,
@@ -69,6 +70,7 @@ describe('local database migrations', () => {
           recurringMoneyMigrationId,
           workEntriesMigrationId,
           tasksMigrationId,
+          taskRecurrenceMigrationId,
         ],
       },
     });
@@ -88,6 +90,7 @@ describe('local database migrations', () => {
     expect(client.appliedMigrations.has(recurringMoneyMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(workEntriesMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(tasksMigrationId)).toBe(true);
+    expect(client.appliedMigrations.has(taskRecurrenceMigrationId)).toBe(true);
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS workspaces');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS user_preferences');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS categories');
@@ -106,6 +109,10 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS work_entry_topics');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS tasks');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS task_topics');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS task_recurrence_rules');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS task_recurrence_topics');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS task_recurrence_exceptions');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS task_recurrence_completions');
     expect(client.executedSql.join('\n')).toContain('idx_categories_workspace_active_order');
     expect(client.executedSql.join('\n')).toContain('idx_topics_workspace_active_order');
     expect(client.executedSql.join('\n')).toContain('idx_savings_goals_workspace_active_target_date');
@@ -118,6 +125,9 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('idx_work_entry_topics_entry');
     expect(client.executedSql.join('\n')).toContain('idx_tasks_workspace_state_deadline');
     expect(client.executedSql.join('\n')).toContain('idx_task_topics_workspace_topic');
+    expect(client.executedSql.join('\n')).toContain('idx_task_recurrence_rules_workspace_active');
+    expect(client.executedSql.join('\n')).toContain('idx_task_recurrence_exceptions_rule_date_action');
+    expect(client.executedSql.join('\n')).toContain('idx_task_recurrence_completions_rule_date');
     expect(client.executedSql.join('\n')).not.toContain('DROP TABLE');
   });
 
@@ -130,7 +140,7 @@ describe('local database migrations', () => {
     expect(result).toEqual({
       ok: true,
       value: {
-        applied: 8,
+        applied: 9,
         appliedMigrations: [
           preferencesMigrationId,
           categoryTopicMigrationId,
@@ -140,6 +150,7 @@ describe('local database migrations', () => {
           recurringMoneyMigrationId,
           workEntriesMigrationId,
           tasksMigrationId,
+          taskRecurrenceMigrationId,
         ],
       },
     });
@@ -151,6 +162,7 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS recurrence_rules');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS work_entries');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS tasks');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS task_recurrence_rules');
   });
 
   it('returns a retryable local error when migration setup fails', async () => {
