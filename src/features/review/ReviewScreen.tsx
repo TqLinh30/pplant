@@ -1,9 +1,14 @@
 import { router } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatMinorUnitsForInput } from '@/domain/common/money';
+import type {
+  Reflection,
+  ReflectionPrompt,
+  ReflectionPromptId,
+} from '@/domain/reflections/types';
 import type {
   EndOfDayActivityItem,
   EndOfDayReviewSummary,
@@ -21,6 +26,7 @@ import { Button } from '@/ui/primitives/Button';
 import { ListRow } from '@/ui/primitives/ListRow';
 import { SegmentedControl } from '@/ui/primitives/SegmentedControl';
 import { StatusBanner } from '@/ui/primitives/StatusBanner';
+import { TextField } from '@/ui/primitives/TextField';
 import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
@@ -29,6 +35,10 @@ import { typography } from '@/ui/tokens/typography';
 import { routeForEndOfDayReviewEdit } from './end-of-day-review-routes';
 import { useEndOfDayReview } from './useEndOfDayReview';
 import { usePeriodReviewSummary, type PeriodReviewState } from './usePeriodReviewSummary';
+import {
+  useReflectionPrompts,
+  type ReflectionPromptState,
+} from './useReflectionPrompts';
 
 type ReviewMode = 'day' | 'month' | 'week';
 type ReviewCurrencyData = Pick<EndOfDayReviewData | PeriodReviewData, 'preferences'>;
@@ -543,8 +553,14 @@ function relationshipDescription(data: PeriodReviewData, relationship: Reflectio
   }: ${relationshipValueText(data, relationship.secondary)}`;
 }
 
-function PeriodRelationshipsSection({ data }: { data: PeriodReviewData }) {
-  const relationships = buildReflectionRelationships({ summary: data.summary });
+function PeriodRelationshipsSection({
+  data,
+  reflectionCount,
+}: {
+  data: PeriodReviewData;
+  reflectionCount: number;
+}) {
+  const relationships = buildReflectionRelationships({ reflectionCount, summary: data.summary });
 
   return (
     <Section title="Reflection Pairs">
@@ -559,6 +575,158 @@ function PeriodRelationshipsSection({ data }: { data: PeriodReviewData }) {
         ))}
       </View>
     </Section>
+  );
+}
+
+function reflectionForPrompt(
+  reflections: Reflection[],
+  promptId: ReflectionPromptId,
+): Reflection | null {
+  return reflections.find((reflection) => reflection.promptId === promptId) ?? null;
+}
+
+function ReflectionPromptItem({
+  onSave,
+  onSkip,
+  prompt,
+  reflection,
+  savingPromptId,
+}: {
+  onSave: (prompt: ReflectionPrompt, responseText: string) => void;
+  onSkip: (prompt: ReflectionPrompt) => void;
+  prompt: ReflectionPrompt;
+  reflection: Reflection | null;
+  savingPromptId: ReflectionPromptId | null;
+}) {
+  const [responseText, setResponseText] = useState(reflection?.responseText ?? '');
+  const isSaving = savingPromptId === prompt.id;
+  const hasAnswer = responseText.trim().length > 0;
+  const stateLabel =
+    reflection?.state === 'answered' ? 'Saved' : reflection?.state === 'skipped' ? 'Skipped' : 'Ready when you are';
+
+  useEffect(() => {
+    setResponseText(reflection?.responseText ?? '');
+  }, [prompt.id, reflection?.responseText]);
+
+  return (
+    <View style={styles.promptItem}>
+      <View style={styles.promptHeader}>
+        <Text style={styles.promptTitle}>{prompt.text}</Text>
+        <Text style={styles.promptState}>{stateLabel}</Text>
+      </View>
+      <Text style={styles.sectionNote}>{prompt.helperText}</Text>
+      <TextField
+        label="Optional note"
+        multiline
+        onChangeText={setResponseText}
+        placeholder="Write a short reflection"
+        value={responseText}
+      />
+      <View style={styles.promptActions}>
+        <Button
+          accessibilityLabel={`Save reflection for ${prompt.text}`}
+          disabled={!hasAnswer || savingPromptId !== null}
+          label={reflection?.state === 'answered' ? 'Update' : 'Save'}
+          onPress={() => onSave(prompt, responseText)}
+          variant="secondary"
+        />
+        <Button
+          accessibilityLabel={`Skip reflection for ${prompt.text}`}
+          disabled={savingPromptId !== null}
+          label={isSaving ? 'Saving' : 'Skip'}
+          onPress={() => onSkip(prompt)}
+          variant="secondary"
+        />
+      </View>
+    </View>
+  );
+}
+
+function ReflectionPromptsSection({
+  onRetry,
+  onSave,
+  onSkip,
+  state,
+}: {
+  onRetry: () => void;
+  onSave: (prompt: ReflectionPrompt, responseText: string) => void;
+  onSkip: (prompt: ReflectionPrompt) => void;
+  state: ReflectionPromptState;
+}) {
+  return (
+    <Section
+      title="Reflection Prompts"
+      action={state.status === 'failed' ? <Button label="Retry" onPress={onRetry} variant="secondary" /> : null}>
+      {state.status === 'idle' || state.status === 'loading' ? (
+        <StatusBanner title="Loading prompts" description="Saved prompt states are loading from local data." />
+      ) : null}
+      {state.status === 'failed' && state.actionError ? (
+        <StatusBanner
+          title="Reflection action did not finish"
+          description="Your review can continue. Try saving or skipping the prompt again when ready."
+          tone="warning"
+        />
+      ) : null}
+      {state.prompts.length > 0 ? (
+        <View style={styles.promptGroup}>
+          {state.prompts.map((prompt) => (
+            <ReflectionPromptItem
+              key={prompt.id}
+              onSave={onSave}
+              onSkip={onSkip}
+              prompt={prompt}
+              reflection={reflectionForPrompt(state.reflections, prompt.id)}
+              savingPromptId={state.savingPromptId}
+            />
+          ))}
+        </View>
+      ) : null}
+    </Section>
+  );
+}
+
+function LoadedPeriodReviewContent({
+  data,
+  onRetry,
+  status,
+}: {
+  data: PeriodReviewData;
+  onRetry: () => void;
+  status: PeriodReviewState['status'];
+}) {
+  const reflectionPrompts = useReflectionPrompts(data);
+  const answeredReflectionCount = reflectionPrompts.state.reflections.filter(
+    (reflection) => reflection.state === 'answered',
+  ).length;
+
+  return (
+    <>
+      {status === 'loading' ? (
+        <StatusBanner title="Refreshing" description="The current summary stays visible while local data reloads." />
+      ) : null}
+      {status === 'empty' ? (
+        <StatusBanner
+          title="Nothing recorded in this period"
+          description="That is only a data state. This summary will fill in when records are saved."
+        />
+      ) : null}
+      <StatusBanner
+        title="Summary calculated from local records"
+        description={`${data.summary.period.label} uses the latest saved records and does not write back to them.`}
+      />
+      <PeriodMoneySection data={data} />
+      <PeriodBudgetSavingsSection data={data} />
+      <PeriodWorkSection data={data} />
+      <PeriodTasksSection data={data} />
+      <PeriodRemindersSection data={data} />
+      <PeriodRelationshipsSection data={data} reflectionCount={answeredReflectionCount} />
+      <ReflectionPromptsSection
+        onRetry={onRetry}
+        onSave={reflectionPrompts.savePrompt}
+        onSkip={reflectionPrompts.skipPrompt}
+        state={reflectionPrompts.state}
+      />
+    </>
   );
 }
 
@@ -609,29 +777,7 @@ function PeriodReviewContent({
     return null;
   }
 
-  return (
-    <>
-      {state.status === 'loading' ? (
-        <StatusBanner title="Refreshing" description="The current summary stays visible while local data reloads." />
-      ) : null}
-      {state.status === 'empty' ? (
-        <StatusBanner
-          title="Nothing recorded in this period"
-          description="That is only a data state. This summary will fill in when records are saved."
-        />
-      ) : null}
-      <StatusBanner
-        title="Summary calculated from local records"
-        description={`${state.data.summary.period.label} uses the latest saved records and does not write back to them.`}
-      />
-      <PeriodMoneySection data={state.data} />
-      <PeriodBudgetSavingsSection data={state.data} />
-      <PeriodWorkSection data={state.data} />
-      <PeriodTasksSection data={state.data} />
-      <PeriodRemindersSection data={state.data} />
-      <PeriodRelationshipsSection data={state.data} />
-    </>
-  );
+  return <LoadedPeriodReviewContent data={state.data} onRetry={onRetry} status={state.status} />;
 }
 
 export function ReviewScreen() {
@@ -790,6 +936,36 @@ const styles = StyleSheet.create({
   metricValue: {
     ...typography.label,
     color: colors.ink,
+  },
+  promptActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  promptGroup: {
+    backgroundColor: colors.canvas,
+    borderColor: colors.hairline,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: spacing.md,
+    padding: spacing.md,
+  },
+  promptHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: spacing.md,
+    justifyContent: 'space-between',
+  },
+  promptItem: {
+    gap: spacing.sm,
+  },
+  promptState: {
+    ...typography.caption,
+    color: colors.muted,
+  },
+  promptTitle: {
+    ...typography.label,
+    color: colors.ink,
+    flex: 1,
   },
   rowActions: {
     gap: spacing.xs,

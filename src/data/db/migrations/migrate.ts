@@ -33,6 +33,7 @@ export const remindersMigrationId = '011_create_reminders';
 export const recoveryEventsMigrationId = '012_create_recovery_events';
 export const captureDraftsMigrationId = '013_create_capture_drafts';
 export const receiptParseJobsMigrationId = '014_create_receipt_parse_jobs';
+export const reflectionsMigrationId = '015_create_reflections';
 
 const createMigrationTrackingTableSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -540,6 +541,35 @@ CREATE INDEX IF NOT EXISTS idx_receipt_parse_jobs_pending_retry
   ON receipt_parse_jobs (workspace_id, deleted_at, status, updated_at);
 `;
 
+const reflectionsMigrationSql = `
+CREATE TABLE IF NOT EXISTS reflections (
+  id TEXT PRIMARY KEY NOT NULL,
+  workspace_id TEXT NOT NULL,
+  period_kind TEXT NOT NULL CHECK (period_kind IN ('week', 'month')),
+  period_start_date TEXT NOT NULL,
+  period_end_date_exclusive TEXT NOT NULL,
+  prompt_id TEXT NOT NULL,
+  prompt_text TEXT NOT NULL,
+  response_text TEXT,
+  state TEXT NOT NULL CHECK (state IN ('answered', 'skipped')),
+  source TEXT NOT NULL DEFAULT 'manual' CHECK (source = 'manual'),
+  source_of_truth TEXT NOT NULL DEFAULT 'manual' CHECK (source_of_truth = 'manual'),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reflections_active_period_prompt
+  ON reflections (workspace_id, period_kind, period_start_date, prompt_id)
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_reflections_workspace_period
+  ON reflections (workspace_id, period_kind, period_start_date, deleted_at, updated_at);
+
+CREATE INDEX IF NOT EXISTS idx_reflections_workspace_recent
+  ON reflections (workspace_id, deleted_at, updated_at);
+`;
+
 const migrations = [
   {
     id: workspaceMigrationId,
@@ -596,6 +626,10 @@ const migrations = [
   {
     id: receiptParseJobsMigrationId,
     sql: receiptParseJobsMigrationSql,
+  },
+  {
+    id: reflectionsMigrationId,
+    sql: reflectionsMigrationSql,
   },
 ] as const;
 

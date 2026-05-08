@@ -341,6 +341,23 @@ export const receiptParseJobs = sqliteTable('receipt_parse_jobs', {
   deletedAt: text('deleted_at'),
 });
 
+export const reflections = sqliteTable('reflections', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  periodKind: text('period_kind').notNull(),
+  periodStartDate: text('period_start_date').notNull(),
+  periodEndDateExclusive: text('period_end_date_exclusive').notNull(),
+  promptId: text('prompt_id').notNull(),
+  promptText: text('prompt_text').notNull(),
+  responseText: text('response_text'),
+  state: text('state').notNull(),
+  source: text('source').notNull(),
+  sourceOfTruth: text('source_of_truth').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+});
+
 export const schema = {
   budgets,
   captureDrafts,
@@ -353,6 +370,7 @@ export const schema = {
   recurrenceRuleTopics,
   recoveryEvents,
   receiptParseJobs,
+  reflections,
   reminderExceptions,
   reminders,
   reminderScheduledNotifications,

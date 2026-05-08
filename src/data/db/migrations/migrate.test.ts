@@ -7,6 +7,7 @@ import {
   moneyRecordsMigrationId,
   preferencesMigrationId,
   recoveryEventsMigrationId,
+  reflectionsMigrationId,
   receiptParseJobsMigrationId,
   recurringMoneyMigrationId,
   remindersMigrationId,
@@ -63,7 +64,7 @@ describe('local database migrations', () => {
     expect(firstRun).toEqual({
       ok: true,
       value: {
-        applied: 14,
+        applied: 15,
         appliedMigrations: [
           workspaceMigrationId,
           preferencesMigrationId,
@@ -79,6 +80,7 @@ describe('local database migrations', () => {
           recoveryEventsMigrationId,
           captureDraftsMigrationId,
           receiptParseJobsMigrationId,
+          reflectionsMigrationId,
         ],
       },
     });
@@ -103,6 +105,7 @@ describe('local database migrations', () => {
     expect(client.appliedMigrations.has(recoveryEventsMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(captureDraftsMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(receiptParseJobsMigrationId)).toBe(true);
+    expect(client.appliedMigrations.has(reflectionsMigrationId)).toBe(true);
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS workspaces');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS user_preferences');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS categories');
@@ -132,6 +135,7 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS recovery_events');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS capture_drafts');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS receipt_parse_jobs');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS reflections');
     expect(client.executedSql.join('\n')).toContain('idx_categories_workspace_active_order');
     expect(client.executedSql.join('\n')).toContain('idx_topics_workspace_active_order');
     expect(client.executedSql.join('\n')).toContain('idx_savings_goals_workspace_active_target_date');
@@ -157,6 +161,9 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('idx_capture_drafts_workspace_status_updated');
     expect(client.executedSql.join('\n')).toContain('idx_receipt_parse_jobs_draft_latest');
     expect(client.executedSql.join('\n')).toContain('idx_receipt_parse_jobs_pending_retry');
+    expect(client.executedSql.join('\n')).toContain('idx_reflections_active_period_prompt');
+    expect(client.executedSql.join('\n')).toContain('idx_reflections_workspace_period');
+    expect(client.executedSql.join('\n')).toContain('idx_reflections_workspace_recent');
     expect(client.executedSql.join('\n')).not.toContain('DROP TABLE');
     expect(client.executedSql.join('\n')).not.toContain('ALTER TABLE recurrence_rules');
     expect(client.executedSql.join('\n')).not.toContain('ALTER TABLE task_recurrence_rules');
@@ -171,7 +178,7 @@ describe('local database migrations', () => {
     expect(result).toEqual({
       ok: true,
       value: {
-        applied: 13,
+        applied: 14,
         appliedMigrations: [
           preferencesMigrationId,
           categoryTopicMigrationId,
@@ -186,6 +193,7 @@ describe('local database migrations', () => {
           recoveryEventsMigrationId,
           captureDraftsMigrationId,
           receiptParseJobsMigrationId,
+          reflectionsMigrationId,
         ],
       },
     });
@@ -202,6 +210,7 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS recovery_events');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS capture_drafts');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS receipt_parse_jobs');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS reflections');
   });
 
   it('returns a retryable local error when migration setup fails', async () => {
