@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-05-07T22:57:05+08:00"
-last_updated: "2026-05-09T02:34:37+08:00"
+last_updated: "2026-05-09T02:37:07+08:00"
 project: "Pplant"
 project_key: "NOKEY"
 tracking_system: "file-system"
@@ -92,5 +92,5 @@ development_status:
   7-2-support-offline-core-capture: done
   7-3-manage-pending-network-dependent-records: done
   7-4-preserve-manual-corrections-as-source-of-truth: done
-  7-5-add-redacted-diagnostics-and-standard-test-fixtures: backlog
+  7-5-add-redacted-diagnostics-and-standard-test-fixtures: ready-for-dev
   epic-7-retrospective: optional
