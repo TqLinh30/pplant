@@ -78,7 +78,8 @@ export function receiptCaptureNoticeForOutcome(
     case 'draft_saved':
       return {
         actionLabel: 'Review draft',
-        description: 'The receipt photo is saved privately as an expense draft. No expense was created yet.',
+        description:
+          'The receipt photo is saved locally as an expense draft. Parsing can wait, manual expense entry works now, and no expense was created yet.',
         title: 'Receipt draft saved',
         tone: 'neutral',
       };

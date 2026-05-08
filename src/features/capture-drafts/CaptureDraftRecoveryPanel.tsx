@@ -37,7 +37,7 @@ export function CaptureDraftRecoveryPanel() {
     );
   }
 
-  if (state.drafts.length === 0) {
+  if (state.items.length === 0) {
     return null;
   }
 
@@ -57,34 +57,34 @@ export function CaptureDraftRecoveryPanel() {
       ) : null}
 
       <View style={styles.listGroup}>
-        {state.drafts.map((draft) => {
-          const description = describeCaptureDraft(draft);
+        {state.items.map((item) => {
+          const description = describeCaptureDraft(item);
 
           return (
-            <View key={draft.id} style={styles.draftBlock}>
+            <View key={item.draft.id} style={styles.draftBlock}>
               <ListRow
                 accessibilityLabel={description.accessibilityLabel}
                 description={description.description}
-                meta="Draft saved"
+                meta={description.meta}
                 title={description.title}
               />
               <View style={styles.actionGroup}>
                 <Button
                   accessibilityLabel={`Resume ${description.title}`}
                   label="Resume"
-                  onPress={() => router.push(routeForCaptureDraftResume(draft))}
+                  onPress={() => router.push(routeForCaptureDraftResume(item.draft))}
                   variant="secondary"
                 />
                 <Button
                   accessibilityLabel={`Keep ${description.title} for later`}
                   label="Keep"
-                  onPress={() => recovery.keepDraft(draft.id)}
+                  onPress={() => recovery.keepDraft(item.draft.id)}
                   variant="secondary"
                 />
                 <Button
                   accessibilityLabel={`Discard ${description.title}`}
                   label="Discard"
-                  onPress={() => recovery.discardDraft(draft.id)}
+                  onPress={() => recovery.discardDraft(item.draft.id)}
                   variant="danger"
                 />
               </View>

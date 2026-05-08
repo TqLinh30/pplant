@@ -1,6 +1,6 @@
 # Story 7.2: Support Offline Core Capture
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -18,30 +18,30 @@ so that I can keep recording daily life when services are unavailable.
 
 ## Tasks / Subtasks
 
-- [ ] Add local/offline capture status helpers. (AC: 1, 2, 3)
-  - [ ] Add pure helper logic that describes locally saved records and drafts without requiring a network detector.
-  - [ ] Add receipt-specific pending network-dependent labels for parsing not started, queued, running, failed, retry exhausted, parsed, low confidence, reviewed, and saved states.
-  - [ ] Keep labels text-first and accessible; do not rely on color alone.
+- [x] Add local/offline capture status helpers. (AC: 1, 2, 3)
+  - [x] Add pure helper logic that describes locally saved records and drafts without requiring a network detector.
+  - [x] Add receipt-specific pending network-dependent labels for parsing not started, queued, running, failed, retry exhausted, parsed, low confidence, reviewed, and saved states.
+  - [x] Keep labels text-first and accessible; do not rely on color alone.
 
-- [ ] Surface pending receipt parsing state in draft recovery. (AC: 2, 3)
-  - [ ] Extend the capture draft recovery service/hook so Today and Capture can show active drafts with any latest receipt parse job context.
-  - [ ] Label active receipt drafts as locally saved and clearly identify whether parsing is not started, pending, running, failed, paused after retries, ready for review, or complete.
-  - [ ] Preserve current resume, keep, and discard behavior; do not implement the centralized retry/edit/discard queue from Story 7.3.
-  - [ ] Ensure receipt drafts remain resumable after app restart using existing `capture_drafts` and `receipt_parse_jobs` local tables.
+- [x] Surface pending receipt parsing state in draft recovery. (AC: 2, 3)
+  - [x] Extend the capture draft recovery service/hook so Today and Capture can show active drafts with any latest receipt parse job context.
+  - [x] Label active receipt drafts as locally saved and clearly identify whether parsing is not started, pending, running, failed, paused after retries, ready for review, or complete.
+  - [x] Preserve current resume, keep, and discard behavior; do not implement the centralized retry/edit/discard queue from Story 7.3.
+  - [x] Ensure receipt drafts remain resumable after app restart using existing `capture_drafts` and `receipt_parse_jobs` local tables.
 
-- [ ] Confirm core capture flows remain local-first with manual alternatives. (AC: 1, 2)
-  - [ ] Keep expense and income save paths local-only through existing money services and repository behavior.
-  - [ ] Keep task and work-entry save paths local-only through existing services and repository behavior.
-  - [ ] Keep reminders usable when notification scheduling is denied, unavailable, or local-only; user data must still save locally.
-  - [ ] Keep receipt capture saving the image reference/draft locally before any parsing attempt and keep manual expense entry visible immediately.
-  - [ ] Update user-facing copy where needed so saved records/drafts communicate local persistence and offline-safe manual alternatives.
+- [x] Confirm core capture flows remain local-first with manual alternatives. (AC: 1, 2)
+  - [x] Keep expense and income save paths local-only through existing money services and repository behavior.
+  - [x] Keep task and work-entry save paths local-only through existing services and repository behavior.
+  - [x] Keep reminders usable when notification scheduling is denied, unavailable, or local-only; user data must still save locally.
+  - [x] Keep receipt capture saving the image reference/draft locally before any parsing attempt and keep manual expense entry visible immediately.
+  - [x] Update user-facing copy where needed so saved records/drafts communicate local persistence and offline-safe manual alternatives.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Add helper tests for local saved labels and receipt pending network-dependent labels.
-  - [ ] Add service/hook tests proving active receipt drafts include latest parse-job labels and ordinary drafts remain labeled as locally saved.
-  - [ ] Add receipt capture tests proving draft save/manual fallback copy does not require OCR.
-  - [ ] Add or update capture form tests where reasonable to assert local-save and local-only fallback behavior.
-  - [ ] Run `npm run typecheck -- --pretty false`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Add helper tests for local saved labels and receipt pending network-dependent labels.
+  - [x] Add service/hook tests proving active receipt drafts include latest parse-job labels and ordinary drafts remain labeled as locally saved.
+  - [x] Add receipt capture tests proving draft save/manual fallback copy does not require OCR.
+  - [x] Add or update capture form tests where reasonable to assert local-save and local-only fallback behavior.
+  - [x] Run `npm run typecheck -- --pretty false`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -147,16 +147,34 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-09: Created Story 7.2 ready-for-dev from Epic 7, PRD, architecture, Story 7.1, Story 5.4, Story 4.3, and current local-first capture/receipt recovery code.
+- 2026-05-09: Started implementation. Plan: add pure local/offline draft labels, enrich Today/Capture draft recovery with latest receipt parse-job context, tighten receipt capture offline/manual fallback copy, then verify with focused and full test gates.
+- 2026-05-09: Completed implementation and self-review. Full verification passed and self-review verdict was APPROVED_WITH_MINOR_NOTES.
 
 ### Completion Notes List
 
-- Pending implementation.
+- Added local/offline recovery item modeling for active capture drafts, including receipt parse-job labels for not-started, queued, running, failed, retry-exhausted, parsed, low-confidence, reviewed, saved, and parse-status-unavailable states.
+- Updated Today/Capture draft recovery panel to show local saved status and pending receipt parsing context while preserving resume, keep, and discard behavior.
+- Updated receipt capture, money, task, and work copy so local persistence/manual fallback is explicit; reminder local-only behavior remains covered by existing flow/tests.
+- Added focused helper/service tests and ran full verification successfully.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/7-2-support-offline-core-capture.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-7.2-review.md`
+- `src/features/capture/CaptureScreen.tsx`
+- `src/features/capture-drafts/CaptureDraftRecoveryPanel.tsx`
+- `src/features/capture-drafts/capture-draft-recovery.test.ts`
+- `src/features/capture-drafts/capture-draft-recovery.ts`
+- `src/features/capture-drafts/useCaptureDraftRecovery.test.ts`
+- `src/features/capture-drafts/useCaptureDraftRecovery.ts`
+- `src/features/receipts/receipt-capture.test.ts`
+- `src/features/receipts/receipt-capture.ts`
+- `src/features/tasks/TaskForm.tsx`
+- `src/features/work/WorkEntryForm.tsx`
 
 ## Change Log
 
 - 2026-05-09: Created Story 7.2 ready-for-dev.
+- 2026-05-09: Started implementation.
+- 2026-05-09: Completed Story 7.2 implementation and self-review.

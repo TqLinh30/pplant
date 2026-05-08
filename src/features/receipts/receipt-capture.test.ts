@@ -99,6 +99,10 @@ describe('receipt capture orchestration', () => {
     if (result.ok && result.value.status === 'draft_saved') {
       expect(result.value.draft.kind).toBe('expense');
       expect(result.value.payload.amount).toBe('');
+      const notice = receiptCaptureNoticeForOutcome(result.value);
+      expect(notice.description).toContain('saved locally');
+      expect(notice.description).toContain('Parsing can wait');
+      expect(notice.description).toContain('manual expense entry works now');
     }
   });
 

@@ -155,7 +155,7 @@ export function TaskForm() {
     state.lastMutation === 'deleted' && state.deletedTask
       ? `${state.deletedTask.title} is no longer shown in active tasks.`
       : state.savedTask
-        ? `${state.savedTask.title} is saved as ${formatTaskState(state.savedTask.state)}.`
+        ? `${state.savedTask.title} is saved locally as ${formatTaskState(state.savedTask.state)}.`
         : '';
 
   return (

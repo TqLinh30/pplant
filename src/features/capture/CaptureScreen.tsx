@@ -193,7 +193,7 @@ export function CaptureScreen() {
             state.savedRecord,
           )}`
         : state.savedRecord
-          ? `${formatRecordAmount(state.savedRecord)} is ready for budget, history, and summary inputs.${formatSavedExpenseContext(
+          ? `${formatRecordAmount(state.savedRecord)} is saved locally and ready for budget, history, and summary inputs.${formatSavedExpenseContext(
               state.savedRecord,
             )}`
         : '';

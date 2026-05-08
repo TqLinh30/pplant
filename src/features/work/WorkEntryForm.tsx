@@ -65,7 +65,7 @@ export function WorkEntryForm() {
     state.lastMutation === 'deleted' && state.deletedEntry
       ? `${formatDuration(state.deletedEntry.durationMinutes)} entry removed from active work entries.`
       : state.savedEntry
-        ? `${formatDuration(state.savedEntry.durationMinutes)} saved with ${formatEntryAmount(state.savedEntry)} earned.`
+        ? `${formatDuration(state.savedEntry.durationMinutes)} saved locally with ${formatEntryAmount(state.savedEntry)} earned.`
         : '';
 
   useEffect(() => {
