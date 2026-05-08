@@ -4,6 +4,7 @@ import type { CategoryTopicItem } from '@/domain/categories/types';
 import type { AppError } from '@/domain/common/app-error';
 import { createAppError } from '@/domain/common/app-error';
 import { asLocalDate } from '@/domain/common/date-rules';
+import type { CaptureDraft } from '@/domain/capture-drafts/types';
 import {
   formatMinorUnitsForInput,
   parseMoneyAmountInputToMinorUnits,
@@ -14,6 +15,11 @@ import {
   asOptionalMoneyRecordCategoryId,
 } from '@/domain/money/schemas';
 import type { UserPreferences } from '@/domain/preferences/types';
+import {
+  markActiveCaptureDraftSaved,
+  type MarkActiveCaptureDraftSavedRequest,
+  type SaveActiveCaptureDraftRequest,
+} from '@/services/capture-drafts/capture-draft.service';
 import {
   asLocalTime,
   asWorkEntryMode,
@@ -31,6 +37,11 @@ import {
   type CreateWorkEntryRequest,
   type WorkEntryCaptureData,
 } from '@/services/work/work-entry.service';
+import {
+  isWorkCaptureDraftMeaningful,
+  toCaptureDraftPayload,
+} from '@/features/capture-drafts/captureDraftPayloads';
+import { useCaptureDraftPersistence } from '@/features/capture-drafts/useCaptureDraftPersistence';
 
 import { formatTodayLocalDate } from '@/features/capture/useManualMoneyCapture';
 
@@ -75,6 +86,7 @@ export type WorkEntryCaptureAction =
   | { type: 'category_selected'; categoryId: string | null }
   | { type: 'delete_started' }
   | { type: 'delete_succeeded'; entry: WorkEntry; nextDraft: WorkEntryDraft }
+  | { type: 'draft_applied'; draft: WorkEntryDraft }
   | { type: 'edit_cancelled'; nextDraft: WorkEntryDraft }
   | { type: 'edit_started'; draft: WorkEntryDraft; entry: WorkEntry }
   | { type: 'field_changed'; field: keyof Omit<WorkEntryDraft, 'categoryId' | 'entryMode' | 'paid' | 'topicIds'>; value: string }
@@ -94,7 +106,9 @@ export type WorkEntryCaptureServices = {
   createEntry?: (input: CreateWorkEntryRequest) => Promise<AppResult<WorkEntry>>;
   deleteEntry?: (id: string) => Promise<AppResult<WorkEntry>>;
   loadData?: () => Promise<AppResult<WorkEntryCaptureData>>;
+  markDraftSaved?: (input: MarkActiveCaptureDraftSavedRequest) => Promise<AppResult<CaptureDraft | null>>;
   now?: () => Date;
+  saveDraft?: (input: SaveActiveCaptureDraftRequest) => Promise<AppResult<CaptureDraft>>;
   updateEntry?: (id: string, input: CreateWorkEntryRequest) => Promise<AppResult<WorkEntry>>;
 };
 
@@ -336,6 +350,18 @@ export function workEntryCaptureReducer(
         savedEntry: null,
         status: 'deleted',
       };
+    case 'draft_applied':
+      return {
+        ...state,
+        actionError: null,
+        deletedEntry: null,
+        draft: action.draft,
+        editingEntryId: null,
+        fieldErrors: {},
+        lastMutation: null,
+        savedEntry: null,
+        status: 'ready',
+      };
     case 'edit_cancelled':
       return {
         ...state,
@@ -476,6 +502,11 @@ export function useWorkEntryCapture(services: WorkEntryCaptureServices = {}) {
   const now = services.now;
   const loadData = services.loadData ?? loadWorkEntryCaptureData;
   const createEntry = services.createEntry ?? createWorkEntry;
+  const markDraftSaved = services.markDraftSaved ?? markActiveCaptureDraftSaved;
+  const defaultDraft = useMemo(
+    () => createDefaultWorkEntryDraft(now?.() ?? new Date()),
+    [now],
+  );
   const updateEntry = useMemo(
     () => services.updateEntry ?? ((id: string, input: CreateWorkEntryRequest) => editWorkEntry({ ...input, id })),
     [services.updateEntry],
@@ -484,6 +515,17 @@ export function useWorkEntryCapture(services: WorkEntryCaptureServices = {}) {
     () => services.deleteEntry ?? ((id: string) => deleteWorkEntry({ id })),
     [services.deleteEntry],
   );
+  useCaptureDraftPersistence({
+    draft: state.draft,
+    enabled: state.status === 'ready' && state.editingEntryId === null,
+    isMeaningful: useCallback(
+      (draft: WorkEntryDraft) => isWorkCaptureDraftMeaningful(draft, defaultDraft),
+      [defaultDraft],
+    ),
+    kind: 'work',
+    saveDraft: services.saveDraft,
+    toPayload: toCaptureDraftPayload,
+  });
 
   const reload = useCallback(() => {
     dispatch({ type: 'load_started' });
@@ -543,6 +585,11 @@ export function useWorkEntryCapture(services: WorkEntryCaptureServices = {}) {
       }
 
       if (result.ok) {
+        void markDraftSaved({
+          kind: 'work',
+          savedRecordId: result.value.id,
+          savedRecordKind: 'work_entry',
+        });
         dispatch({
           entry: result.value,
           mutation: 'created',
@@ -554,7 +601,7 @@ export function useWorkEntryCapture(services: WorkEntryCaptureServices = {}) {
 
       dispatch({ error: result.error, type: 'save_failed' });
     });
-  }, [createEntry, now, state.draft, state.editingEntryId, state.preferences, updateEntry]);
+  }, [createEntry, markDraftSaved, now, state.draft, state.editingEntryId, state.preferences, updateEntry]);
 
   const startEdit = useCallback(
     (entry: WorkEntry) => {
@@ -608,6 +655,7 @@ export function useWorkEntryCapture(services: WorkEntryCaptureServices = {}) {
   }, [reload]);
 
   return {
+    applyDraft: (draft: WorkEntryDraft) => dispatch({ draft, type: 'draft_applied' }),
     cancelEdit,
     deleteEditingEntry,
     reload,

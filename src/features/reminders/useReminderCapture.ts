@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import type { AppError } from '@/domain/common/app-error';
 import { asLocalDate, formatDateAsLocalDate } from '@/domain/common/date-rules';
 import { err, isErr, ok, type AppResult } from '@/domain/common/result';
+import type { CaptureDraft } from '@/domain/capture-drafts/types';
 import {
   asOptionalReminderLocalDate,
   asReminderFrequency,
@@ -17,6 +18,11 @@ import type {
   ReminderScheduleState,
 } from '@/domain/reminders/types';
 import type { Task, TaskRecurrenceRule } from '@/domain/tasks/types';
+import {
+  markActiveCaptureDraftSaved,
+  type MarkActiveCaptureDraftSavedRequest,
+  type SaveActiveCaptureDraftRequest,
+} from '@/services/capture-drafts/capture-draft.service';
 import {
   createReminder,
   deleteReminder as deleteReminderService,
@@ -34,6 +40,11 @@ import {
   type ReminderRuleView,
   type ReminderScheduleMode,
 } from '@/services/reminders/reminder.service';
+import {
+  isReminderCaptureDraftMeaningful,
+  toCaptureDraftPayload,
+} from '@/features/capture-drafts/captureDraftPayloads';
+import { useCaptureDraftPersistence } from '@/features/capture-drafts/useCaptureDraftPersistence';
 
 export type ReminderCaptureStatus = 'failed' | 'loading' | 'ready' | 'saved' | 'saving';
 export type ReminderCaptureMutation =
@@ -84,6 +95,7 @@ export type ReminderCaptureServices = {
   disableReminder?: (id: string) => Promise<AppResult<ReminderMutationResult>>;
   enableReminder?: (id: string) => Promise<AppResult<ReminderMutationResult>>;
   loadData?: () => Promise<AppResult<ReminderData>>;
+  markDraftSaved?: (input: MarkActiveCaptureDraftSavedRequest) => Promise<AppResult<CaptureDraft | null>>;
   now?: () => Date;
   pauseReminder?: (id: string) => Promise<AppResult<ReminderMutationResult>>;
   resumeReminder?: (id: string) => Promise<AppResult<ReminderMutationResult>>;
@@ -93,12 +105,14 @@ export type ReminderCaptureServices = {
     occurrenceLocalDate?: string | null,
     minutes?: number,
   ) => Promise<AppResult<ReminderMutationResult>>;
+  saveDraft?: (input: SaveActiveCaptureDraftRequest) => Promise<AppResult<CaptureDraft>>;
   updateReminder?: (input: ReminderRequest & { id: string }) => Promise<AppResult<ReminderMutationResult>>;
 };
 
 type ReminderCaptureAction =
   | { type: 'action_started' }
   | { type: 'action_failed'; error: AppError }
+  | { type: 'draft_applied'; draft: ReminderCaptureDraft }
   | { type: 'edit_cancelled'; nextDraft: ReminderCaptureDraft }
   | { type: 'edit_started'; view: ReminderRuleView }
   | { type: 'field_changed'; field: 'endsOnLocalDate' | 'notes' | 'reminderLocalTime' | 'skipLocalDate' | 'startsOnLocalDate' | 'title'; value: string }
@@ -322,6 +336,18 @@ export function reminderCaptureReducer(
         actionError: action.error,
         status: 'ready',
       };
+    case 'draft_applied':
+      return {
+        ...state,
+        actionError: null,
+        draft: action.draft,
+        editingReminderId: null,
+        fieldErrors: {},
+        lastMutation: null,
+        occurrenceDate: null,
+        savedReminder: null,
+        status: 'ready',
+      };
     case 'edit_cancelled':
       return {
         ...state,
@@ -459,6 +485,11 @@ export function useReminderCapture(services: ReminderCaptureServices = {}) {
   const now = services.now;
   const loadData = services.loadData ?? loadReminderData;
   const createReminderDependency = services.createReminder ?? createReminder;
+  const markDraftSaved = services.markDraftSaved ?? markActiveCaptureDraftSaved;
+  const defaultDraft = useMemo(
+    () => createDefaultReminderCaptureDraft(now?.() ?? new Date()),
+    [now],
+  );
   const updateReminderDependency = services.updateReminder ?? updateReminderService;
   const deleteReminderDependency = useMemo(
     () => services.deleteReminder ?? ((id: string) => deleteReminderService({ id })),
@@ -493,6 +524,17 @@ export function useReminderCapture(services: ReminderCaptureServices = {}) {
         snoozeReminderService({ id, minutes, occurrenceLocalDate })),
     [services.snoozeReminder],
   );
+  useCaptureDraftPersistence({
+    draft: state.draft,
+    enabled: state.status === 'ready' && state.editingReminderId === null,
+    isMeaningful: useCallback(
+      (draft: ReminderCaptureDraft) => isReminderCaptureDraftMeaningful(draft, defaultDraft),
+      [defaultDraft],
+    ),
+    kind: 'reminder',
+    saveDraft: services.saveDraft,
+    toPayload: toCaptureDraftPayload,
+  });
 
   const reload = useCallback(() => {
     dispatch({ type: 'load_started' });
@@ -577,6 +619,13 @@ export function useReminderCapture(services: ReminderCaptureServices = {}) {
         }
 
         if (result.ok) {
+          if (!editingReminderId) {
+            void markDraftSaved({
+              kind: 'reminder',
+              savedRecordId: result.value.reminder.id,
+              savedRecordKind: 'reminder',
+            });
+          }
           void loadData().then((loadResult) => {
             if (!isMounted.current) {
               return;
@@ -601,7 +650,7 @@ export function useReminderCapture(services: ReminderCaptureServices = {}) {
         dispatch({ error: result.error, type: 'action_failed' });
       });
     },
-    [createReminderDependency, loadData, now, state.draft, state.editingReminderId, updateReminderDependency],
+    [createReminderDependency, loadData, markDraftSaved, now, state.draft, state.editingReminderId, updateReminderDependency],
   );
 
   const skipNextOccurrence = useCallback(
@@ -690,6 +739,7 @@ export function useReminderCapture(services: ReminderCaptureServices = {}) {
   }, [reload]);
 
   return {
+    applyDraft: (draft: ReminderCaptureDraft) => dispatch({ draft, type: 'draft_applied' }),
     cancelEdit: () =>
       dispatch({ nextDraft: createDefaultReminderCaptureDraft(now?.() ?? new Date()), type: 'edit_cancelled' }),
     deleteReminder,

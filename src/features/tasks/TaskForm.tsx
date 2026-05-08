@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import type { TaskPriority, TaskState } from '@/domain/tasks/types';
@@ -10,10 +11,13 @@ import { TextField } from '@/ui/primitives/TextField';
 import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
+import { parseCaptureDraftResumeParam } from '@/features/capture-drafts/capture-draft-recovery';
+import { parseTaskCaptureDraftPayload } from '@/features/capture-drafts/captureDraftPayloads';
+import { getActiveCaptureDraft } from '@/services/capture-drafts/capture-draft.service';
 
 import { ReminderForm } from '../reminders/ReminderForm';
 import { isRecoveryHandoffForTarget, useRecoveryHandoff } from '../recovery/recovery-handoff';
-import { useTaskCapture } from './useTaskCapture';
+import { createDefaultTaskCaptureDraft, useTaskCapture } from './useTaskCapture';
 import { TaskRecurrenceForm } from './TaskRecurrenceForm';
 
 const stateOptions: { label: string; value: TaskState }[] = [
@@ -44,6 +48,12 @@ export function TaskForm() {
   const { state } = tasks;
   const startEdit = tasks.startEdit;
   const { consumeHandoff, handoff } = useRecoveryHandoff();
+  const { draft, draftSeq } = useLocalSearchParams();
+  const appliedDraft = useRef<string | null>(null);
+  const resumeDraftKind = parseCaptureDraftResumeParam(
+    typeof draft === 'string' || Array.isArray(draft) ? draft : undefined,
+  );
+  const draftSequence = Array.isArray(draftSeq) ? draftSeq[0] : draftSeq;
   const saving = state.status === 'saving';
   const isEditing = state.editingTaskId !== null;
 
@@ -63,6 +73,27 @@ export function TaskForm() {
     startEdit(task);
     consumeHandoff(handoff.sequence);
   }, [consumeHandoff, handoff, startEdit, state.recentTasks]);
+
+  useEffect(() => {
+    if (resumeDraftKind !== 'task') {
+      return;
+    }
+
+    const handoffKey = draftSequence ? `${resumeDraftKind}:${draftSequence}` : resumeDraftKind;
+
+    if (appliedDraft.current === handoffKey) {
+      return;
+    }
+
+    appliedDraft.current = handoffKey;
+    void getActiveCaptureDraft('task').then((result) => {
+      if (!result.ok || !result.value) {
+        return;
+      }
+
+      tasks.applyDraft(parseTaskCaptureDraftPayload(result.value.payload, createDefaultTaskCaptureDraft()));
+    });
+  }, [draftSequence, resumeDraftKind, tasks]);
 
   if (state.status === 'loading') {
     return (

@@ -17,6 +17,7 @@ import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
+import { CaptureDraftRecoveryPanel } from '@/features/capture-drafts/CaptureDraftRecoveryPanel';
 
 import { QuickCaptureLauncher } from './QuickCaptureLauncher';
 import { useTodayOverview } from './useTodayOverview';
@@ -373,6 +374,8 @@ export function TodayScreen() {
         {state.status === 'loading' ? (
           <StatusBanner title="Refreshing" description="The last overview stays visible while local data reloads." />
         ) : null}
+
+        <CaptureDraftRecoveryPanel />
 
         <MoneySection data={data} summary={summary} />
         <SavingsSection data={data} summary={summary} />

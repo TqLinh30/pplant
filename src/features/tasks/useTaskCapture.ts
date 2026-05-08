@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import type { CategoryTopicItem } from '@/domain/categories/types';
 import type { AppError } from '@/domain/common/app-error';
 import { err, ok, type AppResult } from '@/domain/common/result';
+import type { CaptureDraft } from '@/domain/capture-drafts/types';
 import { asMoneyRecordTopicIds, asOptionalMoneyRecordCategoryId } from '@/domain/money/schemas';
 import {
   asOptionalTaskDeadline,
@@ -14,6 +15,11 @@ import {
 import type { Task, TaskPriority, TaskState } from '@/domain/tasks/types';
 import type { TaskStateSummary } from '@/domain/tasks/task-summary';
 import {
+  markActiveCaptureDraftSaved,
+  type MarkActiveCaptureDraftSavedRequest,
+  type SaveActiveCaptureDraftRequest,
+} from '@/services/capture-drafts/capture-draft.service';
+import {
   createTask,
   deleteTask,
   editTask,
@@ -22,6 +28,11 @@ import {
   type TaskCaptureData,
   type TaskMutationResult,
 } from '@/services/tasks/task.service';
+import {
+  isTaskCaptureDraftMeaningful,
+  toCaptureDraftPayload,
+} from '@/features/capture-drafts/captureDraftPayloads';
+import { useCaptureDraftPersistence } from '@/features/capture-drafts/useCaptureDraftPersistence';
 
 export type TaskCaptureStatus = 'deleted' | 'failed' | 'loading' | 'ready' | 'saved' | 'saving';
 export type TaskCaptureMutation = 'created' | 'deleted' | 'updated';
@@ -58,6 +69,8 @@ export type TaskCaptureServices = {
   createTask?: (input: CreateTaskRequest) => Promise<AppResult<TaskMutationResult>>;
   deleteTask?: (id: string) => Promise<AppResult<TaskMutationResult>>;
   loadData?: () => Promise<AppResult<TaskCaptureData>>;
+  markDraftSaved?: (input: MarkActiveCaptureDraftSavedRequest) => Promise<AppResult<CaptureDraft | null>>;
+  saveDraft?: (input: SaveActiveCaptureDraftRequest) => Promise<AppResult<CaptureDraft>>;
   updateTask?: (id: string, input: CreateTaskRequest) => Promise<AppResult<TaskMutationResult>>;
 };
 
@@ -65,6 +78,7 @@ type TaskCaptureAction =
   | { type: 'category_selected'; categoryId: string | null }
   | { type: 'delete_started' }
   | { type: 'delete_succeeded'; nextDraft: TaskCaptureDraft; result: TaskMutationResult }
+  | { type: 'draft_applied'; draft: TaskCaptureDraft }
   | { type: 'edit_cancelled'; nextDraft: TaskCaptureDraft }
   | { type: 'edit_started'; task: Task }
   | { type: 'field_changed'; field: 'deadlineLocalDate' | 'notes' | 'title'; value: string }
@@ -219,6 +233,18 @@ export function taskCaptureReducer(state: TaskCaptureState, action: TaskCaptureA
         status: 'deleted',
         summary: action.result.summary,
       };
+    case 'draft_applied':
+      return {
+        ...state,
+        actionError: null,
+        deletedTask: null,
+        draft: action.draft,
+        editingTaskId: null,
+        fieldErrors: {},
+        lastMutation: null,
+        savedTask: null,
+        status: 'ready',
+      };
     case 'edit_cancelled':
       return {
         ...state,
@@ -325,6 +351,8 @@ export function useTaskCapture(services: TaskCaptureServices = {}) {
   const isMounted = useRef(false);
   const loadData = services.loadData ?? loadTaskCaptureData;
   const createTaskDependency = services.createTask ?? createTask;
+  const markDraftSaved = services.markDraftSaved ?? markActiveCaptureDraftSaved;
+  const defaultDraft = useMemo(() => createDefaultTaskCaptureDraft(), []);
   const updateTaskDependency = useMemo(
     () => services.updateTask ?? ((id: string, input: CreateTaskRequest) => editTask({ ...input, id })),
     [services.updateTask],
@@ -333,6 +361,17 @@ export function useTaskCapture(services: TaskCaptureServices = {}) {
     () => services.deleteTask ?? ((id: string) => deleteTask({ id })),
     [services.deleteTask],
   );
+  useCaptureDraftPersistence({
+    draft: state.draft,
+    enabled: state.status === 'ready' && state.editingTaskId === null,
+    isMeaningful: useCallback(
+      (draft: TaskCaptureDraft) => isTaskCaptureDraftMeaningful(draft, defaultDraft),
+      [defaultDraft],
+    ),
+    kind: 'task',
+    saveDraft: services.saveDraft,
+    toPayload: toCaptureDraftPayload,
+  });
 
   const reload = useCallback(() => {
     dispatch({ type: 'load_started' });
@@ -387,6 +426,11 @@ export function useTaskCapture(services: TaskCaptureServices = {}) {
       }
 
       if (result.ok) {
+        void markDraftSaved({
+          kind: 'task',
+          savedRecordId: result.value.task.id,
+          savedRecordKind: 'task',
+        });
         dispatch({
           mutation: 'created',
           nextDraft: createDefaultTaskCaptureDraft(),
@@ -398,7 +442,7 @@ export function useTaskCapture(services: TaskCaptureServices = {}) {
 
       dispatch({ error: result.error, type: 'save_failed' });
     });
-  }, [createTaskDependency, state.draft, state.editingTaskId, updateTaskDependency]);
+  }, [createTaskDependency, markDraftSaved, state.draft, state.editingTaskId, updateTaskDependency]);
 
   const deleteEditingTask = useCallback(() => {
     if (!state.editingTaskId) {
@@ -436,6 +480,7 @@ export function useTaskCapture(services: TaskCaptureServices = {}) {
   }, [reload]);
 
   return {
+    applyDraft: (draft: TaskCaptureDraft) => dispatch({ draft, type: 'draft_applied' }),
     cancelEdit: () => dispatch({ nextDraft: createDefaultTaskCaptureDraft(), type: 'edit_cancelled' }),
     deleteEditingTask,
     reload,

@@ -1,3 +1,5 @@
+import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { formatMinorUnitsForInput } from '@/domain/common/money';
@@ -10,8 +12,11 @@ import { TextField } from '@/ui/primitives/TextField';
 import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
+import { parseCaptureDraftResumeParam } from '@/features/capture-drafts/capture-draft-recovery';
+import { parseWorkCaptureDraftPayload } from '@/features/capture-drafts/captureDraftPayloads';
+import { getActiveCaptureDraft } from '@/services/capture-drafts/capture-draft.service';
 
-import { useWorkEntryCapture } from './useWorkEntryCapture';
+import { createDefaultWorkEntryDraft, useWorkEntryCapture } from './useWorkEntryCapture';
 
 const modeOptions: { label: string; value: WorkEntryMode }[] = [
   { label: 'Hours', value: 'hours' },
@@ -32,6 +37,12 @@ function formatDuration(minutes: number): string {
 export function WorkEntryForm() {
   const work = useWorkEntryCapture();
   const { state } = work;
+  const { draft, draftSeq } = useLocalSearchParams();
+  const appliedDraft = useRef<string | null>(null);
+  const resumeDraftKind = parseCaptureDraftResumeParam(
+    typeof draft === 'string' || Array.isArray(draft) ? draft : undefined,
+  );
+  const draftSequence = Array.isArray(draftSeq) ? draftSeq[0] : draftSeq;
   const saving = state.status === 'saving';
   const isEditing = state.editingEntryId !== null;
 
@@ -51,6 +62,27 @@ export function WorkEntryForm() {
       : state.savedEntry
         ? `${formatDuration(state.savedEntry.durationMinutes)} saved with ${formatEntryAmount(state.savedEntry)} earned.`
         : '';
+
+  useEffect(() => {
+    if (resumeDraftKind !== 'work') {
+      return;
+    }
+
+    const handoffKey = draftSequence ? `${resumeDraftKind}:${draftSequence}` : resumeDraftKind;
+
+    if (appliedDraft.current === handoffKey) {
+      return;
+    }
+
+    appliedDraft.current = handoffKey;
+    void getActiveCaptureDraft('work').then((result) => {
+      if (!result.ok || !result.value) {
+        return;
+      }
+
+      work.applyDraft(parseWorkCaptureDraftPayload(result.value.payload, createDefaultWorkEntryDraft()));
+    });
+  }, [draftSequence, resumeDraftKind, work]);
 
   if (state.status === 'loading') {
     return (

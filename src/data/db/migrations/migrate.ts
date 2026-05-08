@@ -31,6 +31,7 @@ export const tasksMigrationId = '009_create_tasks';
 export const taskRecurrenceMigrationId = '010_create_task_recurrence';
 export const remindersMigrationId = '011_create_reminders';
 export const recoveryEventsMigrationId = '012_create_recovery_events';
+export const captureDraftsMigrationId = '013_create_capture_drafts';
 
 const createMigrationTrackingTableSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -486,6 +487,33 @@ CREATE INDEX IF NOT EXISTS idx_recovery_events_target
   ON recovery_events (workspace_id, target_kind, target_id, occurrence_local_date, action);
 `;
 
+const captureDraftsMigrationSql = `
+CREATE TABLE IF NOT EXISTS capture_drafts (
+  id TEXT PRIMARY KEY NOT NULL,
+  workspace_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  status TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  last_saved_at TEXT NOT NULL,
+  saved_at TEXT,
+  saved_record_kind TEXT,
+  saved_record_id TEXT,
+  discarded_at TEXT
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_capture_drafts_one_active_per_kind
+  ON capture_drafts (workspace_id, kind)
+  WHERE status = 'active';
+
+CREATE INDEX IF NOT EXISTS idx_capture_drafts_workspace_status_updated
+  ON capture_drafts (workspace_id, status, updated_at);
+
+CREATE INDEX IF NOT EXISTS idx_capture_drafts_saved_record
+  ON capture_drafts (workspace_id, saved_record_kind, saved_record_id);
+`;
+
 const migrations = [
   {
     id: workspaceMigrationId,
@@ -534,6 +562,10 @@ const migrations = [
   {
     id: recoveryEventsMigrationId,
     sql: recoveryEventsMigrationSql,
+  },
+  {
+    id: captureDraftsMigrationId,
+    sql: captureDraftsMigrationSql,
   },
 ] as const;
 

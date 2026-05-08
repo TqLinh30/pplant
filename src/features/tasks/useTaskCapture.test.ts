@@ -165,4 +165,21 @@ describe('task capture state', () => {
     expect(deleted.recentTasks).toEqual([]);
     expect(deleted.status).toBe('deleted');
   });
+
+  it('applies a recovered task draft for resume', () => {
+    const recovered = taskCaptureReducer(initialTaskCaptureState, {
+      draft: {
+        ...createDefaultTaskCaptureDraft(),
+        deadlineLocalDate: '2026-05-09',
+        notes: 'Bring outline',
+        title: 'Essay',
+      },
+      type: 'draft_applied',
+    });
+
+    expect(recovered.status).toBe('ready');
+    expect(recovered.editingTaskId).toBeNull();
+    expect(recovered.draft.title).toBe('Essay');
+    expect(recovered.draft.deadlineLocalDate).toBe('2026-05-09');
+  });
 });

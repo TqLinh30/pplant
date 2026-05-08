@@ -17,9 +17,16 @@ import { typography } from '@/ui/tokens/typography';
 import { TaskForm } from '@/features/tasks/TaskForm';
 import { WorkEntryForm } from '@/features/work/WorkEntryForm';
 import { buildExpenseWorkTimeContextText } from '@/features/work/workTimeContextText';
+import { CaptureDraftRecoveryPanel } from '@/features/capture-drafts/CaptureDraftRecoveryPanel';
+import { parseCaptureDraftResumeParam } from '@/features/capture-drafts/capture-draft-recovery';
+import { parseMoneyCaptureDraftPayload } from '@/features/capture-drafts/captureDraftPayloads';
+import { getActiveCaptureDraft } from '@/services/capture-drafts/capture-draft.service';
 
 import { parseMoneyQuickCaptureParam } from './quickCaptureParams';
-import { useManualMoneyCapture } from './useManualMoneyCapture';
+import {
+  createDefaultManualMoneyCaptureDraft,
+  useManualMoneyCapture,
+} from './useManualMoneyCapture';
 import { useRecurringMoney } from './useRecurringMoney';
 
 const kindOptions: { label: string; value: MoneyRecordKind }[] = [
@@ -49,14 +56,19 @@ function formatFrequency(frequency: RecurrenceFrequency): string {
 export function CaptureScreen() {
   const capture = useManualMoneyCapture();
   const recurring = useRecurringMoney();
-  const { quick, quickSeq } = useLocalSearchParams();
+  const { draft, draftSeq, quick, quickSeq } = useLocalSearchParams();
   const { state } = capture;
   const recurringState = recurring.state;
   const appliedQuickKind = useRef<string | null>(null);
+  const appliedDraftKind = useRef<string | null>(null);
   const quickKind = parseMoneyQuickCaptureParam(
     typeof quick === 'string' || Array.isArray(quick) ? quick : undefined,
   );
+  const resumeDraftKind = parseCaptureDraftResumeParam(
+    typeof draft === 'string' || Array.isArray(draft) ? draft : undefined,
+  );
   const quickSequence = Array.isArray(quickSeq) ? quickSeq[0] : quickSeq;
+  const draftSequence = Array.isArray(draftSeq) ? draftSeq[0] : draftSeq;
   const saving = state.status === 'saving';
   const isEditing = state.editingRecordId !== null;
   const recurringSaving = recurringState.status === 'saving';
@@ -65,13 +77,40 @@ export function CaptureScreen() {
   useEffect(() => {
     const handoffKey = quickSequence ? `${quickKind}:${quickSequence}` : quickKind;
 
-    if (!quickKind || appliedQuickKind.current === handoffKey) {
+    if (resumeDraftKind || !quickKind || appliedQuickKind.current === handoffKey) {
       return;
     }
 
     appliedQuickKind.current = handoffKey;
     capture.setKind(quickKind);
-  }, [capture, quickKind, quickSequence]);
+  }, [capture, quickKind, quickSequence, resumeDraftKind]);
+
+  useEffect(() => {
+    if (resumeDraftKind !== 'expense' && resumeDraftKind !== 'income') {
+      return;
+    }
+
+    const handoffKey = draftSequence ? `${resumeDraftKind}:${draftSequence}` : resumeDraftKind;
+
+    if (appliedDraftKind.current === handoffKey) {
+      return;
+    }
+
+    appliedDraftKind.current = handoffKey;
+    void getActiveCaptureDraft(resumeDraftKind).then((result) => {
+      if (!result.ok || !result.value) {
+        return;
+      }
+
+      capture.applyDraft(
+        parseMoneyCaptureDraftPayload(
+          resumeDraftKind,
+          result.value.payload,
+          createDefaultManualMoneyCaptureDraft(),
+        ),
+      );
+    });
+  }, [capture, draftSequence, resumeDraftKind]);
 
   const formatRecordAmount = (record: MoneyRecord) => {
     const formatted = state.preferences
@@ -191,6 +230,8 @@ export function CaptureScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <CaptureDraftRecoveryPanel />
+
         <View style={styles.header}>
           <Text style={styles.eyebrow}>Manual capture</Text>
           <Text style={styles.title}>{isEditing ? 'Edit money record' : 'Add money record'}</Text>

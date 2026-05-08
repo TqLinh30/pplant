@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import type {
@@ -14,9 +15,16 @@ import { TextField } from '@/ui/primitives/TextField';
 import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
+import { parseCaptureDraftResumeParam } from '@/features/capture-drafts/capture-draft-recovery';
+import { parseReminderCaptureDraftPayload } from '@/features/capture-drafts/captureDraftPayloads';
+import { getActiveCaptureDraft } from '@/services/capture-drafts/capture-draft.service';
 
 import { isRecoveryHandoffForTarget, useRecoveryHandoff } from '../recovery/recovery-handoff';
-import { useReminderCapture, type ReminderCaptureMutation } from './useReminderCapture';
+import {
+  createDefaultReminderCaptureDraft,
+  useReminderCapture,
+  type ReminderCaptureMutation,
+} from './useReminderCapture';
 
 const ownerOptions: { label: string; value: ReminderOwnerKind }[] = [
   { label: 'Standalone', value: 'standalone' },
@@ -131,6 +139,12 @@ export function ReminderForm() {
   const { state } = reminders;
   const startEdit = reminders.startEdit;
   const { consumeHandoff, handoff } = useRecoveryHandoff();
+  const { draft, draftSeq } = useLocalSearchParams();
+  const appliedDraft = useRef<string | null>(null);
+  const resumeDraftKind = parseCaptureDraftResumeParam(
+    typeof draft === 'string' || Array.isArray(draft) ? draft : undefined,
+  );
+  const draftSequence = Array.isArray(draftSeq) ? draftSeq[0] : draftSeq;
   const saving = state.status === 'saving';
 
   useEffect(() => {
@@ -149,6 +163,32 @@ export function ReminderForm() {
     startEdit(view);
     consumeHandoff(handoff.sequence);
   }, [consumeHandoff, handoff, startEdit, state.reminders]);
+
+  useEffect(() => {
+    if (resumeDraftKind !== 'reminder') {
+      return;
+    }
+
+    const handoffKey = draftSequence ? `${resumeDraftKind}:${draftSequence}` : resumeDraftKind;
+
+    if (appliedDraft.current === handoffKey) {
+      return;
+    }
+
+    appliedDraft.current = handoffKey;
+    void getActiveCaptureDraft('reminder').then((result) => {
+      if (!result.ok || !result.value) {
+        return;
+      }
+
+      reminders.applyDraft(
+        parseReminderCaptureDraftPayload(
+          result.value.payload,
+          createDefaultReminderCaptureDraft(),
+        ),
+      );
+    });
+  }, [draftSequence, reminders, resumeDraftKind]);
 
   if (state.status === 'loading') {
     return (

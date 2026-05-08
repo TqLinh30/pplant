@@ -239,6 +239,29 @@ describe('manual money capture state', () => {
     expect(cancelled.draft.amount).toBe('');
   });
 
+  it('applies a recovered money draft for resume', () => {
+    const recovered = manualMoneyCaptureReducer(initialManualMoneyCaptureState, {
+      draft: {
+        amount: '18.25',
+        categoryId: 'cat-food',
+        kind: 'income',
+        localDate: '2026-05-08',
+        merchantOrSource: 'Campus job',
+        note: 'Weekend shift',
+        topicIds: ['topic-campus'],
+      },
+      type: 'draft_applied',
+    });
+
+    expect(recovered.status).toBe('ready');
+    expect(recovered.editingRecordId).toBeNull();
+    expect(recovered.draft).toMatchObject({
+      amount: '18.25',
+      kind: 'income',
+      merchantOrSource: 'Campus job',
+    });
+  });
+
   it('replaces recent records after edit save and removes them after delete', () => {
     const record = createRecord();
     const edited = {

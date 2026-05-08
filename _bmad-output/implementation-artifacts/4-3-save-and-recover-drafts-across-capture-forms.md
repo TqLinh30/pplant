@@ -1,6 +1,6 @@
 # Story 4.3: Save And Recover Drafts Across Capture Forms
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -16,42 +16,42 @@ so that I do not lose work when the app closes, backgrounding happens, camera is
 
 ## Tasks / Subtasks
 
-- [ ] Add capture draft domain model, validation, and persistence. (AC: 1, 2, 3)
-  - [ ] Add `capture_drafts` to `src/data/db/schema.ts` using a single shared table with JSON payload text.
-  - [ ] Add migration `013_create_capture_drafts` without destructive changes and preserve all existing data.
-  - [ ] Enforce MVP cardinality with one active draft per kind: expense, income, task, reminder, work.
-  - [ ] Store soft lifecycle fields: `status`, `createdAt`, `updatedAt`, `lastSavedAt`, optional `savedRecordKind`, optional `savedRecordId`, optional `discardedAt`.
-  - [ ] Add Zod validation for draft kind, status, payload shape, and saved-record linkage.
-  - [ ] Add repository methods for upsert active draft, list active drafts, get active draft by kind, discard, keep/touch, and mark saved.
+- [x] Add capture draft domain model, validation, and persistence. (AC: 1, 2, 3)
+  - [x] Add `capture_drafts` to `src/data/db/schema.ts` using a single shared table with JSON payload text.
+  - [x] Add migration `013_create_capture_drafts` without destructive changes and preserve all existing data.
+  - [x] Enforce MVP cardinality with one active draft per kind: expense, income, task, reminder, work.
+  - [x] Store soft lifecycle fields: `status`, `createdAt`, `updatedAt`, `lastSavedAt`, optional `savedRecordKind`, optional `savedRecordId`, optional `discardedAt`.
+  - [x] Add Zod validation for draft kind, status, payload shape, and saved-record linkage.
+  - [x] Add repository methods for upsert active draft, list active drafts, get active draft by kind, discard, keep/touch, and mark saved.
 
-- [ ] Add capture draft service/hook behavior for current capture forms. (AC: 1, 3)
-  - [ ] Add feature/service helpers that debounce or explicitly persist draft payloads from expense, income, task, reminder, and work-entry capture forms.
-  - [ ] Persist drafts when meaningful user input exists; avoid creating empty drafts from untouched forms.
-  - [ ] Save drafts before app backgrounding and normal navigation interruption where React Native app lifecycle hooks are available.
-  - [ ] When a recovered draft is saved as a final record, mark the draft `saved` with `savedRecordKind` and `savedRecordId` and hide it from active draft UI.
-  - [ ] Do not alter existing final record schemas solely to store source draft IDs in this story; draft linkage lives in `capture_drafts`.
+- [x] Add capture draft service/hook behavior for current capture forms. (AC: 1, 3)
+  - [x] Add feature/service helpers that debounce or explicitly persist draft payloads from expense, income, task, reminder, and work-entry capture forms.
+  - [x] Persist drafts when meaningful user input exists; avoid creating empty drafts from untouched forms.
+  - [x] Save drafts before app backgrounding and normal navigation interruption where React Native app lifecycle hooks are available.
+  - [x] When a recovered draft is saved as a final record, mark the draft `saved` with `savedRecordKind` and `savedRecordId` and hide it from active draft UI.
+  - [x] Do not alter existing final record schemas solely to store source draft IDs in this story; draft linkage lives in `capture_drafts`.
 
-- [ ] Add Today and Capture draft recovery surfaces. (AC: 2)
-  - [ ] Show active drafts on Today with clear kind, updated time/state, and actions for resume/edit, discard, and keep.
-  - [ ] Show the same active draft recovery state on Capture.
-  - [ ] Resume/edit must route to the existing capture surface for the draft kind and prefill from draft payload where reasonable.
-  - [ ] Discard must soft-mark the draft as discarded and remove it from active UI.
-  - [ ] Keep must leave the draft active and update its timestamp so the user can return later.
-  - [ ] Use neutral copy and accessible labels; do not rely on color alone.
+- [x] Add Today and Capture draft recovery surfaces. (AC: 2)
+  - [x] Show active drafts on Today with clear kind, updated time/state, and actions for resume/edit, discard, and keep.
+  - [x] Show the same active draft recovery state on Capture.
+  - [x] Resume/edit must route to the existing capture surface for the draft kind and prefill from draft payload where reasonable.
+  - [x] Discard must soft-mark the draft as discarded and remove it from active UI.
+  - [x] Keep must leave the draft active and update its timestamp so the user can return later.
+  - [x] Use neutral copy and accessible labels; do not rely on color alone.
 
-- [ ] Preserve scope boundaries and sensitive-data safety. (AC: 1, 2, 3)
-  - [ ] Do not implement receipt photo capture, OCR parsing, receipt image retention, or receipt cleanup in Story 4.3.
-  - [ ] Do not change authentication, authorization, cloud sync, server APIs, or public record APIs.
-  - [ ] Do not log raw draft payloads, spending details, income values, task/reminder text, or work notes in diagnostics or tests.
-  - [ ] Do not add large dependencies or a new UI kit.
+- [x] Preserve scope boundaries and sensitive-data safety. (AC: 1, 2, 3)
+  - [x] Do not implement receipt photo capture, OCR parsing, receipt image retention, or receipt cleanup in Story 4.3.
+  - [x] Do not change authentication, authorization, cloud sync, server APIs, or public record APIs.
+  - [x] Do not log raw draft payloads, spending details, income values, task/reminder text, or work notes in diagnostics or tests.
+  - [x] Do not add large dependencies or a new UI kit.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Add migration tests proving existing records survive and `capture_drafts` is created.
-  - [ ] Add domain validation tests for draft kind/status/payload/linkage.
-  - [ ] Add repository tests for one-active-draft-per-kind, list active, discard, keep, and mark saved.
-  - [ ] Add hook/service tests for form draft save, recovered save linking, and empty-form no-op behavior where practical.
-  - [ ] Add UI/helper tests for Today/Capture draft recovery action routing and labels where practical.
-  - [ ] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Add migration tests proving existing records survive and `capture_drafts` is created.
+  - [x] Add domain validation tests for draft kind/status/payload/linkage.
+  - [x] Add repository tests for one-active-draft-per-kind, list active, discard, keep, and mark saved.
+  - [x] Add hook/service tests for form draft save, recovered save linking, and empty-form no-op behavior where practical.
+  - [x] Add UI/helper tests for Today/Capture draft recovery action routing and labels where practical.
+  - [x] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -197,16 +197,57 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-08: Created Story 4.3 ready-for-dev using user-approved draft persistence decisions.
+- 2026-05-08: Added capture draft domain validation, migration 013, repository, and service layer.
+- 2026-05-08: Wired meaningful draft persistence, app background/unmount save, final-save linkage, and resume payload application into money, task, reminder, and work capture flows.
+- 2026-05-08: Added Today/Capture draft recovery panel with resume, keep, and discard actions.
+- 2026-05-08: Ran focused and full verification gates successfully.
 
 ### Completion Notes List
 
-- Pending implementation.
+- Implemented shared `capture_drafts` persistence with JSON payloads, soft lifecycle states, one-active-draft-per-kind enforcement, and saved-record linkage.
+- Added debounced draft persistence for manual money, task, reminder, and work-entry forms, with AppState/unmount flush behavior for interruption recovery.
+- Added route-based draft resume for expense, income, task, reminder, and work, reusing existing capture surfaces instead of duplicating form logic.
+- Added Today and Capture draft recovery UI with neutral copy and accessible resume, keep, and discard actions.
+- No receipt capture, OCR, auth, cloud sync, final-record schema changes, or large dependencies were added.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/4-3-save-and-recover-drafts-across-capture-forms.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-4.3-review.md`
+- `src/data/db/migrations/migrate.test.ts`
+- `src/data/db/migrations/migrate.ts`
+- `src/data/db/schema.ts`
+- `src/data/repositories/capture-drafts.repository.test.ts`
+- `src/data/repositories/capture-drafts.repository.ts`
+- `src/data/repositories/index.ts`
+- `src/domain/capture-drafts/capture-drafts.test.ts`
+- `src/domain/capture-drafts/schemas.ts`
+- `src/domain/capture-drafts/types.ts`
+- `src/features/capture/CaptureScreen.tsx`
+- `src/features/capture/useManualMoneyCapture.test.ts`
+- `src/features/capture/useManualMoneyCapture.ts`
+- `src/features/capture-drafts/CaptureDraftRecoveryPanel.tsx`
+- `src/features/capture-drafts/capture-draft-recovery.test.ts`
+- `src/features/capture-drafts/capture-draft-recovery.ts`
+- `src/features/capture-drafts/captureDraftPayloads.test.ts`
+- `src/features/capture-drafts/captureDraftPayloads.ts`
+- `src/features/capture-drafts/useCaptureDraftPersistence.ts`
+- `src/features/capture-drafts/useCaptureDraftRecovery.ts`
+- `src/features/reminders/ReminderForm.tsx`
+- `src/features/reminders/useReminderCapture.test.ts`
+- `src/features/reminders/useReminderCapture.ts`
+- `src/features/tasks/TaskForm.tsx`
+- `src/features/tasks/useTaskCapture.test.ts`
+- `src/features/tasks/useTaskCapture.ts`
+- `src/features/today/TodayScreen.tsx`
+- `src/features/work/WorkEntryForm.tsx`
+- `src/features/work/useWorkEntryCapture.test.ts`
+- `src/features/work/useWorkEntryCapture.ts`
+- `src/services/capture-drafts/capture-draft.service.test.ts`
+- `src/services/capture-drafts/capture-draft.service.ts`
 
 ## Change Log
 
 - 2026-05-08: Created Story 4.3 ready-for-dev.
+- 2026-05-08: Completed Story 4.3 implementation and self-review.

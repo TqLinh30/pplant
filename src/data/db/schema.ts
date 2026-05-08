@@ -309,8 +309,24 @@ export const recoveryEvents = sqliteTable('recovery_events', {
   createdAt: text('created_at').notNull(),
 });
 
+export const captureDrafts = sqliteTable('capture_drafts', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  kind: text('kind').notNull(),
+  status: text('status').notNull(),
+  payloadJson: text('payload_json').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  lastSavedAt: text('last_saved_at').notNull(),
+  savedAt: text('saved_at'),
+  savedRecordKind: text('saved_record_kind'),
+  savedRecordId: text('saved_record_id'),
+  discardedAt: text('discarded_at'),
+});
+
 export const schema = {
   budgets,
+  captureDrafts,
   categories,
   diagnosticEvents,
   moneyRecords,

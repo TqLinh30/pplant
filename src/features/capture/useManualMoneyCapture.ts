@@ -14,7 +14,13 @@ import type { MoneyRecord, MoneyRecordKind } from '@/domain/money/types';
 import type { CategoryTopicItem } from '@/domain/categories/types';
 import type { AppError } from '@/domain/common/app-error';
 import { err, ok, type AppResult } from '@/domain/common/result';
+import type { CaptureDraft } from '@/domain/capture-drafts/types';
 import type { UserPreferences } from '@/domain/preferences/types';
+import {
+  markActiveCaptureDraftSaved,
+  type MarkActiveCaptureDraftSavedRequest,
+  type SaveActiveCaptureDraftRequest,
+} from '@/services/capture-drafts/capture-draft.service';
 import {
   createManualMoneyRecord,
   deleteMoneyRecord,
@@ -24,6 +30,11 @@ import {
   type ManualMoneyCaptureData,
   type MoneyRecordMutationResult,
 } from '@/services/money/money-record.service';
+import {
+  isMoneyCaptureDraftMeaningful,
+  toCaptureDraftPayload,
+} from '@/features/capture-drafts/captureDraftPayloads';
+import { useCaptureDraftPersistence } from '@/features/capture-drafts/useCaptureDraftPersistence';
 
 export type ManualMoneyCaptureStatus = 'deleted' | 'failed' | 'loading' | 'preferences_needed' | 'ready' | 'saved' | 'saving';
 export type ManualMoneyCaptureMutation = 'created' | 'deleted' | 'updated';
@@ -60,6 +71,7 @@ export type ManualMoneyCaptureAction =
   | { type: 'category_selected'; categoryId: string | null }
   | { type: 'delete_started' }
   | { type: 'delete_succeeded'; record: MoneyRecord; nextDraft: ManualMoneyCaptureDraft }
+  | { type: 'draft_applied'; draft: ManualMoneyCaptureDraft }
   | { type: 'edit_cancelled'; nextDraft: ManualMoneyCaptureDraft }
   | { type: 'edit_started'; amount: string; record: MoneyRecord }
   | { type: 'field_changed'; field: 'amount' | 'localDate' | 'merchantOrSource' | 'note'; value: string }
@@ -78,7 +90,9 @@ export type ManualMoneyCaptureServices = {
   createRecord?: (input: CreateManualMoneyRecordRequest) => Promise<AppResult<MoneyRecord>>;
   deleteRecord?: (id: string) => Promise<AppResult<MoneyRecordMutationResult>>;
   loadData?: () => Promise<AppResult<ManualMoneyCaptureData>>;
+  markDraftSaved?: (input: MarkActiveCaptureDraftSavedRequest) => Promise<AppResult<CaptureDraft | null>>;
   now?: () => Date;
+  saveDraft?: (input: SaveActiveCaptureDraftRequest) => Promise<AppResult<CaptureDraft>>;
   updateRecord?: (
     id: string,
     input: CreateManualMoneyRecordRequest,
@@ -241,6 +255,18 @@ export function manualMoneyCaptureReducer(
         savedRecord: null,
         status: 'deleted',
       };
+    case 'draft_applied':
+      return {
+        ...state,
+        actionError: null,
+        deletedRecord: null,
+        draft: action.draft,
+        editingRecordId: null,
+        fieldErrors: {},
+        lastMutation: null,
+        savedRecord: null,
+        status: 'ready',
+      };
     case 'edit_cancelled':
       return {
         ...state,
@@ -398,6 +424,11 @@ export function useManualMoneyCapture(services: ManualMoneyCaptureServices = {})
   const now = services.now;
   const loadData = services.loadData ?? loadManualMoneyCaptureData;
   const createRecord = services.createRecord ?? createManualMoneyRecord;
+  const markDraftSaved = services.markDraftSaved ?? markActiveCaptureDraftSaved;
+  const defaultDraft = useMemo(
+    () => createDefaultManualMoneyCaptureDraft(now?.() ?? new Date()),
+    [now],
+  );
   const updateRecord = useMemo(
     () =>
       services.updateRecord ??
@@ -408,6 +439,17 @@ export function useManualMoneyCapture(services: ManualMoneyCaptureServices = {})
     () => services.deleteRecord ?? ((id: string) => deleteMoneyRecord({ id })),
     [services.deleteRecord],
   );
+  useCaptureDraftPersistence({
+    draft: state.draft,
+    enabled: state.status === 'ready' && state.editingRecordId === null,
+    isMeaningful: useCallback(
+      (draft: ManualMoneyCaptureDraft) => isMoneyCaptureDraftMeaningful(draft, defaultDraft),
+      [defaultDraft],
+    ),
+    kind: state.draft.kind,
+    saveDraft: services.saveDraft,
+    toPayload: toCaptureDraftPayload,
+  });
 
   const reload = useCallback(() => {
     dispatch({ type: 'load_started' });
@@ -467,6 +509,11 @@ export function useManualMoneyCapture(services: ManualMoneyCaptureServices = {})
       }
 
       if (result.ok) {
+        void markDraftSaved({
+          kind: state.draft.kind,
+          savedRecordId: result.value.id,
+          savedRecordKind: 'money_record',
+        });
         dispatch({
           mutation: 'created',
           nextDraft: createDefaultManualMoneyCaptureDraft(now?.() ?? new Date()),
@@ -478,7 +525,7 @@ export function useManualMoneyCapture(services: ManualMoneyCaptureServices = {})
 
       dispatch({ error: result.error, type: 'save_failed' });
     });
-  }, [createRecord, now, state.draft, state.editingRecordId, state.preferences, updateRecord]);
+  }, [createRecord, markDraftSaved, now, state.draft, state.editingRecordId, state.preferences, updateRecord]);
 
   const startEdit = useCallback(
     (record: MoneyRecord) => {
@@ -538,6 +585,7 @@ export function useManualMoneyCapture(services: ManualMoneyCaptureServices = {})
   }, [reload]);
 
   return {
+    applyDraft: (draft: ManualMoneyCaptureDraft) => dispatch({ draft, type: 'draft_applied' }),
     cancelEdit,
     deleteEditingRecord,
     reload,

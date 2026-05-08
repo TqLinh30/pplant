@@ -199,4 +199,20 @@ describe('work entry capture state', () => {
     expect(deleted.recentEntries).toEqual([]);
     expect(deleted.status).toBe('deleted');
   });
+
+  it('applies a recovered work draft for resume', () => {
+    const recovered = workEntryCaptureReducer(initialWorkEntryCaptureState, {
+      draft: {
+        ...createDefaultWorkEntryDraft(new Date('2026-05-08T00:00:00.000Z')),
+        durationHours: '2',
+        note: 'Library',
+      },
+      type: 'draft_applied',
+    });
+
+    expect(recovered.status).toBe('ready');
+    expect(recovered.editingEntryId).toBeNull();
+    expect(recovered.draft.durationHours).toBe('2');
+    expect(recovered.draft.note).toBe('Library');
+  });
 });

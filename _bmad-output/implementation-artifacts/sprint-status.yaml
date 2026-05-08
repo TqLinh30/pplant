@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-05-07T22:57:05+08:00"
-last_updated: "2026-05-08T18:45:00+08:00"
+last_updated: "2026-05-08T19:15:00+08:00"
 project: "Pplant"
 project_key: "NOKEY"
 tracking_system: "file-system"
@@ -69,7 +69,7 @@ development_status:
   epic-4: in-progress
   4-1-build-the-today-overview-stack: done
   4-2-launch-quick-capture-within-two-taps: done
-  4-3-save-and-recover-drafts-across-capture-forms: ready-for-dev
+  4-3-save-and-recover-drafts-across-capture-forms: done
   4-4-review-end-of-day-activity: backlog
   4-5-implement-today-ux-states-and-accessibility: backlog
   epic-4-retrospective: optional

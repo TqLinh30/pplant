@@ -220,4 +220,20 @@ describe('reminder capture state', () => {
     expect(pausedState.lastMutation).toBe('paused');
     expect(pausedState.savedReminder?.scheduleState).toBe('paused');
   });
+
+  it('applies a recovered reminder draft for resume', () => {
+    const recovered = reminderCaptureReducer(initialReminderCaptureState, {
+      draft: {
+        ...createDefaultReminderCaptureDraft(new Date(fixedNow)),
+        reminderLocalTime: '14:30',
+        title: 'Pick up lab notes',
+      },
+      type: 'draft_applied',
+    });
+
+    expect(recovered.status).toBe('ready');
+    expect(recovered.editingReminderId).toBeNull();
+    expect(recovered.draft.title).toBe('Pick up lab notes');
+    expect(recovered.draft.reminderLocalTime).toBe('14:30');
+  });
 });

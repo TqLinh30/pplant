@@ -3,6 +3,7 @@ export type RepositoryWriteOptions = {
 };
 
 export { createBudgetPlanningRepository, type BudgetPlanningRepository } from './budget-planning.repository';
+export { createCaptureDraftRepository, type CaptureDraftRepository } from './capture-drafts.repository';
 export { createCategoryTopicRepository, type CategoryTopicRepository } from './category-topic.repository';
 export { createDiagnosticsRepository, type DiagnosticsRepository } from './diagnostics.repository';
 export { createMoneyRecordRepository, type MoneyRecordRepository } from './money-records.repository';
