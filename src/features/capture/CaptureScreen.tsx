@@ -13,6 +13,7 @@ import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 import { WorkEntryForm } from '@/features/work/WorkEntryForm';
+import { buildExpenseWorkTimeContextText } from '@/features/work/workTimeContextText';
 
 import { useManualMoneyCapture } from './useManualMoneyCapture';
 import { useRecurringMoney } from './useRecurringMoney';
@@ -73,6 +74,16 @@ export function CaptureScreen() {
     return `${formatted.ok ? formatted.value : amountMinor} ${currencyCode}`;
   };
 
+  const formatSavedExpenseContext = (record: MoneyRecord | null) => {
+    if (!record) {
+      return '';
+    }
+
+    const context = buildExpenseWorkTimeContextText(record, state.preferences);
+
+    return context ? ` ${context}.` : '';
+  };
+
   const savedTitle =
     state.lastMutation === 'updated'
       ? 'Money record updated'
@@ -84,9 +95,13 @@ export function CaptureScreen() {
     state.lastMutation === 'deleted' && state.deletedRecord
       ? `${formatRecordAmount(state.deletedRecord)} is no longer shown in active records. Planning context was recalculated.`
       : state.lastMutation === 'updated' && state.savedRecord
-        ? `${formatRecordAmount(state.savedRecord)} is saved locally. Planning context was recalculated.`
+        ? `${formatRecordAmount(state.savedRecord)} is saved locally. Planning context was recalculated.${formatSavedExpenseContext(
+            state.savedRecord,
+          )}`
         : state.savedRecord
-          ? `${formatRecordAmount(state.savedRecord)} is ready for budget, history, and summary inputs.`
+          ? `${formatRecordAmount(state.savedRecord)} is ready for budget, history, and summary inputs.${formatSavedExpenseContext(
+              state.savedRecord,
+            )}`
         : '';
 
   const recurringSavedDescription =

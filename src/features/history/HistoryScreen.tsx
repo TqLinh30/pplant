@@ -13,6 +13,7 @@ import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
 import { WorkHistoryPanel } from '../work/WorkHistoryPanel';
+import { buildExpenseWorkTimeContextText } from '../work/workTimeContextText';
 import { useMoneyHistory } from './useMoneyHistory';
 
 const kindOptions: { label: string; value: MoneyRecordKind | 'all' }[] = [
@@ -262,14 +263,20 @@ export function HistoryScreen() {
             <StatusBanner title="No matching records" description="Adjust filters or save a money record from Capture." />
           ) : null}
           <View style={styles.listGroup}>
-            {state.data?.records.map((record) => (
-              <ListRow
-                key={record.id}
-                title={record.merchantOrSource ?? (record.kind === 'expense' ? 'Expense' : 'Income')}
-                description={`${categoryName(record.categoryId)} - ${topicNames(record.topicIds)}`}
-                meta={`${formatRecordAmount(record)} - ${record.localDate}${record.note ? ` - ${record.note}` : ''}`}
-              />
-            ))}
+            {state.data?.records.map((record) => {
+              const workTimeContext = buildExpenseWorkTimeContextText(record, state.data?.preferences ?? null);
+
+              return (
+                <ListRow
+                  key={record.id}
+                  title={record.merchantOrSource ?? (record.kind === 'expense' ? 'Expense' : 'Income')}
+                  description={`${categoryName(record.categoryId)} - ${topicNames(record.topicIds)}`}
+                  meta={`${formatRecordAmount(record)} - ${record.localDate}${
+                    workTimeContext ? ` - ${workTimeContext}` : ''
+                  }${record.note ? ` - ${record.note}` : ''}`}
+                />
+              );
+            })}
           </View>
           {state.data?.page.hasMore ? (
             <Button label="Load more" onPress={history.loadMore} variant="secondary" />
