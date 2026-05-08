@@ -1,6 +1,7 @@
 import type { Href } from 'expo-router';
 
 import type { CaptureDraft, CaptureDraftKind } from '@/domain/capture-drafts/types';
+import { isReceiptCaptureDraftPayload } from './captureDraftPayloads';
 
 export function parseCaptureDraftResumeParam(value: string | string[] | undefined): CaptureDraftKind | null {
   const normalized = Array.isArray(value) ? value[0] : value;
@@ -41,7 +42,9 @@ export function describeCaptureDraft(draft: CaptureDraft): {
   description: string;
   title: string;
 } {
-  const label = labelForCaptureDraftKind(draft.kind);
+  const label = draft.kind === 'expense' && isReceiptCaptureDraftPayload(draft.payload)
+    ? 'Receipt expense'
+    : labelForCaptureDraftKind(draft.kind);
 
   return {
     accessibilityLabel: `Unfinished ${label.toLowerCase()} draft. Resume, discard, or keep for later.`,
@@ -57,6 +60,10 @@ function appendSequence(route: string, sequence: string): Href {
 export function routeForCaptureDraftResume(draft: CaptureDraft, sequence: string = String(Date.now())): Href {
   switch (draft.kind) {
     case 'expense':
+      if (isReceiptCaptureDraftPayload(draft.payload)) {
+        return `/receipt/${encodeURIComponent(draft.id)}` as Href;
+      }
+
       return appendSequence('/(tabs)/capture?draft=expense', sequence);
     case 'income':
       return appendSequence('/(tabs)/capture?draft=income', sequence);

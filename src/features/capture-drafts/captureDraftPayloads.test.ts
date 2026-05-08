@@ -1,9 +1,12 @@
 import {
+  buildReceiptCaptureDraftPayload,
   isMoneyCaptureDraftMeaningful,
+  isReceiptCaptureDraftPayload,
   isReminderCaptureDraftMeaningful,
   isTaskCaptureDraftMeaningful,
   isWorkCaptureDraftMeaningful,
   parseMoneyCaptureDraftPayload,
+  parseReceiptCaptureDraftPayload,
   parseReminderCaptureDraftPayload,
   parseTaskCaptureDraftPayload,
   parseWorkCaptureDraftPayload,
@@ -133,5 +136,52 @@ describe('capture draft payload helpers', () => {
       paid: false,
     });
     expect(toCaptureDraftPayload({ topicIds: ['topic-1'] })).toEqual({ topicIds: ['topic-1'] });
+  });
+
+  it('builds and validates receipt expense draft payloads', () => {
+    const payload = buildReceiptCaptureDraftPayload({
+      capturedAt: '2026-05-08T10:00:00.000Z',
+      contentType: 'image/jpeg',
+      originalFileName: 'receipt.jpg',
+      retainedImageUri: 'file:///app/documents/receipts/receipt-1.jpg',
+      sizeBytes: 12345,
+      source: 'camera',
+    });
+    const parsed = parseReceiptCaptureDraftPayload(toCaptureDraftPayload(payload));
+
+    expect(payload.kind).toBe('expense');
+    expect(payload.captureMode).toBe('receipt');
+    expect(payload.receipt).toMatchObject({
+      parsingState: 'draft',
+      retentionAnchor: 'capture_draft',
+      retentionPolicy: 'keep_until_saved_or_discarded',
+      storageScope: 'app_private_documents',
+    });
+    expect(isReceiptCaptureDraftPayload(payload)).toBe(true);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.receipt.retainedImageUri).toBe('file:///app/documents/receipts/receipt-1.jpg');
+      expect(parsed.value.localDate).toBe('2026-05-08');
+    }
+  });
+
+  it('treats receipt expense draft payloads as meaningful even before amount entry', () => {
+    const moneyDefault = {
+      amount: '',
+      categoryId: null,
+      kind: 'expense' as const,
+      localDate: '2026-05-08',
+      merchantOrSource: '',
+      note: '',
+      topicIds: [],
+    };
+    const receipt = buildReceiptCaptureDraftPayload({
+      capturedAt: '2026-05-08T10:00:00.000Z',
+      retainedImageUri: 'file:///app/documents/receipts/receipt-1.jpg',
+      source: 'library',
+    });
+
+    expect(isMoneyCaptureDraftMeaningful(receipt, moneyDefault)).toBe(true);
+    expect(parseReceiptCaptureDraftPayload({ captureMode: 'receipt' }).ok).toBe(false);
   });
 });

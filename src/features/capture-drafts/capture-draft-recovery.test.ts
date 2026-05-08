@@ -1,6 +1,7 @@
 import type { CaptureDraft } from '@/domain/capture-drafts/types';
 import { localWorkspaceId } from '@/domain/workspace/types';
 
+import { buildReceiptCaptureDraftPayload } from './captureDraftPayloads';
 import {
   describeCaptureDraft,
   parseCaptureDraftResumeParam,
@@ -40,6 +41,23 @@ describe('capture draft recovery helpers', () => {
       '/reminder/new?draft=reminder&draftSeq=seq-4',
     );
     expect(routeForCaptureDraftResume({ ...draft, kind: 'work' }, 'seq-5')).toBe('/work/new?draft=work&draftSeq=seq-5');
+  });
+
+  it('routes receipt expense drafts to the receipt draft screen', () => {
+    const receiptDraft = {
+      ...draft,
+      id: 'draft-receipt' as never,
+      payload: buildReceiptCaptureDraftPayload({
+        capturedAt: '2026-05-08T00:00:00.000Z',
+        retainedImageUri: 'file:///app/documents/receipts/receipt-1.jpg',
+        source: 'camera',
+      }),
+    };
+    const description = describeCaptureDraft(receiptDraft);
+
+    expect(routeForCaptureDraftResume(receiptDraft, 'seq-1')).toBe('/receipt/draft-receipt');
+    expect(description.title).toBe('Unfinished receipt expense');
+    expect(description.description).not.toContain('file://');
   });
 
   it('describes drafts without exposing raw sensitive payload values', () => {

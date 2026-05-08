@@ -4,15 +4,15 @@ import {
 } from './quick-capture';
 
 describe('quick capture actions', () => {
-  it('includes supported Story 4.2 actions and no receipt route', () => {
+  it('includes supported quick capture actions including receipt capture', () => {
     expect(quickCaptureActions.map((action) => action.id)).toEqual([
       'expense',
       'income',
+      'receipt',
       'task',
       'work',
       'reminder',
     ]);
-    expect(quickCaptureActions.some((action) => action.id === ('receipt' as never))).toBe(false);
   });
 
   it('keeps accessible labels and copy on every action', () => {
@@ -26,6 +26,7 @@ describe('quick capture actions', () => {
   it('maps each action to a safe existing capture route', () => {
     expect(routeForQuickCaptureAction('expense')).toBe('/(tabs)/capture?quick=expense');
     expect(routeForQuickCaptureAction('income')).toBe('/(tabs)/capture?quick=income');
+    expect(routeForQuickCaptureAction('receipt')).toBe('/receipt/new');
     expect(routeForQuickCaptureAction('task')).toBe('/task/new');
     expect(routeForQuickCaptureAction('work')).toBe('/work/new');
     expect(routeForQuickCaptureAction('reminder')).toBe('/reminder/new');

@@ -1,6 +1,6 @@
 import type { Href } from 'expo-router';
 
-export type QuickCaptureActionId = 'expense' | 'income' | 'reminder' | 'task' | 'work';
+export type QuickCaptureActionId = 'expense' | 'income' | 'receipt' | 'reminder' | 'task' | 'work';
 
 export type QuickCaptureAction = {
   accessibilityLabel: string;
@@ -25,6 +25,12 @@ export const quickCaptureActions: QuickCaptureAction[] = [
     description: 'Record allowance, pay, or other income.',
     id: 'income',
     title: 'Income',
+  },
+  {
+    accessibilityLabel: 'Start receipt capture',
+    description: 'Save a receipt photo as a local expense draft.',
+    id: 'receipt',
+    title: 'Receipt',
   },
   {
     accessibilityLabel: 'Start task capture',
@@ -63,6 +69,8 @@ export function routeForQuickCaptureAction(
       return withSequence('/(tabs)/capture?quick=expense', options);
     case 'income':
       return withSequence('/(tabs)/capture?quick=income', options);
+    case 'receipt':
+      return '/receipt/new' as Href;
     case 'task':
       return '/task/new' as Href;
     case 'work':

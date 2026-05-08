@@ -1,3 +1,7 @@
+import { z } from 'zod';
+
+import { createAppError } from '@/domain/common/app-error';
+import { err, ok, type AppResult } from '@/domain/common/result';
 import type { CaptureDraftKind, CaptureDraftPayload } from '@/domain/capture-drafts/types';
 import type { MoneyRecordKind } from '@/domain/money/types';
 import type { ReminderFrequency, ReminderOwnerKind } from '@/domain/reminders/types';
@@ -12,6 +16,26 @@ export type MoneyCaptureDraftPayload = {
   merchantOrSource: string;
   note: string;
   topicIds: string[];
+};
+
+export type ReceiptCaptureSource = 'camera' | 'library';
+
+export type ReceiptCaptureDraftPayload = MoneyCaptureDraftPayload & {
+  captureMode: 'receipt';
+  kind: 'expense';
+  moneyKind: 'expense';
+  receipt: {
+    capturedAt: string;
+    contentType: string | null;
+    originalFileName: string | null;
+    parsingState: 'draft';
+    retainedImageUri: string;
+    retentionAnchor: 'capture_draft';
+    retentionPolicy: 'keep_until_saved_or_discarded';
+    source: ReceiptCaptureSource;
+    storageScope: 'app_private_documents';
+    sizeBytes: number | null;
+  };
 };
 
 export type TaskCaptureDraftPayload = {
@@ -53,6 +77,34 @@ export type WorkCaptureDraftPayload = {
   wageOverride: string;
 };
 
+const isoTimestampSchema = z.string().refine((value) => !Number.isNaN(Date.parse(value)), {
+  message: 'Expected an ISO timestamp.',
+});
+
+export const receiptCaptureDraftPayloadSchema = z.object({
+  amount: z.string(),
+  captureMode: z.literal('receipt'),
+  categoryId: z.string().min(1).nullable(),
+  kind: z.literal('expense'),
+  localDate: z.string(),
+  merchantOrSource: z.string(),
+  moneyKind: z.literal('expense'),
+  note: z.string(),
+  receipt: z.object({
+    capturedAt: isoTimestampSchema,
+    contentType: z.string().min(1).nullable(),
+    originalFileName: z.string().min(1).nullable(),
+    parsingState: z.literal('draft'),
+    retainedImageUri: z.string().min(1),
+    retentionAnchor: z.literal('capture_draft'),
+    retentionPolicy: z.literal('keep_until_saved_or_discarded'),
+    source: z.enum(['camera', 'library']),
+    storageScope: z.literal('app_private_documents'),
+    sizeBytes: z.number().int().nonnegative().nullable(),
+  }),
+  topicIds: z.array(z.string()),
+});
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -82,15 +134,21 @@ function hasTopicsOrCategory(draft: { categoryId: string | null; topicIds: strin
 }
 
 export function isMoneyCaptureDraftMeaningful(
-  draft: MoneyCaptureDraftPayload,
+  draft: MoneyCaptureDraftPayload | CaptureDraftPayload,
   defaultDraft: MoneyCaptureDraftPayload,
 ): boolean {
+  if (isReceiptCaptureDraftPayload(draft)) {
+    return true;
+  }
+
+  const moneyDraft = draft as MoneyCaptureDraftPayload;
+
   return (
-    hasText(draft.amount) ||
-    hasText(draft.merchantOrSource) ||
-    hasText(draft.note) ||
-    hasTopicsOrCategory(draft) ||
-    draft.localDate !== defaultDraft.localDate
+    hasText(moneyDraft.amount) ||
+    hasText(moneyDraft.merchantOrSource) ||
+    hasText(moneyDraft.note) ||
+    hasTopicsOrCategory(moneyDraft) ||
+    moneyDraft.localDate !== defaultDraft.localDate
   );
 }
 
@@ -148,6 +206,60 @@ export function isWorkCaptureDraftMeaningful(
 
 export function toCaptureDraftPayload<TDraft extends CaptureDraftPayload>(draft: TDraft): CaptureDraftPayload {
   return JSON.parse(JSON.stringify(draft)) as CaptureDraftPayload;
+}
+
+export type BuildReceiptCaptureDraftPayloadInput = {
+  capturedAt: string;
+  contentType?: string | null;
+  localDate?: string;
+  originalFileName?: string | null;
+  retainedImageUri: string;
+  sizeBytes?: number | null;
+  source: ReceiptCaptureSource;
+};
+
+export function buildReceiptCaptureDraftPayload(
+  input: BuildReceiptCaptureDraftPayloadInput,
+): ReceiptCaptureDraftPayload {
+  return {
+    amount: '',
+    captureMode: 'receipt',
+    categoryId: null,
+    kind: 'expense',
+    localDate: input.localDate ?? input.capturedAt.slice(0, 10),
+    merchantOrSource: '',
+    moneyKind: 'expense',
+    note: '',
+    receipt: {
+      capturedAt: input.capturedAt,
+      contentType: input.contentType ?? null,
+      originalFileName: input.originalFileName ?? null,
+      parsingState: 'draft',
+      retainedImageUri: input.retainedImageUri,
+      retentionAnchor: 'capture_draft',
+      retentionPolicy: 'keep_until_saved_or_discarded',
+      source: input.source,
+      storageScope: 'app_private_documents',
+      sizeBytes: input.sizeBytes ?? null,
+    },
+    topicIds: [],
+  };
+}
+
+export function parseReceiptCaptureDraftPayload(
+  payload: CaptureDraftPayload,
+): AppResult<ReceiptCaptureDraftPayload> {
+  const parsed = receiptCaptureDraftPayloadSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    return err(createAppError('validation_failed', 'Receipt draft data is invalid.', 'edit', parsed.error));
+  }
+
+  return ok(parsed.data);
+}
+
+export function isReceiptCaptureDraftPayload(payload: unknown): payload is ReceiptCaptureDraftPayload {
+  return receiptCaptureDraftPayloadSchema.safeParse(payload).success;
 }
 
 export function parseMoneyCaptureDraftPayload(

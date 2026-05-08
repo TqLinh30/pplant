@@ -26,7 +26,7 @@ export function QuickCaptureLauncher({ onClose, visible }: QuickCaptureLauncherP
 
   return (
     <BottomSheet title="Quick capture" visible={visible} onClose={onClose}>
-      <Text style={styles.description}>Start one focused flow. Receipt capture arrives later; use manual expense for now.</Text>
+      <Text style={styles.description}>Start one focused flow. Receipt capture saves a local draft first.</Text>
       <ScrollView contentContainerStyle={styles.actions} style={styles.actionScroller}>
         {quickCaptureActions.map((action) => (
           <ListRow
