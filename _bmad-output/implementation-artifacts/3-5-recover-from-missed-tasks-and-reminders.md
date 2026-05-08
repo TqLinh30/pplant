@@ -66,6 +66,10 @@ so that I can continue without feeling punished.
   - [x] Test hook/reducer or feature state transitions for loading, empty, action success, action failure, and neutral copy.
   - [x] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
+### Review Findings
+
+- [ ] [Review][Patch] Edit/reschedule recovery actions resolve the prompt without performing recovery [src/features/recovery/useRecovery.ts:186] — `edit` and `reschedule` currently call `recordHandoff`, which records a recovery event and reloads the recovery list. Because `RecoveryPanel` ignores `state.editingTarget` and no task, recurrence, or reminder form consumes the handoff, the prompt can disappear as resolved without opening an edit surface or updating the source task/reminder state. This violates AC3 and the story requirement to route edit/reschedule into existing edit/update flows.
+
 ## Dev Notes
 
 ### Scope Boundaries
