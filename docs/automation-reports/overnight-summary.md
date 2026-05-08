@@ -35,7 +35,7 @@
 
 - Stopped after completing the requested Story 3.4.
 - Story 3.5 has been prepared as ready-for-dev, but implementation has not started.
-- Independent Story 3.4 review found one P2 cancellation issue to address before or during Story 3.5 implementation.
+- Independent Story 3.4 review found one P2 cancellation issue; it was fixed in `e7ee971 fix: address story 3.4 notification cleanup`.
 
 ## Commits Created
 
@@ -58,6 +58,7 @@
 - `2294db0 feat: complete story 3.2 - recurring tasks and habits`
 - `2ec9c65 feat: complete story 3.3 - deadline and repeat reminders`
 - `6d6989f feat: complete story 3.4 - reminder timing controls`
+- `e7ee971 fix: address story 3.4 notification cleanup`
 
 ## Commands Run
 
@@ -78,17 +79,20 @@
 - Focused Story 3.4 checks:
   - `npm test -- --runTestsByPath src/domain/reminders/reminders.test.ts src/data/repositories/reminders.repository.test.ts src/services/reminders/reminder.service.test.ts src/features/reminders/useReminderCapture.test.ts`
   - `npm test -- --runTestsByPath src/services/reminders/reminder.service.test.ts`
+- Story 3.4 P2 fix checks:
+  - `npm test -- --runTestsByPath src/services/reminders/reminder.service.test.ts`
+  - `npm pkg get scripts.build`
 
 ## Test Results
 
 - Story 3.3 focused verification passed: 6 suites, 26 tests.
 - Story 3.4 focused verification passed: 4 suites, 23 tests.
-- Story 3.4 service verification passed after adding delete coverage: 1 suite, 11 tests.
-- Story 3.4 final verification passed: 51 suites, 266 tests.
+- Story 3.4 service verification passed after adding delete and notification-cleanup coverage: 1 suite, 14 tests.
+- Story 3.4 final verification passed after the P2 fix: 51 suites, 269 tests.
 - `npm run typecheck`: passed.
 - `npm run lint`: passed.
 - `npx expo install --check`: passed.
-- `npm run build --if-present`: passed; no build script is defined.
+- Build: no `scripts.build` entry is defined.
 - `git diff --check`: passed.
 - `git diff --cached --check`: passed.
 
@@ -98,12 +102,11 @@
 - Mobile visual and screen-reader behavior for the new reminder form was not manually device-tested.
 - UI component rendering is indirectly covered because the current Jest config only matches `.test.ts` files.
 - `.claude/worktrees/` remains untracked and was not committed.
-- Story 3.4 independent code review found a P2 issue: denied/unavailable/local-only reminder transitions can soft-delete local notification rows before platform cancellation.
+- Story 3.4 independent code review P2 is resolved in `e7ee971`; native notification cancellation now happens before local rows are cleared.
 - Story 3.5 missed-task/reminder recovery is ready-for-dev but not implemented.
 
 ## What I Should Do Next When I Wake Up
 
 - Review Story 3.4 commit `6d6989f`, self-review report `docs/automation-reports/story-3.4-review.md`, and independent review `docs/automation-reports/story-3.4-code-review.md`.
-- Fix the Story 3.4 P2 cancellation issue before implementing Story 3.5 recovery behavior.
 - Implement Story 3.5 from `_bmad-output/implementation-artifacts/3-5-recover-from-missed-tasks-and-reminders.md`.
 - Continue on branch `auto/codex-overnight-1`.
