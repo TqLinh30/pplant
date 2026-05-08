@@ -102,6 +102,7 @@ function createRuleFixture(overrides: Record<string, unknown> = {}): TaskRecurre
 
 class FakeNotificationScheduler {
   cancelled: string[] = [];
+  failCancelIdentifier: string | null = null;
   failGetPermission = false;
   failScheduleAfter: number | null = null;
   getPermissionStatusValue: 'denied' | 'granted' | 'undetermined' | 'unavailable' = 'granted';
@@ -110,6 +111,11 @@ class FakeNotificationScheduler {
 
   async cancelScheduledNotification(identifier: string): Promise<AppResult<{ cancelled: boolean }>> {
     this.cancelled.push(identifier);
+
+    if (this.failCancelIdentifier === identifier) {
+      return err(createAppError('unavailable', 'Native notification cancellation failed.', 'retry'));
+    }
+
     return ok({ cancelled: true });
   }
 
@@ -647,6 +653,85 @@ describe('reminder service', () => {
     });
   });
 
+  it('cancels native notifications before clearing local rows when update loses permission', async () => {
+    const { dependencies, scheduler, scheduledNotifications } = createDependencies();
+
+    await createReminder(
+      {
+        frequency: 'daily',
+        ownerKind: 'standalone',
+        reminderLocalTime: '09:30',
+        startsOnLocalDate: '2026-05-08',
+        title: 'Study',
+      },
+      dependencies,
+    );
+
+    scheduler.cancelled = [];
+    scheduler.getPermissionStatusValue = 'denied';
+
+    const updated = await updateReminder(
+      {
+        frequency: 'once',
+        id: 'reminder-1',
+        ownerKind: 'standalone',
+        reminderLocalTime: '10:45',
+        startsOnLocalDate: '2026-05-09',
+        title: 'Study updated',
+      },
+      dependencies,
+    );
+
+    expect(updated.ok).toBe(true);
+    if (updated.ok) {
+      expect(updated.value.reminder).toMatchObject({
+        permissionStatus: 'denied',
+        scheduleState: 'permission_denied',
+      });
+    }
+    expect(scheduler.cancelled).toHaveLength(30);
+    expect(scheduledNotifications.filter((notification) => notification.deletedAt === null)).toHaveLength(0);
+  });
+
+  it('keeps local notification ids when native cancellation fails during permission loss', async () => {
+    const scheduler = new FakeNotificationScheduler();
+    const { dependencies, scheduledNotifications } = createDependencies({ scheduler });
+
+    await createReminder(
+      {
+        frequency: 'once',
+        ownerKind: 'standalone',
+        reminderLocalTime: '09:30',
+        startsOnLocalDate: '2026-05-08',
+        title: 'Study',
+      },
+      dependencies,
+    );
+
+    scheduler.cancelled = [];
+    scheduler.failCancelIdentifier = 'platform-1';
+    scheduler.getPermissionStatusValue = 'denied';
+
+    const updated = await updateReminder(
+      {
+        frequency: 'once',
+        id: 'reminder-1',
+        ownerKind: 'standalone',
+        reminderLocalTime: '10:45',
+        startsOnLocalDate: '2026-05-09',
+        title: 'Study updated',
+      },
+      dependencies,
+    );
+
+    expect(updated.ok).toBe(false);
+    if (!updated.ok) {
+      expect(updated.error.code).toBe('unavailable');
+    }
+    expect(scheduler.cancelled).toEqual(['platform-1']);
+    expect(scheduledNotifications.filter((notification) => notification.deletedAt === null)).toHaveLength(1);
+  });
+
   it('snoozes the next occurrence without changing the source recurrence rule', async () => {
     const { dependencies, scheduler, scheduledNotifications } = createDependencies();
 
@@ -679,6 +764,36 @@ describe('reminder service', () => {
         occurrenceLocalDate: '2026-05-08',
       }),
     ]);
+  });
+
+  it('cancels native notifications before clearing local rows when snooze loses permission', async () => {
+    const { dependencies, scheduler, scheduledNotifications } = createDependencies();
+
+    await createReminder(
+      {
+        frequency: 'once',
+        ownerKind: 'standalone',
+        reminderLocalTime: '09:30',
+        startsOnLocalDate: '2026-05-08',
+        title: 'Study',
+      },
+      dependencies,
+    );
+
+    scheduler.cancelled = [];
+    scheduler.getPermissionStatusValue = 'denied';
+
+    const snoozed = await snoozeReminder({ id: 'reminder-1', minutes: 30 }, dependencies);
+
+    expect(snoozed.ok).toBe(true);
+    if (snoozed.ok) {
+      expect(snoozed.value.reminder).toMatchObject({
+        permissionStatus: 'denied',
+        scheduleState: 'permission_denied',
+      });
+    }
+    expect(scheduler.cancelled).toEqual(['platform-1']);
+    expect(scheduledNotifications.filter((notification) => notification.deletedAt === null)).toHaveLength(0);
   });
 
   it('pauses, resumes, disables, and enables reminders without deleting reminder data', async () => {

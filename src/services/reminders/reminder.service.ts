@@ -578,6 +578,26 @@ async function cancelExistingScheduledNotifications(
   return ok({ cancelled });
 }
 
+async function cancelExistingScheduledNotificationsBeforeClear(
+  reminder: Reminder,
+  access: PreparedReminderAccess,
+  dependencies: ReminderServiceDependencies,
+  scheduler: NotificationSchedulerPort,
+  permissionStatus: ReminderPermissionStatus,
+): Promise<AppResult<{ cancelled: number }>> {
+  const cancelled = await cancelExistingScheduledNotifications(reminder, access.reminderRepository, scheduler);
+
+  if (isErr(cancelled)) {
+    await recordSchedulingDiagnostic(access, dependencies, {
+      errorCategory: cancelled.error.code,
+      permissionStatus,
+      scheduleState: 'unavailable',
+    });
+  }
+
+  return cancelled;
+}
+
 async function scheduleReminderNotifications(
   reminder: Reminder,
   access: PreparedReminderAccess,
@@ -593,6 +613,18 @@ async function scheduleReminderNotifications(
       permissionStatus: 'unavailable',
       scheduleState: 'unavailable',
     });
+
+    const cancelled = await cancelExistingScheduledNotificationsBeforeClear(
+      reminder,
+      access,
+      dependencies,
+      scheduler,
+      'unavailable',
+    );
+
+    if (isErr(cancelled)) {
+      return cancelled;
+    }
 
     return ok({
       permissionStatus: 'unavailable',
@@ -613,6 +645,18 @@ async function scheduleReminderNotifications(
         scheduleState: 'unavailable',
       });
 
+      const cancelled = await cancelExistingScheduledNotificationsBeforeClear(
+        reminder,
+        access,
+        dependencies,
+        scheduler,
+        'unavailable',
+      );
+
+      if (isErr(cancelled)) {
+        return cancelled;
+      }
+
       return ok({
         permissionStatus: 'unavailable',
         scheduledNotifications: [],
@@ -624,6 +668,18 @@ async function scheduleReminderNotifications(
   }
 
   if (permissionStatus === 'denied') {
+    const cancelled = await cancelExistingScheduledNotificationsBeforeClear(
+      reminder,
+      access,
+      dependencies,
+      scheduler,
+      permissionStatus,
+    );
+
+    if (isErr(cancelled)) {
+      return cancelled;
+    }
+
     return ok({
       permissionStatus: 'denied',
       scheduledNotifications: [],
@@ -632,6 +688,18 @@ async function scheduleReminderNotifications(
   }
 
   if (permissionStatus !== 'granted') {
+    const cancelled = await cancelExistingScheduledNotificationsBeforeClear(
+      reminder,
+      access,
+      dependencies,
+      scheduler,
+      permissionStatus,
+    );
+
+    if (isErr(cancelled)) {
+      return cancelled;
+    }
+
     return ok({
       permissionStatus,
       scheduledNotifications: [],
@@ -648,11 +716,7 @@ async function scheduleReminderNotifications(
       scheduleState: 'unavailable',
     });
 
-    return ok({
-      permissionStatus,
-      scheduledNotifications: [],
-      scheduleState: 'unavailable',
-    });
+    return cancelled;
   }
 
   const occurrences = await buildScheduleOccurrences(access.reminderRepository, reminder, access.now);
@@ -1242,6 +1306,18 @@ export async function snoozeReminder(
     clearNotifications: boolean,
   ): Promise<AppResult<ReminderMutationResult>> => {
     if (clearNotifications) {
+      const cancelled = await cancelExistingScheduledNotificationsBeforeClear(
+        reminder.value,
+        access.value,
+        dependencies,
+        scheduler,
+        permissionStatus,
+      );
+
+      if (isErr(cancelled)) {
+        return cancelled;
+      }
+
       const replaced = await access.value.reminderRepository.replaceScheduledNotifications(
         localWorkspaceId,
         reminder.value.id,
