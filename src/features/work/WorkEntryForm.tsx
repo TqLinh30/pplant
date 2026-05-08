@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
@@ -15,6 +15,7 @@ import { typography } from '@/ui/tokens/typography';
 import { parseCaptureDraftResumeParam } from '@/features/capture-drafts/capture-draft-recovery';
 import { parseWorkCaptureDraftPayload } from '@/features/capture-drafts/captureDraftPayloads';
 import { getActiveCaptureDraft } from '@/services/capture-drafts/capture-draft.service';
+import { firstRouteParam, isReturnToReviewParam } from '@/features/review/end-of-day-review-routes';
 
 import { createDefaultWorkEntryDraft, useWorkEntryCapture } from './useWorkEntryCapture';
 
@@ -37,12 +38,16 @@ function formatDuration(minutes: number): string {
 export function WorkEntryForm() {
   const work = useWorkEntryCapture();
   const { state } = work;
-  const { draft, draftSeq } = useLocalSearchParams();
+  const { draft, draftSeq, editSeq, returnTo, workEntryId } = useLocalSearchParams();
   const appliedDraft = useRef<string | null>(null);
+  const appliedEditEntry = useRef<string | null>(null);
   const resumeDraftKind = parseCaptureDraftResumeParam(
     typeof draft === 'string' || Array.isArray(draft) ? draft : undefined,
   );
   const draftSequence = Array.isArray(draftSeq) ? draftSeq[0] : draftSeq;
+  const editEntryId = firstRouteParam(workEntryId);
+  const editSequence = firstRouteParam(editSeq);
+  const shouldReturnToReview = isReturnToReviewParam(returnTo);
   const saving = state.status === 'saving';
   const isEditing = state.editingEntryId !== null;
 
@@ -83,6 +88,35 @@ export function WorkEntryForm() {
       work.applyDraft(parseWorkCaptureDraftPayload(result.value.payload, createDefaultWorkEntryDraft()));
     });
   }, [draftSequence, resumeDraftKind, work]);
+
+  useEffect(() => {
+    if (!editEntryId || editEntryId === 'new' || state.status === 'loading' || state.status === 'failed') {
+      return;
+    }
+
+    const handoffKey = editSequence ? `${editEntryId}:${editSequence}` : editEntryId;
+
+    if (appliedEditEntry.current === handoffKey) {
+      return;
+    }
+
+    const entry = state.recentEntries.find((item) => item.id === editEntryId);
+
+    if (!entry) {
+      return;
+    }
+
+    appliedEditEntry.current = handoffKey;
+    work.startEdit(entry);
+  }, [editEntryId, editSequence, state.recentEntries, state.status, work]);
+
+  useEffect(() => {
+    if (!shouldReturnToReview || (state.status !== 'saved' && state.status !== 'deleted') || !state.lastMutation) {
+      return;
+    }
+
+    router.replace(`/(tabs)/review?reviewSeq=${Date.now().toString(36)}`);
+  }, [shouldReturnToReview, state.lastMutation, state.status]);
 
   if (state.status === 'loading') {
     return (

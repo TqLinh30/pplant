@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
@@ -14,6 +14,7 @@ import { typography } from '@/ui/tokens/typography';
 import { parseCaptureDraftResumeParam } from '@/features/capture-drafts/capture-draft-recovery';
 import { parseTaskCaptureDraftPayload } from '@/features/capture-drafts/captureDraftPayloads';
 import { getActiveCaptureDraft } from '@/services/capture-drafts/capture-draft.service';
+import { firstRouteParam, isReturnToReviewParam } from '@/features/review/end-of-day-review-routes';
 
 import { ReminderForm } from '../reminders/ReminderForm';
 import { isRecoveryHandoffForTarget, useRecoveryHandoff } from '../recovery/recovery-handoff';
@@ -48,12 +49,16 @@ export function TaskForm() {
   const { state } = tasks;
   const startEdit = tasks.startEdit;
   const { consumeHandoff, handoff } = useRecoveryHandoff();
-  const { draft, draftSeq } = useLocalSearchParams();
+  const { draft, draftSeq, editSeq, returnTo, taskId } = useLocalSearchParams();
   const appliedDraft = useRef<string | null>(null);
+  const appliedEditTask = useRef<string | null>(null);
   const resumeDraftKind = parseCaptureDraftResumeParam(
     typeof draft === 'string' || Array.isArray(draft) ? draft : undefined,
   );
   const draftSequence = Array.isArray(draftSeq) ? draftSeq[0] : draftSeq;
+  const editTaskId = firstRouteParam(taskId);
+  const editSequence = firstRouteParam(editSeq);
+  const shouldReturnToReview = isReturnToReviewParam(returnTo);
   const saving = state.status === 'saving';
   const isEditing = state.editingTaskId !== null;
 
@@ -94,6 +99,35 @@ export function TaskForm() {
       tasks.applyDraft(parseTaskCaptureDraftPayload(result.value.payload, createDefaultTaskCaptureDraft()));
     });
   }, [draftSequence, resumeDraftKind, tasks]);
+
+  useEffect(() => {
+    if (!editTaskId || editTaskId === 'new' || state.status === 'loading' || state.status === 'failed') {
+      return;
+    }
+
+    const handoffKey = editSequence ? `${editTaskId}:${editSequence}` : editTaskId;
+
+    if (appliedEditTask.current === handoffKey) {
+      return;
+    }
+
+    const task = state.recentTasks.find((item) => item.id === editTaskId);
+
+    if (!task) {
+      return;
+    }
+
+    appliedEditTask.current = handoffKey;
+    startEdit(task);
+  }, [editSequence, editTaskId, startEdit, state.recentTasks, state.status]);
+
+  useEffect(() => {
+    if (!shouldReturnToReview || (state.status !== 'saved' && state.status !== 'deleted') || !state.lastMutation) {
+      return;
+    }
+
+    router.replace(`/(tabs)/review?reviewSeq=${Date.now().toString(36)}`);
+  }, [shouldReturnToReview, state.lastMutation, state.status]);
 
   if (state.status === 'loading') {
     return (

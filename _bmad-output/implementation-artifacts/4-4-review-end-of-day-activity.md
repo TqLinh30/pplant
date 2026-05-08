@@ -1,6 +1,6 @@
 # Story 4.4: Review End-Of-Day Activity
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -16,49 +16,49 @@ so that I can understand how the day went in one loop.
 
 ## Tasks / Subtasks
 
-- [ ] Define end-of-day review summary contracts and pure calculations. (AC: 1, 2)
-  - [ ] Add a focused domain module such as `src/domain/summaries/end-of-day-review.ts`.
-  - [ ] Include local date, money records for the day, task items/completions, recurring task/habit occurrences for the day, reminder items/occurrences/recovery state, work entries, activity counts, and partial-data flags.
-  - [ ] Keep the summary computed from existing records; do not add a new source-of-truth table.
-  - [ ] Use integer minor units for money and local-date comparisons for day filtering.
-  - [ ] Cap lists so the review cannot render unbounded history.
-  - [ ] Keep all copy/state labels neutral and non-shaming.
+- [x] Define end-of-day review summary contracts and pure calculations. (AC: 1, 2)
+  - [x] Add a focused domain module such as `src/domain/summaries/end-of-day-review.ts`.
+  - [x] Include local date, money records for the day, task items/completions, recurring task/habit occurrences for the day, reminder items/occurrences/recovery state, work entries, activity counts, and partial-data flags.
+  - [x] Keep the summary computed from existing records; do not add a new source-of-truth table.
+  - [x] Use integer minor units for money and local-date comparisons for day filtering.
+  - [x] Cap lists so the review cannot render unbounded history.
+  - [x] Keep all copy/state labels neutral and non-shaming.
 
-- [ ] Implement an end-of-day review service. (AC: 1, 2, 3)
-  - [ ] Add a service such as `src/services/summaries/end-of-day-review.service.ts`.
-  - [ ] Open and migrate the local database safely, load preferences, and resolve the current local date from the injected clock.
-  - [ ] Reuse existing repositories/services for money, tasks, task recurrence, reminders, recovery, and work entries.
-  - [ ] Reuse the same local-first repository boundaries as Today; React components must not import SQLite clients, migration utilities, or Drizzle tables.
-  - [ ] Return typed `AppResult` failures with retry-oriented messages.
-  - [ ] Do not schedule/cancel platform notifications from review load.
+- [x] Implement an end-of-day review service. (AC: 1, 2, 3)
+  - [x] Add a service such as `src/services/summaries/end-of-day-review.service.ts`.
+  - [x] Open and migrate the local database safely, load preferences, and resolve the current local date from the injected clock.
+  - [x] Reuse existing repositories/services for money, tasks, task recurrence, reminders, recovery, and work entries.
+  - [x] Reuse the same local-first repository boundaries as Today; React components must not import SQLite clients, migration utilities, or Drizzle tables.
+  - [x] Return typed `AppResult` failures with retry-oriented messages.
+  - [x] Do not schedule/cancel platform notifications from review load.
 
-- [ ] Replace the Review placeholder with an end-of-day review surface. (AC: 1, 2, 3)
-  - [ ] Replace `src/features/review/ReviewScreen.tsx` placeholder content with a mobile-first review screen.
-  - [ ] Add a feature hook such as `src/features/review/useEndOfDayReview.ts` for loading, ready, partial/empty, and failed states.
-  - [ ] Show sections for spending/income, tasks/habits, reminders/recovery, work-income, and a short daily activity list.
-  - [ ] Use existing UI primitives/tokens and the `DESIGN.md` visual direction; avoid nested cards, decorative dashboards, or one-note color styling.
-  - [ ] Use explicit text labels for states such as "No spending logged today", "No reminders need review", and "No work logged today"; do not rely on color alone.
-  - [ ] Keep weekly/monthly reflection prompts, insight cards, and saved reflections out of scope for Story 4.4.
+- [x] Replace the Review placeholder with an end-of-day review surface. (AC: 1, 2, 3)
+  - [x] Replace `src/features/review/ReviewScreen.tsx` placeholder content with a mobile-first review screen.
+  - [x] Add a feature hook such as `src/features/review/useEndOfDayReview.ts` for loading, ready, partial/empty, and failed states.
+  - [x] Show sections for spending/income, tasks/habits, reminders/recovery, work-income, and a short daily activity list.
+  - [x] Use existing UI primitives/tokens and the `DESIGN.md` visual direction; avoid nested cards, decorative dashboards, or one-note color styling.
+  - [x] Use explicit text labels for states such as "No spending logged today", "No reminders need review", and "No work logged today"; do not rely on color alone.
+  - [x] Keep weekly/monthly reflection prompts, insight cards, and saved reflections out of scope for Story 4.4.
 
-- [ ] Add action handoffs for task completion and entry adjustment. (AC: 3)
-  - [ ] Allow a non-deleted open task shown in review to be marked done through existing task service/repository behavior.
-  - [ ] After mark-done succeeds, refresh review data so Today and summaries can reflect the updated source record on next load.
-  - [ ] Provide edit/adjust actions that route to existing detail/edit surfaces for money, task, reminder, and work entries where available.
-  - [ ] Return users to the relevant review context after editing by using existing navigation patterns or route params; do not duplicate edit forms inside review.
-  - [ ] Keep actions accessible with clear labels and at least 44x44 touch targets.
+- [x] Add action handoffs for task completion and entry adjustment. (AC: 3)
+  - [x] Allow a non-deleted open task shown in review to be marked done through existing task service/repository behavior.
+  - [x] After mark-done succeeds, refresh review data so Today and summaries can reflect the updated source record on next load.
+  - [x] Provide edit/adjust actions that route to existing detail/edit surfaces for money, task, reminder, and work entries where available.
+  - [x] Return users to the relevant review context after editing by using existing navigation patterns or route params; do not duplicate edit forms inside review.
+  - [x] Keep actions accessible with clear labels and at least 44x44 touch targets.
 
-- [ ] Preserve scope, privacy, and content safety. (AC: 1, 2, 3)
-  - [ ] Do not implement Epic 6 weekly/monthly summaries, reflection prompts, saved reflections, or muted insights.
-  - [ ] Do not implement receipt capture/parsing, receipt review, or receipt retention behavior.
-  - [ ] Do not add auth, cloud sync, server APIs, analytics, or large dependencies.
-  - [ ] Do not log spending details, income values, task titles/notes, reminder content, work notes, receipt data, or draft payloads.
-  - [ ] Avoid financial advice, causal claims, prediction, optimization, or blame language.
+- [x] Preserve scope, privacy, and content safety. (AC: 1, 2, 3)
+  - [x] Do not implement Epic 6 weekly/monthly summaries, reflection prompts, saved reflections, or muted insights.
+  - [x] Do not implement receipt capture/parsing, receipt review, or receipt retention behavior.
+  - [x] Do not add auth, cloud sync, server APIs, analytics, or large dependencies.
+  - [x] Do not log spending details, income values, task titles/notes, reminder content, work notes, receipt data, or draft payloads.
+  - [x] Avoid financial advice, causal claims, prediction, optimization, or blame language.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Add domain tests for full-data, partial-data, empty-data, bounded-list, money minor-unit totals, task completion, reminder/recovery, and work summaries.
-  - [ ] Add service tests with fake repositories/dependencies for local-date filtering, failure handling, and refresh after task completion where practical.
-  - [ ] Add hook/helper tests for loading, ready, failed, partial/empty, mark-task-done, and edit-route behavior where practical.
-  - [ ] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Add domain tests for full-data, partial-data, empty-data, bounded-list, money minor-unit totals, task completion, reminder/recovery, and work summaries.
+  - [x] Add service tests with fake repositories/dependencies for local-date filtering, failure handling, and refresh after task completion where practical.
+  - [x] Add hook/helper tests for loading, ready, failed, partial/empty, mark-task-done, and edit-route behavior where practical.
+  - [x] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -200,16 +200,38 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-08: Created Story 4.4 ready-for-dev from Epic 4, PRD, architecture, UX, and Story 4.1-4.3 implementation context.
+- 2026-05-08: Started Story 4.4 implementation.
+- 2026-05-08: Added end-of-day review domain summary, local-first service, Review screen, edit-return handoffs, focused tests, and full verification.
 
 ### Completion Notes List
 
-- Pending implementation.
+- Implemented Review as a computed end-of-day surface across same-day money records, relevant tasks, virtual recurring task/habit occurrences, reminders/recovery, work entries, and activity.
+- Added direct mark-done behavior for open daily tasks in Review; completion updates the source task and refreshes review data.
+- Added explicit edit route handoffs for money, task, reminder, and work entries with return-to-review behavior after save/delete.
+- Preserved scope boundaries: no Epic 6 weekly/monthly reflection, no receipt/OCR behavior, no migrations, no auth/cloud/API changes, and no new dependencies.
+- Automated verification passed; no physical-device/manual dynamic-text or screen-reader run was performed in this pass.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/4-4-review-end-of-day-activity.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-4.4-review.md`
+- `src/domain/summaries/end-of-day-review.test.ts`
+- `src/domain/summaries/end-of-day-review.ts`
+- `src/features/capture/CaptureScreen.tsx`
+- `src/features/reminders/ReminderForm.tsx`
+- `src/features/review/ReviewScreen.tsx`
+- `src/features/review/end-of-day-review-routes.test.ts`
+- `src/features/review/end-of-day-review-routes.ts`
+- `src/features/review/useEndOfDayReview.test.ts`
+- `src/features/review/useEndOfDayReview.ts`
+- `src/features/tasks/TaskForm.tsx`
+- `src/features/work/WorkEntryForm.tsx`
+- `src/services/summaries/end-of-day-review.service.test.ts`
+- `src/services/summaries/end-of-day-review.service.ts`
 
 ## Change Log
 
 - 2026-05-08: Created Story 4.4 ready-for-dev.
+- 2026-05-08: Started implementation.
+- 2026-05-08: Completed end-of-day activity review implementation and self-review.

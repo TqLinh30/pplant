@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
@@ -18,6 +18,7 @@ import { typography } from '@/ui/tokens/typography';
 import { parseCaptureDraftResumeParam } from '@/features/capture-drafts/capture-draft-recovery';
 import { parseReminderCaptureDraftPayload } from '@/features/capture-drafts/captureDraftPayloads';
 import { getActiveCaptureDraft } from '@/services/capture-drafts/capture-draft.service';
+import { firstRouteParam, isReturnToReviewParam } from '@/features/review/end-of-day-review-routes';
 
 import { isRecoveryHandoffForTarget, useRecoveryHandoff } from '../recovery/recovery-handoff';
 import {
@@ -139,12 +140,16 @@ export function ReminderForm() {
   const { state } = reminders;
   const startEdit = reminders.startEdit;
   const { consumeHandoff, handoff } = useRecoveryHandoff();
-  const { draft, draftSeq } = useLocalSearchParams();
+  const { draft, draftSeq, editSeq, reminderId, returnTo } = useLocalSearchParams();
   const appliedDraft = useRef<string | null>(null);
+  const appliedEditReminder = useRef<string | null>(null);
   const resumeDraftKind = parseCaptureDraftResumeParam(
     typeof draft === 'string' || Array.isArray(draft) ? draft : undefined,
   );
   const draftSequence = Array.isArray(draftSeq) ? draftSeq[0] : draftSeq;
+  const editReminderId = firstRouteParam(reminderId);
+  const editSequence = firstRouteParam(editSeq);
+  const shouldReturnToReview = isReturnToReviewParam(returnTo);
   const saving = state.status === 'saving';
 
   useEffect(() => {
@@ -189,6 +194,40 @@ export function ReminderForm() {
       );
     });
   }, [draftSequence, reminders, resumeDraftKind]);
+
+  useEffect(() => {
+    if (
+      !editReminderId ||
+      editReminderId === 'new' ||
+      state.status === 'loading' ||
+      state.status === 'failed'
+    ) {
+      return;
+    }
+
+    const handoffKey = editSequence ? `${editReminderId}:${editSequence}` : editReminderId;
+
+    if (appliedEditReminder.current === handoffKey) {
+      return;
+    }
+
+    const reminder = state.reminders.find((item) => item.reminder.id === editReminderId);
+
+    if (!reminder) {
+      return;
+    }
+
+    appliedEditReminder.current = handoffKey;
+    startEdit(reminder);
+  }, [editReminderId, editSequence, startEdit, state.reminders, state.status]);
+
+  useEffect(() => {
+    if (!shouldReturnToReview || state.status !== 'saved' || !state.lastMutation) {
+      return;
+    }
+
+    router.replace(`/(tabs)/review?reviewSeq=${Date.now().toString(36)}`);
+  }, [shouldReturnToReview, state.lastMutation, state.status]);
 
   if (state.status === 'loading') {
     return (

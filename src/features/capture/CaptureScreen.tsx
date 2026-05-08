@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +21,7 @@ import { CaptureDraftRecoveryPanel } from '@/features/capture-drafts/CaptureDraf
 import { parseCaptureDraftResumeParam } from '@/features/capture-drafts/capture-draft-recovery';
 import { parseMoneyCaptureDraftPayload } from '@/features/capture-drafts/captureDraftPayloads';
 import { getActiveCaptureDraft } from '@/services/capture-drafts/capture-draft.service';
+import { firstRouteParam, isReturnToReviewParam } from '@/features/review/end-of-day-review-routes';
 
 import { parseMoneyQuickCaptureParam } from './quickCaptureParams';
 import {
@@ -56,11 +57,12 @@ function formatFrequency(frequency: RecurrenceFrequency): string {
 export function CaptureScreen() {
   const capture = useManualMoneyCapture();
   const recurring = useRecurringMoney();
-  const { draft, draftSeq, quick, quickSeq } = useLocalSearchParams();
+  const { draft, draftSeq, editMoneyRecordId, editSeq, quick, quickSeq, returnTo } = useLocalSearchParams();
   const { state } = capture;
   const recurringState = recurring.state;
   const appliedQuickKind = useRef<string | null>(null);
   const appliedDraftKind = useRef<string | null>(null);
+  const appliedEditRecord = useRef<string | null>(null);
   const quickKind = parseMoneyQuickCaptureParam(
     typeof quick === 'string' || Array.isArray(quick) ? quick : undefined,
   );
@@ -69,6 +71,9 @@ export function CaptureScreen() {
   );
   const quickSequence = Array.isArray(quickSeq) ? quickSeq[0] : quickSeq;
   const draftSequence = Array.isArray(draftSeq) ? draftSeq[0] : draftSeq;
+  const editRecordId = firstRouteParam(editMoneyRecordId);
+  const editSequence = firstRouteParam(editSeq);
+  const shouldReturnToReview = isReturnToReviewParam(returnTo);
   const saving = state.status === 'saving';
   const isEditing = state.editingRecordId !== null;
   const recurringSaving = recurringState.status === 'saving';
@@ -111,6 +116,35 @@ export function CaptureScreen() {
       );
     });
   }, [capture, draftSequence, resumeDraftKind]);
+
+  useEffect(() => {
+    if (!editRecordId || state.status === 'loading' || state.status === 'failed') {
+      return;
+    }
+
+    const handoffKey = editSequence ? `${editRecordId}:${editSequence}` : editRecordId;
+
+    if (appliedEditRecord.current === handoffKey) {
+      return;
+    }
+
+    const record = state.recentRecords.find((item) => item.id === editRecordId);
+
+    if (!record) {
+      return;
+    }
+
+    appliedEditRecord.current = handoffKey;
+    capture.startEdit(record);
+  }, [capture, editRecordId, editSequence, state.recentRecords, state.status]);
+
+  useEffect(() => {
+    if (!shouldReturnToReview || (state.status !== 'saved' && state.status !== 'deleted') || !state.lastMutation) {
+      return;
+    }
+
+    router.replace(`/(tabs)/review?reviewSeq=${Date.now().toString(36)}`);
+  }, [shouldReturnToReview, state.lastMutation, state.status]);
 
   const formatRecordAmount = (record: MoneyRecord) => {
     const formatted = state.preferences
