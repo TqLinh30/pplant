@@ -6,7 +6,7 @@
 
 ## Last Completed Story
 
-- Story 3.2: Manage Recurring Tasks And Habits
+- Story 3.3: Create Deadline And Repeat Reminders
 
 ## Stories Completed
 
@@ -23,16 +23,17 @@
 - Story 2.7: Show Expense Impact As Work-Time Context. Commit: `8cccc4f feat: complete story 2.7 - work-time context`
 - Story 3.1: Create And Manage Daily Tasks. Commit: `8bfaa8b feat: complete story 3.1 - daily tasks`
 - Story 3.2: Manage Recurring Tasks And Habits. Commit: `2294db0 feat: complete story 3.2 - recurring tasks and habits`
+- Story 3.3: Create Deadline And Repeat Reminders. Commit: `2ec9c65 feat: complete story 3.3 - deadline and repeat reminders`
 
 ## Stories Skipped
 
-- Story 3.3 and later were not implemented.
-- Remaining backlog starts at `3-3-create-deadline-and-repeat-reminders`.
+- Story 3.4 and later were not implemented.
+- Remaining backlog starts at `3-4-control-reminder-timing-and-reminder-fatigue`.
 
 ## Stop Reason
 
-- Stopped after Story 3.2 because the next pending item, Story 3.3, is still `backlog` in `sprint-status.yaml` and has no ready-for-dev story file.
-- This is a safe BMAD stop condition: reminders introduce notification permission, scheduling, timing, and recovery behavior that should be specified in its own story before code changes.
+- Stopped after Story 3.3 because the next pending item, Story 3.4, is still `backlog` in `sprint-status.yaml` and has no ready-for-dev story file.
+- This is a safe BMAD stop condition: Story 3.4 adds reminder timing controls, fatigue tuning, and user-adjustable notification behavior that should be specified in its own story before code changes.
 
 ## Commits Created
 
@@ -53,6 +54,7 @@
 - `ed96011 docs: update overnight automation summary`
 - `8bfaa8b feat: complete story 3.1 - daily tasks`
 - `2294db0 feat: complete story 3.2 - recurring tasks and habits`
+- `2ec9c65 feat: complete story 3.3 - deadline and repeat reminders`
 
 ## Commands Run
 
@@ -68,30 +70,31 @@
   - `npx expo install --check`
   - `npm run build --if-present`
   - `git diff --check`
-- Focused Story 3.2 checks:
-  - `npx jest src/domain/tasks/task-recurrence.test.ts src/data/repositories/task-recurrence.repository.test.ts src/services/tasks/task-recurrence.service.test.ts src/features/tasks/useTaskRecurrence.test.ts src/data/db/migrations/migrate.test.ts --runInBand`
+- Focused Story 3.3 checks:
+  - `npx jest --runInBand src/domain/reminders/reminders.test.ts src/data/repositories/reminders.repository.test.ts src/services/reminders/reminder.service.test.ts src/features/reminders/useReminderCapture.test.ts src/data/db/migrations/migrate.test.ts src/diagnostics/redact.test.ts`
 
 ## Test Results
 
-- Story 3.2 focused verification passed: 5 suites, 23 tests.
-- Story 3.2 final verification passed: 47 suites, 241 tests.
+- Story 3.3 focused verification passed: 6 suites, 26 tests.
+- Story 3.3 final verification passed: 51 suites, 260 tests.
 - `npm run typecheck`: passed.
 - `npm run lint`: passed.
 - `npx expo install --check`: passed.
 - `npm run build --if-present`: passed; no build script is defined.
 - `git diff --check`: passed.
+- `git diff --cached --check`: passed.
 
 ## Known Risks
 
-- Native Expo SQLite persistence was not manually tested on a device/emulator; repository/service behavior is covered with fakes.
-- Mobile visual and screen-reader behavior was not manually device-tested.
+- Native Expo notification behavior was not manually tested on a device/emulator; service behavior is covered with fake scheduler tests and Expo dependency check.
+- Mobile visual and screen-reader behavior for the new reminder form was not manually device-tested.
 - UI component rendering is indirectly covered because the current Jest config only matches `.test.ts` files.
 - `.claude/worktrees/` remains untracked and was not committed.
-- Story 3.3 reminders should be created as a ready-for-dev story before implementation because it affects notifications and scheduling.
+- Story 3.4 reminder timing/fatigue controls should be created as a ready-for-dev story before implementation.
 
 ## What I Should Do Next When I Wake Up
 
-- Review Story 3.2 commit `2294db0` and self-review report `docs/automation-reports/story-3.2-review.md`.
-- Create Story 3.3 as ready-for-dev before implementation.
-- For Story 3.3, decide reminder storage, local notification permission flow, schedule ownership, recurrence linkage, and neutral recovery copy.
+- Review Story 3.3 commit `2ec9c65` and self-review report `docs/automation-reports/story-3.3-review.md`.
+- Create Story 3.4 as ready-for-dev before implementation.
+- For Story 3.4, specify snooze/reschedule/pause/disable semantics, fatigue limits, recovery copy, and how those controls interact with the Story 3.3 scheduled-notification rows.
 - Continue on branch `auto/codex-overnight-1`.
