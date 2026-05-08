@@ -6,7 +6,7 @@
 
 ## Last Completed Story
 
-- Story 3.3: Create Deadline And Repeat Reminders
+- Story 3.4: Control Reminder Timing And Reminder Fatigue
 
 ## Stories Completed
 
@@ -24,16 +24,17 @@
 - Story 3.1: Create And Manage Daily Tasks. Commit: `8bfaa8b feat: complete story 3.1 - daily tasks`
 - Story 3.2: Manage Recurring Tasks And Habits. Commit: `2294db0 feat: complete story 3.2 - recurring tasks and habits`
 - Story 3.3: Create Deadline And Repeat Reminders. Commit: `2ec9c65 feat: complete story 3.3 - deadline and repeat reminders`
+- Story 3.4: Control Reminder Timing And Reminder Fatigue. Commit: `6d6989f feat: complete story 3.4 - reminder timing controls`
 
 ## Stories Skipped
 
-- Story 3.4 and later were not implemented.
-- Remaining backlog starts at `3-4-control-reminder-timing-and-reminder-fatigue`.
+- Story 3.5 and later were not implemented.
+- Remaining backlog starts at `3-5-recover-from-missed-tasks-and-reminders`.
 
 ## Stop Reason
 
-- Stopped after Story 3.3 because the next pending item, Story 3.4, is still `backlog` in `sprint-status.yaml` and has no ready-for-dev story file.
-- This is a safe BMAD stop condition: Story 3.4 adds reminder timing controls, fatigue tuning, and user-adjustable notification behavior that should be specified in its own story before code changes.
+- Stopped after completing the requested Story 3.4.
+- The next pending item, Story 3.5, remains `backlog` in `sprint-status.yaml` and does not have a ready-for-dev story file yet.
 
 ## Commits Created
 
@@ -55,6 +56,7 @@
 - `8bfaa8b feat: complete story 3.1 - daily tasks`
 - `2294db0 feat: complete story 3.2 - recurring tasks and habits`
 - `2ec9c65 feat: complete story 3.3 - deadline and repeat reminders`
+- `6d6989f feat: complete story 3.4 - reminder timing controls`
 
 ## Commands Run
 
@@ -72,11 +74,16 @@
   - `git diff --check`
 - Focused Story 3.3 checks:
   - `npx jest --runInBand src/domain/reminders/reminders.test.ts src/data/repositories/reminders.repository.test.ts src/services/reminders/reminder.service.test.ts src/features/reminders/useReminderCapture.test.ts src/data/db/migrations/migrate.test.ts src/diagnostics/redact.test.ts`
+- Focused Story 3.4 checks:
+  - `npm test -- --runTestsByPath src/domain/reminders/reminders.test.ts src/data/repositories/reminders.repository.test.ts src/services/reminders/reminder.service.test.ts src/features/reminders/useReminderCapture.test.ts`
+  - `npm test -- --runTestsByPath src/services/reminders/reminder.service.test.ts`
 
 ## Test Results
 
 - Story 3.3 focused verification passed: 6 suites, 26 tests.
-- Story 3.3 final verification passed: 51 suites, 260 tests.
+- Story 3.4 focused verification passed: 4 suites, 23 tests.
+- Story 3.4 service verification passed after adding delete coverage: 1 suite, 11 tests.
+- Story 3.4 final verification passed: 51 suites, 266 tests.
 - `npm run typecheck`: passed.
 - `npm run lint`: passed.
 - `npx expo install --check`: passed.
@@ -90,11 +97,11 @@
 - Mobile visual and screen-reader behavior for the new reminder form was not manually device-tested.
 - UI component rendering is indirectly covered because the current Jest config only matches `.test.ts` files.
 - `.claude/worktrees/` remains untracked and was not committed.
-- Story 3.4 reminder timing/fatigue controls should be created as a ready-for-dev story before implementation.
+- Story 3.5 missed-task/reminder recovery remains backlog and should be specified before implementation.
 
 ## What I Should Do Next When I Wake Up
 
-- Review Story 3.3 commit `2ec9c65` and self-review report `docs/automation-reports/story-3.3-review.md`.
-- Create Story 3.4 as ready-for-dev before implementation.
-- For Story 3.4, specify snooze/reschedule/pause/disable semantics, fatigue limits, recovery copy, and how those controls interact with the Story 3.3 scheduled-notification rows.
+- Review Story 3.4 commit `6d6989f` and self-review report `docs/automation-reports/story-3.4-review.md`.
+- Create Story 3.5 as ready-for-dev before implementation.
+- For Story 3.5, specify missed-task and missed-reminder recovery semantics without changing the Story 3.4 timing-control contracts.
 - Continue on branch `auto/codex-overnight-1`.
