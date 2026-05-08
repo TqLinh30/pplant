@@ -1,3 +1,5 @@
+import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,6 +18,7 @@ import { TaskForm } from '@/features/tasks/TaskForm';
 import { WorkEntryForm } from '@/features/work/WorkEntryForm';
 import { buildExpenseWorkTimeContextText } from '@/features/work/workTimeContextText';
 
+import { parseMoneyQuickCaptureParam } from './quickCaptureParams';
 import { useManualMoneyCapture } from './useManualMoneyCapture';
 import { useRecurringMoney } from './useRecurringMoney';
 
@@ -46,12 +49,29 @@ function formatFrequency(frequency: RecurrenceFrequency): string {
 export function CaptureScreen() {
   const capture = useManualMoneyCapture();
   const recurring = useRecurringMoney();
+  const { quick, quickSeq } = useLocalSearchParams();
   const { state } = capture;
   const recurringState = recurring.state;
+  const appliedQuickKind = useRef<string | null>(null);
+  const quickKind = parseMoneyQuickCaptureParam(
+    typeof quick === 'string' || Array.isArray(quick) ? quick : undefined,
+  );
+  const quickSequence = Array.isArray(quickSeq) ? quickSeq[0] : quickSeq;
   const saving = state.status === 'saving';
   const isEditing = state.editingRecordId !== null;
   const recurringSaving = recurringState.status === 'saving';
   const isEditingRecurring = recurringState.editingRuleId !== null;
+
+  useEffect(() => {
+    const handoffKey = quickSequence ? `${quickKind}:${quickSequence}` : quickKind;
+
+    if (!quickKind || appliedQuickKind.current === handoffKey) {
+      return;
+    }
+
+    appliedQuickKind.current = handoffKey;
+    capture.setKind(quickKind);
+  }, [capture, quickKind, quickSequence]);
 
   const formatRecordAmount = (record: MoneyRecord) => {
     const formatted = state.preferences

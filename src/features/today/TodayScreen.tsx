@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -17,6 +18,7 @@ import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
+import { QuickCaptureLauncher } from './QuickCaptureLauncher';
 import { useTodayOverview } from './useTodayOverview';
 
 function formatAmount(data: TodayOverviewData, amountMinor: number): string {
@@ -299,6 +301,7 @@ function RecentActivitySection({ data, summary }: { data: TodayOverviewData; sum
 export function TodayScreen() {
   const overview = useTodayOverview();
   const { state } = overview;
+  const [quickCaptureVisible, setQuickCaptureVisible] = useState(false);
 
   if (state.status === 'loading' && !state.data) {
     return (
@@ -355,6 +358,9 @@ export function TodayScreen() {
           <Text style={styles.description}>
             Budget period {summary.budgetPeriod.startDate} to {summary.budgetPeriod.endDateExclusive}.
           </Text>
+          <View style={styles.headerActions}>
+            <Button label="Capture" onPress={() => setQuickCaptureVisible(true)} />
+          </View>
         </View>
 
         {state.status === 'empty' ? (
@@ -374,6 +380,7 @@ export function TodayScreen() {
         <WorkSection data={data} summary={summary} />
         <RecentActivitySection data={data} summary={summary} />
       </ScrollView>
+      <QuickCaptureLauncher visible={quickCaptureVisible} onClose={() => setQuickCaptureVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -402,6 +409,10 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: spacing.xs,
+  },
+  headerActions: {
+    alignItems: 'flex-start',
+    paddingTop: spacing.sm,
   },
   listGroup: {
     backgroundColor: colors.canvas,

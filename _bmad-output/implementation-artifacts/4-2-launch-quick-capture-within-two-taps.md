@@ -1,6 +1,6 @@
 # Story 4.2: Launch Quick Capture Within Two Taps
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -17,40 +17,40 @@ so that recording life events fits into short daily sessions.
 
 ## Tasks / Subtasks
 
-- [ ] Define quick capture action contracts and routing behavior. (AC: 1, 2, 3, 4)
-  - [ ] Add a small typed model for supported quick capture actions in `src/features/today/quick-capture.ts` or equivalent.
-  - [ ] Include exactly these supported actions for Story 4.2: expense, income, task, work entry, reminder.
-  - [ ] Omit receipt capture for Story 4.2, or show it only as disabled/unavailable with explicit copy; do not route to receipt capture yet.
-  - [ ] Map actions to existing safe destinations: manual money capture for expense/income, task capture, work entry capture, and reminder capture.
-  - [ ] Keep route targets declarative and testable; avoid stringly typed ad hoc routing inside button handlers where a helper can make behavior explicit.
+- [x] Define quick capture action contracts and routing behavior. (AC: 1, 2, 3, 4)
+  - [x] Add a small typed model for supported quick capture actions in `src/features/today/quick-capture.ts` or equivalent.
+  - [x] Include exactly these supported actions for Story 4.2: expense, income, task, work entry, reminder.
+  - [x] Omit receipt capture for Story 4.2, or show it only as disabled/unavailable with explicit copy; do not route to receipt capture yet.
+  - [x] Map actions to existing safe destinations: manual money capture for expense/income, task capture, work entry capture, and reminder capture.
+  - [x] Keep route targets declarative and testable; avoid stringly typed ad hoc routing inside button handlers where a helper can make behavior explicit.
 
-- [ ] Add the Today capture launcher UI. (AC: 1, 2, 4)
-  - [ ] Add a primary Today header action such as "Capture" that opens the launcher in one tap.
-  - [ ] Use existing `BottomSheet`, `Button`, `ListRow`, `StatusBanner`, tokens, and React Native primitives.
-  - [ ] Render the actions in a stable mobile-first layout that tolerates dynamic text without hiding required actions.
-  - [ ] Give every action a descriptive `accessibilityLabel`.
-  - [ ] Ensure the selected action starts its capture flow on the second tap.
-  - [ ] Keep existing section-level buttons if useful, but the launcher must be the primary Story 4.2 path.
+- [x] Add the Today capture launcher UI. (AC: 1, 2, 4)
+  - [x] Add a primary Today header action such as "Capture" that opens the launcher in one tap.
+  - [x] Use existing `BottomSheet`, `Button`, `ListRow`, `StatusBanner`, tokens, and React Native primitives.
+  - [x] Render the actions in a stable mobile-first layout that tolerates dynamic text without hiding required actions.
+  - [x] Give every action a descriptive `accessibilityLabel`.
+  - [x] Ensure the selected action starts its capture flow on the second tap.
+  - [x] Keep existing section-level buttons if useful, but the launcher must be the primary Story 4.2 path.
 
-- [ ] Wire action targets to existing capture surfaces. (AC: 1, 3)
-  - [ ] For expense and income, deep-link into the existing Capture tab and preselect the manual money kind when possible.
-  - [ ] For task, route to the existing task capture surface (`src/app/task/[taskId].tsx` / `TaskRouteScreen`) using a safe "new" route value if needed.
-  - [ ] For reminder, route to the existing reminder capture surface (`src/app/reminder/[reminderId].tsx` / `ReminderRouteScreen`) using a safe "new" route value if needed.
-  - [ ] For work entry, add a small route/screen wrapper if needed so the work form can start without forcing the user to scroll through unrelated Capture content.
-  - [ ] Do not duplicate form business logic; reuse existing feature forms/hooks.
-  - [ ] Do not request notification permission in the launcher itself. Reminder permission should remain contextual in the reminder flow, with the existing local-only fallback when denied.
+- [x] Wire action targets to existing capture surfaces. (AC: 1, 3)
+  - [x] For expense and income, deep-link into the existing Capture tab and preselect the manual money kind when possible.
+  - [x] For task, route to the existing task capture surface (`src/app/task/[taskId].tsx` / `TaskRouteScreen`) using a safe "new" route value if needed.
+  - [x] For reminder, route to the existing reminder capture surface (`src/app/reminder/[reminderId].tsx` / `ReminderRouteScreen`) using a safe "new" route value if needed.
+  - [x] For work entry, add a small route/screen wrapper if needed so the work form can start without forcing the user to scroll through unrelated Capture content.
+  - [x] Do not duplicate form business logic; reuse existing feature forms/hooks.
+  - [x] Do not request notification permission in the launcher itself. Reminder permission should remain contextual in the reminder flow, with the existing local-only fallback when denied.
 
-- [ ] Preserve boundaries and future-story scope. (AC: 2, 3)
-  - [ ] Do not implement receipt capture, receipt draft persistence, receipt parsing, Story 4.3 draft recovery, Story 4.4 end-of-day review, or Story 4.5 exhaustive UX state matrix.
-  - [ ] Do not add migrations or new persistent state for the launcher.
-  - [ ] Do not add large dependencies or a new UI kit.
-  - [ ] Do not log action titles, user-entered money/task/reminder/work details, or permission-sensitive data.
+- [x] Preserve boundaries and future-story scope. (AC: 2, 3)
+  - [x] Do not implement receipt capture, receipt draft persistence, receipt parsing, Story 4.3 draft recovery, Story 4.4 end-of-day review, or Story 4.5 exhaustive UX state matrix.
+  - [x] Do not add migrations or new persistent state for the launcher.
+  - [x] Do not add large dependencies or a new UI kit.
+  - [x] Do not log action titles, user-entered money/task/reminder/work details, or permission-sensitive data.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3, 4)
-  - [ ] Add tests for quick capture action definitions: required actions present, receipt absent/disabled, labels available, and route mapping stable.
-  - [ ] Add reducer/helper tests for launcher open/close/select behavior if a reducer/helper is introduced.
-  - [ ] Add route/deep-link tests where reasonable for Capture preselection or work route wrapper behavior.
-  - [ ] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3, 4)
+  - [x] Add tests for quick capture action definitions: required actions present, receipt absent/disabled, labels available, and route mapping stable.
+  - [x] Add reducer/helper tests for launcher open/close/select behavior if a reducer/helper is introduced.
+  - [x] Add route/deep-link tests where reasonable for Capture preselection or work route wrapper behavior.
+  - [x] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -175,16 +175,35 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-08: Created Story 4.2 ready-for-dev from Epic 4, PRD, architecture, UX, and Story 4.1 implementation context.
+- 2026-05-08: Started Story 4.2 implementation.
+- 2026-05-08: Added quick capture action model, launcher sheet, Capture tab preselection, Work route wrapper, focused tests, and verification.
 
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- Implemented a primary Today "Capture" launcher using the existing `BottomSheet` and row primitives.
+- Added typed quick capture actions for expense, income, task, work entry, and reminder; receipt capture is not exposed as a route in Story 4.2.
+- Expense/income handoff deep-links into the Capture tab with a sequenced quick param so repeated same-action handoffs are applied.
+- Work entry now has a thin dedicated route wrapper that reuses `WorkEntryForm`.
+- Reminder notification permission remains contextual in the reminder flow; the launcher does not request platform permissions.
+- Automated verification passed; no physical-device/manual dynamic-text run was performed in this pass.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/4-2-launch-quick-capture-within-two-taps.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-4.2-review.md`
+- `src/app/work/[workEntryId].tsx`
+- `src/features/capture/CaptureScreen.tsx`
+- `src/features/capture/quickCaptureParams.ts`
+- `src/features/capture/quickCaptureParams.test.ts`
+- `src/features/today/QuickCaptureLauncher.tsx`
+- `src/features/today/TodayScreen.tsx`
+- `src/features/today/quick-capture.ts`
+- `src/features/today/quick-capture.test.ts`
+- `src/features/work/WorkRouteScreen.tsx`
 
 ## Change Log
 
 - 2026-05-08: Created Story 4.2 ready-for-dev.
+- 2026-05-08: Started implementation.
+- 2026-05-08: Completed quick capture launcher implementation and self-review.
