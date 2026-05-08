@@ -15,7 +15,15 @@ export type ReminderDeliveryState =
 export type ReminderOwnerKind = 'standalone' | 'task' | 'task_recurrence';
 export type ReminderFrequency = 'daily' | 'monthly' | 'once' | 'weekly';
 export type ReminderPermissionStatus = 'denied' | 'granted' | 'undetermined' | 'unavailable' | 'unknown';
-export type ReminderScheduleState = 'failed' | 'local_only' | 'permission_denied' | 'scheduled' | 'unavailable';
+export type ReminderScheduleState =
+  | 'disabled'
+  | 'failed'
+  | 'local_only'
+  | 'paused'
+  | 'permission_denied'
+  | 'scheduled'
+  | 'snoozed'
+  | 'unavailable';
 export type ReminderExceptionAction = 'skip';
 export type ReminderOccurrenceState = 'open' | 'skipped';
 export type ReminderSource = 'manual';

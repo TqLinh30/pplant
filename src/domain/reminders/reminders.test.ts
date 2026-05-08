@@ -66,6 +66,9 @@ describe('reminder domain', () => {
     expect(parseReminderRow({ ...createReminder(), reminderLocalTime: '24:01' }).ok).toBe(false);
     expect(parseReminderRow({ ...createReminder(), title: '' }).ok).toBe(false);
     expect(parseReminderRow({ ...createReminder(), notes: 'x'.repeat(501) }).ok).toBe(false);
+    expect(parseReminderRow({ ...createReminder(), scheduleState: 'snoozed' }).ok).toBe(true);
+    expect(parseReminderRow({ ...createReminder(), scheduleState: 'paused' }).ok).toBe(true);
+    expect(parseReminderRow({ ...createReminder(), scheduleState: 'disabled' }).ok).toBe(true);
     expect(parseReminderRow({ ...createReminder(), scheduleState: 'waiting' }).ok).toBe(false);
   });
 

@@ -36,6 +36,9 @@ export const reminderFrequencySchema = z.enum(['once', 'daily', 'weekly', 'month
 export const reminderPermissionStatusSchema = z.enum(['unknown', 'undetermined', 'granted', 'denied', 'unavailable']);
 export const reminderScheduleStateSchema = z.enum([
   'scheduled',
+  'snoozed',
+  'paused',
+  'disabled',
   'permission_denied',
   'unavailable',
   'failed',
@@ -133,6 +136,9 @@ export function asReminderPermissionStatus(value: string): AppResult<ReminderPer
 export function asReminderScheduleState(value: string): AppResult<ReminderScheduleState> {
   if (
     value === 'scheduled' ||
+    value === 'snoozed' ||
+    value === 'paused' ||
+    value === 'disabled' ||
     value === 'permission_denied' ||
     value === 'unavailable' ||
     value === 'failed' ||

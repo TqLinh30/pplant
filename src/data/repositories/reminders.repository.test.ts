@@ -68,9 +68,9 @@ class FakeReminderClient {
         id: id as string,
         notes: notes as string | null,
         ownerKind: ownerKind as 'standalone' | 'task' | 'task_recurrence',
-        permissionStatus: permissionStatus as 'unknown' | 'undetermined' | 'granted' | 'denied' | 'unavailable',
+        permissionStatus: permissionStatus as ReminderRow['permissionStatus'],
         reminderLocalTime: reminderLocalTime as string,
-        scheduleState: scheduleState as 'local_only' | 'scheduled' | 'permission_denied' | 'unavailable' | 'failed',
+        scheduleState: scheduleState as ReminderRow['scheduleState'],
         source: sourceValue as 'manual',
         sourceOfTruth: sourceOfTruth as 'manual',
         startsOnLocalDate: startsOnLocalDate as string,
@@ -84,7 +84,50 @@ class FakeReminderClient {
       return { changes: 1 };
     }
 
-    if (source.includes('UPDATE reminders') && source.includes('permission_status')) {
+    if (source.includes('UPDATE reminders') && source.includes('owner_kind = ?')) {
+      const [
+        ownerKind,
+        taskId,
+        taskRecurrenceRuleId,
+        title,
+        notes,
+        frequency,
+        startsOnLocalDate,
+        reminderLocalTime,
+        endsOnLocalDate,
+        sourceValue,
+        sourceOfTruth,
+        permissionStatus,
+        scheduleState,
+        updatedAt,
+        workspaceId,
+        id,
+      ] = params;
+      const reminder = this.reminders.find(
+        (candidate) => candidate.workspaceId === workspaceId && candidate.id === id && candidate.deletedAt === null,
+      );
+
+      if (reminder) {
+        reminder.ownerKind = ownerKind as ReminderRow['ownerKind'];
+        reminder.taskId = taskId as string | null;
+        reminder.taskRecurrenceRuleId = taskRecurrenceRuleId as string | null;
+        reminder.title = title as string;
+        reminder.notes = notes as string | null;
+        reminder.frequency = frequency as ReminderRow['frequency'];
+        reminder.startsOnLocalDate = startsOnLocalDate as string;
+        reminder.reminderLocalTime = reminderLocalTime as string;
+        reminder.endsOnLocalDate = endsOnLocalDate as string | null;
+        reminder.source = sourceValue as ReminderRow['source'];
+        reminder.sourceOfTruth = sourceOfTruth as ReminderRow['sourceOfTruth'];
+        reminder.permissionStatus = permissionStatus as ReminderRow['permissionStatus'];
+        reminder.scheduleState = scheduleState as ReminderRow['scheduleState'];
+        reminder.updatedAt = updatedAt as string;
+      }
+
+      return { changes: reminder ? 1 : 0 };
+    }
+
+    if (source.includes('UPDATE reminders') && source.includes('SET permission_status = ?')) {
       const [permissionStatus, scheduleState, updatedAt, workspaceId, id] = params;
       const reminder = this.reminders.find(
         (candidate) => candidate.workspaceId === workspaceId && candidate.id === id && candidate.deletedAt === null,
@@ -99,7 +142,7 @@ class FakeReminderClient {
       return { changes: reminder ? 1 : 0 };
     }
 
-    if (source.includes('UPDATE reminders') && source.includes('deleted_at')) {
+    if (source.includes('UPDATE reminders') && source.includes('SET deleted_at = ?')) {
       const [deletedAt, updatedAt, workspaceId, id] = params;
       const reminder = this.reminders.find(
         (candidate) => candidate.workspaceId === workspaceId && candidate.id === id && candidate.deletedAt === null,
@@ -147,7 +190,7 @@ class FakeReminderClient {
       this.scheduledNotifications.push({
         createdAt: createdAt as string,
         deletedAt: deletedAt as string | null,
-        deliveryState: deliveryState as 'scheduled',
+        deliveryState: deliveryState as ReminderScheduledNotificationRow['deliveryState'],
         fireAtLocal: fireAtLocal as string,
         id: id as string,
         occurrenceLocalDate: occurrenceLocalDate as string,
@@ -326,6 +369,35 @@ describe('reminder repository', () => {
     expect(duplicate.ok).toBe(true);
     expect(client.exceptions).toHaveLength(1);
     expect(listed.ok && listed.value[0].id).toBe('exception-1');
+  });
+
+  it('updates reminder timing without replacing the reminder row', async () => {
+    const client = new FakeReminderClient();
+    const repository = createRepository(client);
+
+    await repository.createReminder(createInput());
+    const updated = await repository.updateReminder(
+      createInput({
+        endsOnLocalDate: '2026-05-31',
+        reminderLocalTime: '10:45',
+        scheduleState: 'paused',
+        title: 'Updated study reminder',
+        updatedAt: '2026-05-08T01:00:00.000Z',
+      }),
+    );
+
+    expect(updated.ok).toBe(true);
+    if (updated.ok) {
+      expect(updated.value).toMatchObject({
+        createdAt: fixedNow,
+        endsOnLocalDate: '2026-05-31',
+        reminderLocalTime: '10:45',
+        scheduleState: 'paused',
+        title: 'Updated study reminder',
+        updatedAt: '2026-05-08T01:00:00.000Z',
+      });
+    }
+    expect(client.reminders).toHaveLength(1);
   });
 
   it('replaces scheduled notification ids and soft deletes stale rows', async () => {

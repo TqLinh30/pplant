@@ -176,4 +176,48 @@ describe('reminder capture state', () => {
     expect(localOnlyState.lastMutation).toBe('local_only');
     expect(localOnlyState.savedReminder?.scheduleState).toBe('local_only');
   });
+
+  it('tracks reminder editing and timing-control mutations', () => {
+    const scheduled = createReminderView();
+    const paused = createReminderView({
+      scheduleState: 'paused',
+    });
+    const loaded = reminderCaptureReducer(initialReminderCaptureState, {
+      data: {
+        recentTasks: [],
+        reminders: [scheduled],
+        taskRecurrenceRules: [],
+      },
+      type: 'load_succeeded',
+    });
+    const editing = reminderCaptureReducer(loaded, {
+      type: 'edit_started',
+      view: scheduled,
+    });
+    const saving = reminderCaptureReducer(editing, { type: 'action_started' });
+    const pausedState = reminderCaptureReducer(saving, {
+      data: {
+        recentTasks: [],
+        reminders: [paused],
+        taskRecurrenceRules: [],
+      },
+      mutation: 'paused',
+      result: {
+        reminder: paused.reminder,
+        view: paused,
+      },
+      type: 'mutation_succeeded',
+    });
+
+    expect(editing.editingReminderId).toBe('reminder-1');
+    expect(editing.draft).toMatchObject({
+      notes: 'Bring workbook',
+      reminderLocalTime: '09:30',
+      title: 'Study reminder',
+    });
+    expect(saving.status).toBe('saving');
+    expect(pausedState.editingReminderId).toBeNull();
+    expect(pausedState.lastMutation).toBe('paused');
+    expect(pausedState.savedReminder?.scheduleState).toBe('paused');
+  });
 });

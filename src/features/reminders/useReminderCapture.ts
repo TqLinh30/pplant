@@ -19,8 +19,15 @@ import type {
 import type { Task, TaskRecurrenceRule } from '@/domain/tasks/types';
 import {
   createReminder,
+  deleteReminder as deleteReminderService,
+  disableReminder as disableReminderService,
+  enableReminder as enableReminderService,
   loadReminderData,
+  pauseReminder as pauseReminderService,
+  resumeReminder as resumeReminderService,
   skipReminderOccurrence,
+  snoozeReminder as snoozeReminderService,
+  updateReminder as updateReminderService,
   type ReminderData,
   type ReminderMutationResult,
   type ReminderRequest,
@@ -29,7 +36,17 @@ import {
 } from '@/services/reminders/reminder.service';
 
 export type ReminderCaptureStatus = 'failed' | 'loading' | 'ready' | 'saved' | 'saving';
-export type ReminderCaptureMutation = 'created' | 'local_only' | 'skipped';
+export type ReminderCaptureMutation =
+  | 'created'
+  | 'deleted'
+  | 'disabled'
+  | 'enabled'
+  | 'local_only'
+  | 'paused'
+  | 'resumed'
+  | 'skipped'
+  | 'snoozed'
+  | 'updated';
 
 export type ReminderCaptureDraft = {
   endsOnLocalDate: string;
@@ -49,6 +66,7 @@ export type ReminderCaptureFieldErrors = Partial<Record<keyof ReminderCaptureDra
 export type ReminderCaptureState = {
   actionError: AppError | null;
   draft: ReminderCaptureDraft;
+  editingReminderId: string | null;
   fieldErrors: ReminderCaptureFieldErrors;
   lastMutation: ReminderCaptureMutation | null;
   loadError: AppError | null;
@@ -62,18 +80,33 @@ export type ReminderCaptureState = {
 
 export type ReminderCaptureServices = {
   createReminder?: (input: ReminderRequest) => Promise<AppResult<ReminderMutationResult>>;
+  deleteReminder?: (id: string) => Promise<AppResult<ReminderMutationResult>>;
+  disableReminder?: (id: string) => Promise<AppResult<ReminderMutationResult>>;
+  enableReminder?: (id: string) => Promise<AppResult<ReminderMutationResult>>;
   loadData?: () => Promise<AppResult<ReminderData>>;
   now?: () => Date;
+  pauseReminder?: (id: string) => Promise<AppResult<ReminderMutationResult>>;
+  resumeReminder?: (id: string) => Promise<AppResult<ReminderMutationResult>>;
   skipOccurrence?: (id: string, occurrenceLocalDate?: string | null) => Promise<AppResult<string>>;
+  snoozeReminder?: (
+    id: string,
+    occurrenceLocalDate?: string | null,
+    minutes?: number,
+  ) => Promise<AppResult<ReminderMutationResult>>;
+  updateReminder?: (input: ReminderRequest & { id: string }) => Promise<AppResult<ReminderMutationResult>>;
 };
 
 type ReminderCaptureAction =
+  | { type: 'action_started' }
   | { type: 'action_failed'; error: AppError }
+  | { type: 'edit_cancelled'; nextDraft: ReminderCaptureDraft }
+  | { type: 'edit_started'; view: ReminderRuleView }
   | { type: 'field_changed'; field: 'endsOnLocalDate' | 'notes' | 'reminderLocalTime' | 'skipLocalDate' | 'startsOnLocalDate' | 'title'; value: string }
   | { type: 'frequency_changed'; frequency: ReminderFrequency }
   | { type: 'load_failed'; error: AppError }
   | { type: 'load_started' }
   | { type: 'load_succeeded'; data: ReminderData }
+  | { type: 'mutation_succeeded'; data: ReminderData; mutation: ReminderCaptureMutation; result: ReminderMutationResult }
   | { type: 'owner_changed'; ownerKind: ReminderOwnerKind }
   | { type: 'save_started' }
   | { type: 'save_succeeded'; data: ReminderData; mutation: ReminderCaptureMutation; nextDraft: ReminderCaptureDraft; result: ReminderMutationResult }
@@ -98,9 +131,27 @@ export function createDefaultReminderCaptureDraft(now = new Date()): ReminderCap
   };
 }
 
+function createReminderCaptureDraftFromView(view: ReminderRuleView): ReminderCaptureDraft {
+  const reminder = view.reminder;
+
+  return {
+    endsOnLocalDate: reminder.endsOnLocalDate ?? '',
+    frequency: reminder.frequency,
+    notes: reminder.notes ?? '',
+    ownerKind: reminder.ownerKind,
+    reminderLocalTime: reminder.reminderLocalTime,
+    skipLocalDate: '',
+    startsOnLocalDate: reminder.startsOnLocalDate,
+    taskId: reminder.taskId,
+    taskRecurrenceRuleId: reminder.taskRecurrenceRuleId,
+    title: reminder.title,
+  };
+}
+
 export const initialReminderCaptureState: ReminderCaptureState = {
   actionError: null,
   draft: createDefaultReminderCaptureDraft(new Date('2026-01-01T00:00:00.000Z')),
+  editingReminderId: null,
   fieldErrors: {},
   lastMutation: null,
   loadError: null,
@@ -258,10 +309,37 @@ export function reminderCaptureReducer(
   action: ReminderCaptureAction,
 ): ReminderCaptureState {
   switch (action.type) {
+    case 'action_started':
+      return {
+        ...state,
+        actionError: null,
+        occurrenceDate: null,
+        status: 'saving',
+      };
     case 'action_failed':
       return {
         ...state,
         actionError: action.error,
+        status: 'ready',
+      };
+    case 'edit_cancelled':
+      return {
+        ...state,
+        actionError: null,
+        draft: action.nextDraft,
+        editingReminderId: null,
+        fieldErrors: {},
+        lastMutation: null,
+      };
+    case 'edit_started':
+      return {
+        ...state,
+        actionError: null,
+        draft: createReminderCaptureDraftFromView(action.view),
+        editingReminderId: action.view.reminder.id,
+        fieldErrors: {},
+        lastMutation: null,
+        occurrenceDate: null,
         status: 'ready',
       };
     case 'field_changed':
@@ -290,6 +368,17 @@ export function reminderCaptureReducer(
         occurrenceDate: null,
         status: 'ready',
       };
+    case 'mutation_succeeded':
+      return {
+        ...applyData(state, action.data),
+        actionError: null,
+        editingReminderId: null,
+        fieldErrors: {},
+        lastMutation: action.mutation,
+        occurrenceDate: null,
+        savedReminder: action.result.reminder,
+        status: 'saved',
+      };
     case 'owner_changed':
       return {
         ...state,
@@ -317,6 +406,7 @@ export function reminderCaptureReducer(
         ...applyData(state, action.data),
         actionError: null,
         draft: action.nextDraft,
+        editingReminderId: null,
         fieldErrors: {},
         lastMutation: action.mutation,
         occurrenceDate: null,
@@ -353,8 +443,11 @@ export function reminderCaptureReducer(
   }
 }
 
-function mutationFromScheduleState(scheduleState: ReminderScheduleState): ReminderCaptureMutation {
-  return scheduleState === 'local_only' ? 'local_only' : 'created';
+function mutationFromScheduleState(
+  scheduleState: ReminderScheduleState,
+  scheduledMutation: Extract<ReminderCaptureMutation, 'created' | 'updated'>,
+): ReminderCaptureMutation {
+  return scheduleState === 'local_only' ? 'local_only' : scheduledMutation;
 }
 
 export function useReminderCapture(services: ReminderCaptureServices = {}) {
@@ -366,11 +459,39 @@ export function useReminderCapture(services: ReminderCaptureServices = {}) {
   const now = services.now;
   const loadData = services.loadData ?? loadReminderData;
   const createReminderDependency = services.createReminder ?? createReminder;
+  const updateReminderDependency = services.updateReminder ?? updateReminderService;
+  const deleteReminderDependency = useMemo(
+    () => services.deleteReminder ?? ((id: string) => deleteReminderService({ id })),
+    [services.deleteReminder],
+  );
+  const disableReminderDependency = useMemo(
+    () => services.disableReminder ?? ((id: string) => disableReminderService({ id })),
+    [services.disableReminder],
+  );
+  const enableReminderDependency = useMemo(
+    () => services.enableReminder ?? ((id: string) => enableReminderService({ id })),
+    [services.enableReminder],
+  );
+  const pauseReminderDependency = useMemo(
+    () => services.pauseReminder ?? ((id: string) => pauseReminderService({ id })),
+    [services.pauseReminder],
+  );
+  const resumeReminderDependency = useMemo(
+    () => services.resumeReminder ?? ((id: string) => resumeReminderService({ id })),
+    [services.resumeReminder],
+  );
   const skipOccurrenceDependency = useMemo(
     () =>
       services.skipOccurrence ??
       ((id: string, occurrenceLocalDate?: string | null) => skipReminderOccurrence({ id, occurrenceLocalDate })),
     [services.skipOccurrence],
+  );
+  const snoozeReminderDependency = useMemo(
+    () =>
+      services.snoozeReminder ??
+      ((id: string, occurrenceLocalDate?: string | null, minutes?: number) =>
+        snoozeReminderService({ id, minutes, occurrenceLocalDate })),
+    [services.snoozeReminder],
   );
 
   const reload = useCallback(() => {
@@ -411,6 +532,29 @@ export function useReminderCapture(services: ReminderCaptureServices = {}) {
     [loadData],
   );
 
+  const refreshAfterMutation = useCallback(
+    (mutation: ReminderCaptureMutation, mutationResult: ReminderMutationResult) => {
+      void loadData().then((result) => {
+        if (!isMounted.current) {
+          return;
+        }
+
+        if (isErr(result)) {
+          dispatch({ error: result.error, type: 'action_failed' });
+          return;
+        }
+
+        dispatch({
+          data: result.value,
+          mutation,
+          result: mutationResult,
+          type: 'mutation_succeeded',
+        });
+      });
+    },
+    [loadData],
+  );
+
   const save = useCallback(
     (scheduleMode: ReminderScheduleMode = 'request') => {
       const validation = validateReminderCaptureDraft(state.draft, scheduleMode);
@@ -421,7 +565,13 @@ export function useReminderCapture(services: ReminderCaptureServices = {}) {
       }
 
       dispatch({ type: 'save_started' });
-      void createReminderDependency(validation.value).then((result) => {
+      const editingReminderId = state.editingReminderId;
+      const mutation = editingReminderId ? 'updated' : 'created';
+      const request = editingReminderId
+        ? updateReminderDependency({ ...validation.value, id: editingReminderId })
+        : createReminderDependency(validation.value);
+
+      void request.then((result) => {
         if (!isMounted.current) {
           return;
         }
@@ -439,7 +589,7 @@ export function useReminderCapture(services: ReminderCaptureServices = {}) {
 
             dispatch({
               data: loadResult.value,
-              mutation: mutationFromScheduleState(result.value.reminder.scheduleState),
+              mutation: mutationFromScheduleState(result.value.reminder.scheduleState, mutation),
               nextDraft: createDefaultReminderCaptureDraft(now?.() ?? new Date()),
               result: result.value,
               type: 'save_succeeded',
@@ -451,7 +601,7 @@ export function useReminderCapture(services: ReminderCaptureServices = {}) {
         dispatch({ error: result.error, type: 'action_failed' });
       });
     },
-    [createReminderDependency, loadData, now, state.draft],
+    [createReminderDependency, loadData, now, state.draft, state.editingReminderId, updateReminderDependency],
   );
 
   const skipNextOccurrence = useCallback(
@@ -473,6 +623,61 @@ export function useReminderCapture(services: ReminderCaptureServices = {}) {
     [refreshAfterSkip, skipOccurrenceDependency],
   );
 
+  const runReminderMutation = useCallback(
+    (
+      id: string,
+      mutation: ReminderCaptureMutation,
+      action: (reminderId: string) => Promise<AppResult<ReminderMutationResult>>,
+    ) => {
+      dispatch({ type: 'action_started' });
+      void action(id).then((result) => {
+        if (!isMounted.current) {
+          return;
+        }
+
+        if (isErr(result)) {
+          dispatch({ error: result.error, type: 'action_failed' });
+          return;
+        }
+
+        refreshAfterMutation(mutation, result.value);
+      });
+    },
+    [refreshAfterMutation],
+  );
+
+  const snoozeNextOccurrence = useCallback(
+    (id: string) => {
+      runReminderMutation(id, 'snoozed', (reminderId) => snoozeReminderDependency(reminderId, null, 30));
+    },
+    [runReminderMutation, snoozeReminderDependency],
+  );
+
+  const pauseReminder = useCallback(
+    (id: string) => runReminderMutation(id, 'paused', pauseReminderDependency),
+    [pauseReminderDependency, runReminderMutation],
+  );
+
+  const resumeReminder = useCallback(
+    (id: string) => runReminderMutation(id, 'resumed', resumeReminderDependency),
+    [resumeReminderDependency, runReminderMutation],
+  );
+
+  const disableReminder = useCallback(
+    (id: string) => runReminderMutation(id, 'disabled', disableReminderDependency),
+    [disableReminderDependency, runReminderMutation],
+  );
+
+  const enableReminder = useCallback(
+    (id: string) => runReminderMutation(id, 'enabled', enableReminderDependency),
+    [enableReminderDependency, runReminderMutation],
+  );
+
+  const deleteReminder = useCallback(
+    (id: string) => runReminderMutation(id, 'deleted', deleteReminderDependency),
+    [deleteReminderDependency, runReminderMutation],
+  );
+
   useEffect(() => {
     isMounted.current = true;
     reload();
@@ -483,7 +688,14 @@ export function useReminderCapture(services: ReminderCaptureServices = {}) {
   }, [reload]);
 
   return {
+    cancelEdit: () =>
+      dispatch({ nextDraft: createDefaultReminderCaptureDraft(now?.() ?? new Date()), type: 'edit_cancelled' }),
+    deleteReminder,
+    disableReminder,
+    enableReminder,
     reload,
+    resumeReminder,
+    pauseReminder,
     save,
     saveLocalOnly: () => save('local_only'),
     selectTaskOwner: (taskId: string | null) => dispatch({ taskId, type: 'task_owner_selected' }),
@@ -492,6 +704,8 @@ export function useReminderCapture(services: ReminderCaptureServices = {}) {
     setFrequency: (frequency: ReminderFrequency) => dispatch({ frequency, type: 'frequency_changed' }),
     setOwnerKind: (ownerKind: ReminderOwnerKind) => dispatch({ ownerKind, type: 'owner_changed' }),
     skipNextOccurrence,
+    snoozeNextOccurrence,
+    startEdit: (view: ReminderRuleView) => dispatch({ type: 'edit_started', view }),
     state,
     updateField: (
       field: 'endsOnLocalDate' | 'notes' | 'reminderLocalTime' | 'skipLocalDate' | 'startsOnLocalDate' | 'title',

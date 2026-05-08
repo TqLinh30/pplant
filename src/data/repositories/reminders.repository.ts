@@ -41,6 +41,7 @@ export type ReminderRepository = {
     scheduleState: Reminder['scheduleState'],
     updatedAt: string,
   ): Promise<AppResult<Reminder>>;
+  updateReminder(input: SaveReminderInput): Promise<AppResult<Reminder>>;
 };
 
 type ReminderSqlClient = PplantDatabase['$client'] & {
@@ -279,6 +280,65 @@ export function createReminderRepository(database: PplantDatabase): ReminderRepo
         return parsed;
       } catch (cause) {
         return err(createAppError('unavailable', 'Local reminder could not be saved.', 'retry', cause));
+      }
+    },
+
+    async updateReminder(input) {
+      const parsed = parseReminderInput(input);
+
+      if (!parsed.ok) {
+        return parsed;
+      }
+
+      try {
+        database.$client.runSync(
+          `UPDATE reminders
+           SET owner_kind = ?,
+               task_id = ?,
+               task_recurrence_rule_id = ?,
+               title = ?,
+               notes = ?,
+               frequency = ?,
+               starts_on_local_date = ?,
+               reminder_local_time = ?,
+               ends_on_local_date = ?,
+               source = ?,
+               source_of_truth = ?,
+               permission_status = ?,
+               schedule_state = ?,
+               updated_at = ?
+           WHERE workspace_id = ? AND id = ? AND deleted_at IS NULL`,
+          parsed.value.ownerKind,
+          parsed.value.taskId,
+          parsed.value.taskRecurrenceRuleId,
+          parsed.value.title,
+          parsed.value.notes,
+          parsed.value.frequency,
+          parsed.value.startsOnLocalDate,
+          parsed.value.reminderLocalTime,
+          parsed.value.endsOnLocalDate,
+          parsed.value.source,
+          parsed.value.sourceOfTruth,
+          parsed.value.permissionStatus,
+          parsed.value.scheduleState,
+          parsed.value.updatedAt,
+          parsed.value.workspaceId,
+          parsed.value.id,
+        );
+
+        const updated = await loadReminder(database, parsed.value.workspaceId, parsed.value.id);
+
+        if (!updated.ok) {
+          return updated;
+        }
+
+        if (!updated.value) {
+          return err(createAppError('not_found', 'Reminder was not found.', 'edit'));
+        }
+
+        return ok(updated.value);
+      } catch (cause) {
+        return err(createAppError('unavailable', 'Local reminder could not be updated.', 'retry', cause));
       }
     },
 

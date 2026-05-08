@@ -14,7 +14,7 @@ import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
-import { useReminderCapture } from './useReminderCapture';
+import { useReminderCapture, type ReminderCaptureMutation } from './useReminderCapture';
 
 const ownerOptions: { label: string; value: ReminderOwnerKind }[] = [
   { label: 'Standalone', value: 'standalone' },
@@ -47,6 +47,12 @@ function formatScheduleState(state: ReminderScheduleState): string {
   switch (state) {
     case 'scheduled':
       return 'Scheduled';
+    case 'snoozed':
+      return 'Snoozed';
+    case 'paused':
+      return 'Paused';
+    case 'disabled':
+      return 'Disabled';
     case 'permission_denied':
       return 'Notifications are off';
     case 'unavailable':
@@ -63,6 +69,12 @@ function scheduleDescription(state: ReminderScheduleState): string {
   switch (state) {
     case 'scheduled':
       return 'Local notifications are scheduled for the upcoming reminder window.';
+    case 'snoozed':
+      return 'The next reminder moved later. The original repeat pattern is unchanged.';
+    case 'paused':
+      return 'Notifications are paused. Reminder details are still saved and can be resumed.';
+    case 'disabled':
+      return 'Notifications are disabled. Reminder details are still saved and can be enabled.';
     case 'permission_denied':
       return 'Notifications are off. You can still use this reminder in Pplant.';
     case 'unavailable':
@@ -76,7 +88,7 @@ function scheduleDescription(state: ReminderScheduleState): string {
 }
 
 function scheduleTone(state: ReminderScheduleState): 'neutral' | 'success' | 'warning' {
-  if (state === 'scheduled') {
+  if (state === 'scheduled' || state === 'snoozed') {
     return 'success';
   }
 
@@ -85,6 +97,31 @@ function scheduleTone(state: ReminderScheduleState): 'neutral' | 'success' | 'wa
   }
 
   return 'neutral';
+}
+
+function savedMutationTitle(lastMutation: ReminderCaptureMutation | null): string {
+  switch (lastMutation) {
+    case 'deleted':
+      return 'Reminder deleted';
+    case 'disabled':
+      return 'Reminder disabled';
+    case 'enabled':
+      return 'Reminder enabled';
+    case 'paused':
+      return 'Reminder paused';
+    case 'resumed':
+      return 'Reminder resumed';
+    case 'skipped':
+      return 'Reminder occurrence skipped';
+    case 'snoozed':
+      return 'Reminder snoozed';
+    case 'updated':
+      return 'Reminder updated';
+    case 'local_only':
+    case 'created':
+    default:
+      return 'Reminder saved';
+  }
 }
 
 export function ReminderForm() {
@@ -117,6 +154,8 @@ export function ReminderForm() {
   const savedDescription =
     state.lastMutation === 'skipped' && state.occurrenceDate
       ? `Skipped reminder occurrence on ${state.occurrenceDate}.`
+      : state.lastMutation === 'deleted'
+        ? 'Reminder removed. Linked task and routine data were not changed.'
       : state.savedReminder
         ? scheduleDescription(state.savedReminder.scheduleState)
         : '';
@@ -130,9 +169,15 @@ export function ReminderForm() {
 
       {state.status === 'saved' && savedDescription ? (
         <StatusBanner
-          title={state.lastMutation === 'skipped' ? 'Reminder occurrence skipped' : 'Reminder saved'}
+          title={savedMutationTitle(state.lastMutation)}
           description={savedDescription}
-          tone={state.savedReminder ? scheduleTone(state.savedReminder.scheduleState) : 'neutral'}
+          tone={
+            state.lastMutation === 'deleted'
+              ? 'neutral'
+              : state.savedReminder
+                ? scheduleTone(state.savedReminder.scheduleState)
+                : 'neutral'
+          }
         />
       ) : null}
 
@@ -149,6 +194,13 @@ export function ReminderForm() {
           title="Check reminder fields"
           description="Each highlighted field includes the next correction to make."
           tone="warning"
+        />
+      ) : null}
+
+      {state.editingReminderId ? (
+        <StatusBanner
+          title="Editing reminder timing"
+          description="Save changes to update the reminder schedule, or cancel to leave it unchanged."
         />
       ) : null}
 
@@ -262,13 +314,25 @@ export function ReminderForm() {
         ) : null}
 
         <View style={styles.buttonRow}>
-          <Button disabled={saving} label={saving ? 'Saving' : 'Save reminder'} onPress={() => reminders.save()} />
           <Button
             disabled={saving}
-            label="Save local-only"
+            label={saving ? 'Saving' : state.editingReminderId ? 'Save reminder changes' : 'Save reminder'}
+            onPress={() => reminders.save()}
+          />
+          <Button
+            disabled={saving}
+            label={state.editingReminderId ? 'Save local-only changes' : 'Save local-only'}
             onPress={reminders.saveLocalOnly}
             variant="secondary"
           />
+          {state.editingReminderId ? (
+            <Button
+              disabled={saving}
+              label="Cancel reminder edit"
+              onPress={reminders.cancelEdit}
+              variant="secondary"
+            />
+          ) : null}
         </View>
       </View>
 
@@ -282,6 +346,8 @@ export function ReminderForm() {
       <View style={styles.listGroup}>
         {state.reminders.map((view) => {
           const reminder = view.reminder;
+          const reminderPaused = reminder.scheduleState === 'paused';
+          const reminderDisabled = reminder.scheduleState === 'disabled';
 
           return (
             <View key={reminder.id} style={styles.reminderBlock}>
@@ -304,12 +370,48 @@ export function ReminderForm() {
                   />
                 ))}
               </View>
-              <Button
-                disabled={saving}
-                label="Skip next occurrence"
-                onPress={() => reminders.skipNextOccurrence(reminder.id)}
-                variant="secondary"
-              />
+              <View style={styles.reminderActions}>
+                <Button
+                  disabled={saving}
+                  label="Edit reminder timing"
+                  onPress={() => reminders.startEdit(view)}
+                  variant="secondary"
+                />
+                <Button
+                  disabled={saving || reminderPaused || reminderDisabled}
+                  label="Snooze reminder 30 min"
+                  onPress={() => reminders.snoozeNextOccurrence(reminder.id)}
+                  variant="secondary"
+                />
+                <Button
+                  disabled={saving || reminderDisabled}
+                  label={reminderPaused ? 'Resume reminder' : 'Pause reminder'}
+                  onPress={() =>
+                    reminderPaused ? reminders.resumeReminder(reminder.id) : reminders.pauseReminder(reminder.id)
+                  }
+                  variant="secondary"
+                />
+                <Button
+                  disabled={saving}
+                  label={reminderDisabled ? 'Enable reminder' : 'Disable reminder'}
+                  onPress={() =>
+                    reminderDisabled ? reminders.enableReminder(reminder.id) : reminders.disableReminder(reminder.id)
+                  }
+                  variant="secondary"
+                />
+                <Button
+                  disabled={saving || reminderDisabled}
+                  label="Skip next occurrence"
+                  onPress={() => reminders.skipNextOccurrence(reminder.id)}
+                  variant="secondary"
+                />
+                <Button
+                  disabled={saving}
+                  label="Delete reminder"
+                  onPress={() => reminders.deleteReminder(reminder.id)}
+                  variant="danger"
+                />
+              </View>
             </View>
           );
         })}
@@ -366,6 +468,9 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   reminderBlock: {
+    gap: spacing.sm,
+  },
+  reminderActions: {
     gap: spacing.sm,
   },
   section: {

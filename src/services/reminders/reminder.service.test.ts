@@ -1,6 +1,7 @@
 import { parseTaskRecurrenceRuleRow, parseTaskRow } from '@/domain/tasks/schemas';
 import type { Task, TaskRecurrenceRule } from '@/domain/tasks/types';
 import { createAppError } from '@/domain/common/app-error';
+import { formatDateAsLocalDate } from '@/domain/common/date-rules';
 import { err, ok, type AppResult } from '@/domain/common/result';
 import {
   parseReminderExceptionRow,
@@ -20,12 +21,23 @@ import { localWorkspaceId } from '@/domain/workspace/types';
 
 import {
   createReminder,
+  deleteReminder,
+  disableReminder,
+  enableReminder,
   loadReminderData,
+  pauseReminder,
+  resumeReminder,
   skipReminderOccurrence,
+  snoozeReminder,
+  updateReminder,
   type ReminderServiceDependencies,
 } from './reminder.service';
 
 const fixedNow = new Date('2026-05-08T00:00:00.000Z');
+
+function formatExpectedFireAtLocal(date: Date): string {
+  return `${formatDateAsLocalDate(date)}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
 
 function createTaskFixture(overrides: Record<string, unknown> = {}): Task {
   const result = parseTaskRow({
@@ -200,6 +212,40 @@ function createDependencies({
 
       if (parsed.ok) {
         reminders.push(parsed.value);
+      }
+
+      return parsed;
+    }),
+    updateReminder: jest.fn(async (input: SaveReminderInput) => {
+      const reminder = reminders.find((candidate) => candidate.id === input.id && candidate.deletedAt === null);
+
+      if (!reminder) {
+        return err(createAppError('not_found', 'Missing reminder.', 'edit'));
+      }
+
+      const parsed = parseReminderRow({
+        createdAt: input.createdAt,
+        deletedAt: input.deletedAt ?? null,
+        endsOnLocalDate: input.endsOnLocalDate ?? null,
+        frequency: input.frequency,
+        id: input.id,
+        notes: input.notes ?? null,
+        ownerKind: input.ownerKind,
+        permissionStatus: input.permissionStatus,
+        reminderLocalTime: input.reminderLocalTime,
+        scheduleState: input.scheduleState,
+        source: input.source,
+        sourceOfTruth: input.sourceOfTruth,
+        startsOnLocalDate: input.startsOnLocalDate,
+        taskId: input.taskId ?? null,
+        taskRecurrenceRuleId: input.taskRecurrenceRuleId ?? null,
+        title: input.title,
+        updatedAt: input.updatedAt,
+        workspaceId: input.workspaceId,
+      });
+
+      if (parsed.ok) {
+        Object.assign(reminder, parsed.value);
       }
 
       return parsed;
@@ -552,5 +598,141 @@ describe('reminder service', () => {
     expect(exceptions).toHaveLength(1);
     expect(scheduler.cancelled).toContain('platform-1');
     expect(scheduledNotifications.filter((notification) => notification.deletedAt === null)).toHaveLength(29);
+  });
+
+  it('updates reminder timing and rewrites the scheduled notification window', async () => {
+    const { dependencies, scheduler, scheduledNotifications } = createDependencies();
+
+    const created = await createReminder(
+      {
+        frequency: 'daily',
+        ownerKind: 'standalone',
+        reminderLocalTime: '09:30',
+        startsOnLocalDate: '2026-05-08',
+        title: 'Study',
+      },
+      dependencies,
+    );
+
+    expect(created.ok).toBe(true);
+
+    const updated = await updateReminder(
+      {
+        frequency: 'once',
+        id: 'reminder-1',
+        notes: 'Bring workbook',
+        ownerKind: 'standalone',
+        reminderLocalTime: '10:45',
+        startsOnLocalDate: '2026-05-09',
+        title: 'Study updated',
+      },
+      dependencies,
+    );
+
+    expect(updated.ok).toBe(true);
+    if (updated.ok) {
+      expect(updated.value.reminder).toMatchObject({
+        frequency: 'once',
+        reminderLocalTime: '10:45',
+        scheduleState: 'scheduled',
+        startsOnLocalDate: '2026-05-09',
+        title: 'Study updated',
+      });
+    }
+    expect(scheduler.cancelled).toHaveLength(30);
+    expect(scheduledNotifications.filter((notification) => notification.deletedAt === null)).toHaveLength(1);
+    expect(scheduledNotifications.filter((notification) => notification.deletedAt === null)[0]).toMatchObject({
+      fireAtLocal: '2026-05-09T10:45',
+      scheduledNotificationId: 'platform-31',
+    });
+  });
+
+  it('snoozes the next occurrence without changing the source recurrence rule', async () => {
+    const { dependencies, scheduler, scheduledNotifications } = createDependencies();
+
+    await createReminder(
+      {
+        frequency: 'once',
+        ownerKind: 'standalone',
+        reminderLocalTime: '09:30',
+        startsOnLocalDate: '2026-05-08',
+        title: 'Study',
+      },
+      dependencies,
+    );
+
+    const snoozed = await snoozeReminder({ id: 'reminder-1', minutes: 30 }, dependencies);
+
+    expect(snoozed.ok).toBe(true);
+    if (snoozed.ok) {
+      expect(snoozed.value.reminder).toMatchObject({
+        reminderLocalTime: '09:30',
+        scheduleState: 'snoozed',
+        startsOnLocalDate: '2026-05-08',
+      });
+    }
+    expect(scheduler.cancelled).toContain('platform-1');
+    expect(scheduledNotifications.filter((notification) => notification.deletedAt === null)).toEqual([
+      expect.objectContaining({
+        deliveryState: 'snoozed',
+        fireAtLocal: formatExpectedFireAtLocal(new Date(fixedNow.getTime() + 30 * 60_000)),
+        occurrenceLocalDate: '2026-05-08',
+      }),
+    ]);
+  });
+
+  it('pauses, resumes, disables, and enables reminders without deleting reminder data', async () => {
+    const { dependencies, scheduledNotifications } = createDependencies();
+
+    await createReminder(
+      {
+        frequency: 'daily',
+        ownerKind: 'standalone',
+        reminderLocalTime: '09:30',
+        startsOnLocalDate: '2026-05-08',
+        title: 'Study',
+      },
+      dependencies,
+    );
+
+    const paused = await pauseReminder({ id: 'reminder-1' }, dependencies);
+    const resumed = await resumeReminder({ id: 'reminder-1' }, dependencies);
+    const disabled = await disableReminder({ id: 'reminder-1' }, dependencies);
+    const enabled = await enableReminder({ id: 'reminder-1' }, dependencies);
+    const activeNotifications = scheduledNotifications.filter((notification) => notification.deletedAt === null);
+
+    expect(paused.ok && paused.value.reminder.scheduleState).toBe('paused');
+    expect(resumed.ok && resumed.value.reminder.scheduleState).toBe('scheduled');
+    expect(disabled.ok && disabled.value.reminder.scheduleState).toBe('disabled');
+    expect(enabled.ok && enabled.value.reminder.scheduleState).toBe('scheduled');
+    expect(enabled.ok && enabled.value.reminder.title).toBe('Study');
+    expect(activeNotifications).toHaveLength(30);
+  });
+
+  it('soft deletes reminders and cancels active scheduled notification ids', async () => {
+    const { dependencies, reminders, scheduler, scheduledNotifications } = createDependencies();
+
+    await createReminder(
+      {
+        frequency: 'once',
+        ownerKind: 'standalone',
+        reminderLocalTime: '09:30',
+        startsOnLocalDate: '2026-05-08',
+        title: 'Study',
+      },
+      dependencies,
+    );
+
+    const deleted = await deleteReminder({ id: 'reminder-1' }, dependencies);
+    const loaded = await loadReminderData(dependencies);
+
+    expect(deleted.ok).toBe(true);
+    if (deleted.ok) {
+      expect(deleted.value.reminder.deletedAt).toBe(fixedNow.toISOString());
+    }
+    expect(loaded.ok && loaded.value.reminders).toEqual([]);
+    expect(reminders).toHaveLength(1);
+    expect(scheduler.cancelled).toContain('platform-1');
+    expect(scheduledNotifications.filter((notification) => notification.deletedAt === null)).toHaveLength(0);
   });
 });

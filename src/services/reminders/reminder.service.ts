@@ -32,9 +32,11 @@ import {
   asReminderNotes,
   asReminderOwnerKind,
   asReminderTitle,
+  combineReminderFireAtLocal,
 } from '@/domain/reminders/schemas';
 import type {
   Reminder,
+  ReminderFireAtLocal,
   ReminderFrequency,
   ReminderOccurrence,
   ReminderOwnerKind,
@@ -227,6 +229,23 @@ function parseSkipLocalDates(values: string[] | undefined): AppResult<LocalDate[
   }
 
   return ok(parsedDates);
+}
+
+function parseSnoozeMinutes(minutes: number | undefined): AppResult<number> {
+  const normalized = minutes ?? 30;
+
+  if (!Number.isInteger(normalized) || normalized < 1 || normalized > 24 * 60) {
+    return err(createAppError('validation_failed', 'Snooze minutes must be between 1 and 1440.', 'edit'));
+  }
+
+  return ok(normalized);
+}
+
+function formatReminderFireAtLocalFromDate(date: Date): AppResult<ReminderFireAtLocal> {
+  const localDate = formatDateAsLocalDate(date);
+  const localTime = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+
+  return combineReminderFireAtLocal(localDate, localTime);
 }
 
 async function validateOwnerReferences(
@@ -759,6 +778,92 @@ async function applyScheduleResult(
   return ok(updated.value);
 }
 
+async function createReminderMutationResult(
+  access: PreparedReminderAccess,
+  reminder: Reminder,
+): Promise<AppResult<ReminderMutationResult>> {
+  const view = await createReminderView(access.reminderRepository, reminder, access.now);
+
+  if (isErr(view)) {
+    return view;
+  }
+
+  return ok({
+    reminder,
+    view: view.value,
+  });
+}
+
+async function saveReminderSkipExceptions(
+  access: PreparedReminderAccess,
+  dependencies: ReminderServiceDependencies,
+  reminder: Reminder,
+  skipLocalDates: LocalDate[],
+): Promise<AppResult<{ saved: number }>> {
+  const timestamp = access.now.toISOString();
+  let saved = 0;
+
+  for (const skipLocalDate of skipLocalDates) {
+    const exception = await access.reminderRepository.createException({
+      action: 'skip',
+      createdAt: timestamp,
+      id: (dependencies.createExceptionId ?? (() => defaultCreateId('reminder-exception')))(),
+      occurrenceLocalDate: skipLocalDate,
+      reminderId: reminder.id,
+      updatedAt: timestamp,
+      workspaceId: localWorkspaceId,
+    });
+
+    if (isErr(exception)) {
+      return exception;
+    }
+
+    saved += 1;
+  }
+
+  return ok({ saved });
+}
+
+async function clearScheduledNotificationsForState(
+  reminder: Reminder,
+  access: PreparedReminderAccess,
+  dependencies: ReminderServiceDependencies,
+  scheduleState: Extract<ReminderScheduleState, 'disabled' | 'local_only' | 'paused'>,
+): Promise<AppResult<ReminderMutationResult>> {
+  const scheduler = await resolveNotificationScheduler(dependencies);
+  const cancelled = await cancelExistingScheduledNotifications(reminder, access.reminderRepository, scheduler);
+
+  if (isErr(cancelled)) {
+    return cancelled;
+  }
+
+  const timestamp = access.now.toISOString();
+  const replaced = await access.reminderRepository.replaceScheduledNotifications(
+    localWorkspaceId,
+    reminder.id,
+    timestamp,
+    [],
+  );
+
+  if (isErr(replaced)) {
+    return replaced;
+  }
+
+  const updated = await access.reminderRepository.updateScheduleState(
+    localWorkspaceId,
+    reminder.id,
+    reminder.permissionStatus,
+    scheduleState,
+    timestamp,
+  );
+
+  if (isErr(updated)) {
+    return updated;
+  }
+
+  return createReminderMutationResult(access, updated.value);
+}
+
 async function nextOpenOccurrence(
   repository: ReminderRepository,
   reminder: Reminder,
@@ -893,20 +998,15 @@ export async function createReminder(
     return reminder;
   }
 
-  for (const skipLocalDate of validated.value.skipLocalDates) {
-    const exception = await access.value.reminderRepository.createException({
-      action: 'skip',
-      createdAt: timestamp,
-      id: (dependencies.createExceptionId ?? (() => defaultCreateId('reminder-exception')))(),
-      occurrenceLocalDate: skipLocalDate,
-      reminderId: reminder.value.id,
-      updatedAt: timestamp,
-      workspaceId: localWorkspaceId,
-    });
+  const savedExceptions = await saveReminderSkipExceptions(
+    access.value,
+    dependencies,
+    reminder.value,
+    validated.value.skipLocalDates,
+  );
 
-    if (isErr(exception)) {
-      return exception;
-    }
+  if (isErr(savedExceptions)) {
+    return savedExceptions;
   }
 
   const scheduleResult =
@@ -928,16 +1028,85 @@ export async function createReminder(
     return updatedReminder;
   }
 
-  const view = await createReminderView(access.value.reminderRepository, updatedReminder.value, access.value.now);
+  return createReminderMutationResult(access.value, updatedReminder.value);
+}
 
-  if (isErr(view)) {
-    return view;
+export async function updateReminder(
+  input: ReminderRequest & { id: string },
+  dependencies: ReminderServiceDependencies = {},
+): Promise<AppResult<ReminderMutationResult>> {
+  const access = await prepareReminderAccess(dependencies);
+
+  if (isErr(access)) {
+    return access;
   }
 
-  return ok({
-    reminder: updatedReminder.value,
-    view: view.value,
+  const existing = await getActiveReminder(access.value.reminderRepository, input.id);
+
+  if (isErr(existing)) {
+    return existing;
+  }
+
+  const validated = await validateReminderRequest(input, access.value);
+
+  if (isErr(validated)) {
+    return validated;
+  }
+
+  const timestamp = access.value.now.toISOString();
+  const updated = await access.value.reminderRepository.updateReminder({
+    createdAt: existing.value.createdAt,
+    deletedAt: null,
+    endsOnLocalDate: validated.value.endsOnLocalDate,
+    frequency: validated.value.frequency,
+    id: existing.value.id,
+    notes: validated.value.notes,
+    ownerKind: validated.value.ownerKind,
+    permissionStatus: input.scheduleMode === 'local_only' ? 'unknown' : existing.value.permissionStatus,
+    reminderLocalTime: validated.value.reminderLocalTime,
+    scheduleState: 'local_only',
+    source: 'manual',
+    sourceOfTruth: 'manual',
+    startsOnLocalDate: validated.value.startsOnLocalDate,
+    taskId: validated.value.taskId,
+    taskRecurrenceRuleId: validated.value.taskRecurrenceRuleId,
+    title: validated.value.title,
+    updatedAt: timestamp,
+    workspaceId: localWorkspaceId,
   });
+
+  if (isErr(updated)) {
+    return updated;
+  }
+
+  const savedExceptions = await saveReminderSkipExceptions(
+    access.value,
+    dependencies,
+    updated.value,
+    validated.value.skipLocalDates,
+  );
+
+  if (isErr(savedExceptions)) {
+    return savedExceptions;
+  }
+
+  if (input.scheduleMode === 'local_only') {
+    return clearScheduledNotificationsForState(updated.value, access.value, dependencies, 'local_only');
+  }
+
+  const scheduleResult = await scheduleReminderNotifications(updated.value, access.value, dependencies);
+
+  if (isErr(scheduleResult)) {
+    return scheduleResult;
+  }
+
+  const scheduled = await applyScheduleResult(updated.value, scheduleResult.value, access.value);
+
+  if (isErr(scheduled)) {
+    return scheduled;
+  }
+
+  return createReminderMutationResult(access.value, scheduled.value);
 }
 
 export async function skipReminderOccurrence(
@@ -1029,6 +1198,286 @@ export async function skipReminderOccurrence(
   }
 
   return ok(exception.value.occurrenceLocalDate);
+}
+
+export async function snoozeReminder(
+  input: ReminderOccurrenceActionRequest & { minutes?: number },
+  dependencies: ReminderServiceDependencies = {},
+): Promise<AppResult<ReminderMutationResult>> {
+  const minutes = parseSnoozeMinutes(input.minutes);
+
+  if (isErr(minutes)) {
+    return minutes;
+  }
+
+  const access = await prepareReminderAccess(dependencies);
+
+  if (isErr(access)) {
+    return access;
+  }
+
+  const reminder = await getActiveReminder(access.value.reminderRepository, input.id);
+
+  if (isErr(reminder)) {
+    return reminder;
+  }
+
+  const occurrence = input.occurrenceLocalDate
+    ? await validateGeneratedOccurrence(access.value.reminderRepository, reminder.value, input.occurrenceLocalDate)
+    : await nextOpenOccurrence(access.value.reminderRepository, reminder.value, access.value.now);
+
+  if (isErr(occurrence)) {
+    return occurrence;
+  }
+
+  if (occurrence.value.state !== 'open') {
+    return err(createAppError('validation_failed', 'Skipped reminder occurrences cannot be snoozed.', 'edit'));
+  }
+
+  const scheduler = await resolveNotificationScheduler(dependencies);
+  const timestamp = access.value.now.toISOString();
+  const updateStateAndView = async (
+    permissionStatus: ReminderPermissionStatus,
+    scheduleState: ReminderScheduleState,
+    clearNotifications: boolean,
+  ): Promise<AppResult<ReminderMutationResult>> => {
+    if (clearNotifications) {
+      const replaced = await access.value.reminderRepository.replaceScheduledNotifications(
+        localWorkspaceId,
+        reminder.value.id,
+        timestamp,
+        [],
+      );
+
+      if (isErr(replaced)) {
+        return replaced;
+      }
+    }
+
+    const updated = await access.value.reminderRepository.updateScheduleState(
+      localWorkspaceId,
+      reminder.value.id,
+      permissionStatus,
+      scheduleState,
+      timestamp,
+    );
+
+    if (isErr(updated)) {
+      return updated;
+    }
+
+    return createReminderMutationResult(access.value, updated.value);
+  };
+
+  const currentPermission = await scheduler.getPermissionStatus();
+
+  if (isErr(currentPermission)) {
+    await recordSchedulingDiagnostic(access.value, dependencies, {
+      errorCategory: currentPermission.error.code,
+      permissionStatus: 'unavailable',
+      scheduleState: 'unavailable',
+    });
+
+    return updateStateAndView('unavailable', 'unavailable', true);
+  }
+
+  let permissionStatus = toReminderPermissionStatus(currentPermission.value);
+
+  if (permissionStatus === 'undetermined') {
+    const requested = await scheduler.requestPermission();
+
+    if (isErr(requested)) {
+      await recordSchedulingDiagnostic(access.value, dependencies, {
+        errorCategory: requested.error.code,
+        permissionStatus: 'unavailable',
+        scheduleState: 'unavailable',
+      });
+
+      return updateStateAndView('unavailable', 'unavailable', true);
+    }
+
+    permissionStatus = toReminderPermissionStatus(requested.value);
+  }
+
+  if (permissionStatus === 'denied') {
+    return updateStateAndView('denied', 'permission_denied', true);
+  }
+
+  if (permissionStatus !== 'granted') {
+    return updateStateAndView(permissionStatus, 'local_only', true);
+  }
+
+  const fireAt = new Date(access.value.now.getTime() + minutes.value * 60_000);
+  const fireAtLocal = formatReminderFireAtLocalFromDate(fireAt);
+
+  if (isErr(fireAtLocal)) {
+    return fireAtLocal;
+  }
+
+  const scheduled = await scheduler.scheduleReminderNotification({
+    body: reminder.value.notes,
+    fireAt,
+    fireAtLocal: fireAtLocal.value,
+    reminderId: reminder.value.id,
+    title: reminder.value.title,
+  });
+
+  if (isErr(scheduled)) {
+    const scheduleState = scheduled.error.code === 'unavailable' ? 'unavailable' : 'failed';
+
+    await recordSchedulingDiagnostic(access.value, dependencies, {
+      errorCategory: scheduled.error.code,
+      permissionStatus,
+      scheduleState,
+    });
+
+    return updateStateAndView(permissionStatus, scheduleState, false);
+  }
+
+  const existing = await access.value.reminderRepository.listScheduledNotifications(
+    localWorkspaceId,
+    reminder.value.id,
+  );
+
+  if (isErr(existing)) {
+    await scheduler.cancelScheduledNotification(scheduled.value.scheduledNotificationId);
+    return existing;
+  }
+
+  const targetNotification = existing.value.find(
+    (notification) => notification.occurrenceLocalDate === occurrence.value.localDate,
+  );
+
+  if (targetNotification) {
+    const cancelled = await scheduler.cancelScheduledNotification(targetNotification.scheduledNotificationId);
+
+    if (isErr(cancelled)) {
+      await scheduler.cancelScheduledNotification(scheduled.value.scheduledNotificationId);
+      return cancelled;
+    }
+  }
+
+  const retainedNotifications = existing.value.filter(
+    (notification) => notification.occurrenceLocalDate !== occurrence.value.localDate,
+  );
+  const replaced = await access.value.reminderRepository.replaceScheduledNotifications(
+    localWorkspaceId,
+    reminder.value.id,
+    timestamp,
+    [
+      ...retainedNotifications.map((notification) => ({
+        createdAt: timestamp,
+        deletedAt: null,
+        deliveryState: notification.deliveryState,
+        fireAtLocal: notification.fireAtLocal,
+        id: (dependencies.createScheduledNotificationId ?? (() => defaultCreateId('reminder-notification')))(),
+        occurrenceLocalDate: notification.occurrenceLocalDate,
+        reminderId: notification.reminderId,
+        scheduleAttemptedAt: notification.scheduleAttemptedAt,
+        scheduleErrorCategory: notification.scheduleErrorCategory,
+        scheduledNotificationId: notification.scheduledNotificationId,
+        updatedAt: timestamp,
+        workspaceId: notification.workspaceId,
+      })),
+      {
+        createdAt: timestamp,
+        deletedAt: null,
+        deliveryState: 'snoozed',
+        fireAtLocal: fireAtLocal.value,
+        id: (dependencies.createScheduledNotificationId ?? (() => defaultCreateId('reminder-notification')))(),
+        occurrenceLocalDate: occurrence.value.localDate,
+        reminderId: reminder.value.id,
+        scheduleAttemptedAt: timestamp,
+        scheduleErrorCategory: null,
+        scheduledNotificationId: scheduled.value.scheduledNotificationId,
+        updatedAt: timestamp,
+        workspaceId: localWorkspaceId,
+      },
+    ],
+  );
+
+  if (isErr(replaced)) {
+    await scheduler.cancelScheduledNotification(scheduled.value.scheduledNotificationId);
+    return replaced;
+  }
+
+  return updateStateAndView(permissionStatus, 'snoozed', false);
+}
+
+export async function pauseReminder(
+  input: ReminderActionRequest,
+  dependencies: ReminderServiceDependencies = {},
+): Promise<AppResult<ReminderMutationResult>> {
+  const access = await prepareReminderAccess(dependencies);
+
+  if (isErr(access)) {
+    return access;
+  }
+
+  const reminder = await getActiveReminder(access.value.reminderRepository, input.id);
+
+  if (isErr(reminder)) {
+    return reminder;
+  }
+
+  return clearScheduledNotificationsForState(reminder.value, access.value, dependencies, 'paused');
+}
+
+export async function resumeReminder(
+  input: ReminderActionRequest,
+  dependencies: ReminderServiceDependencies = {},
+): Promise<AppResult<ReminderMutationResult>> {
+  const access = await prepareReminderAccess(dependencies);
+
+  if (isErr(access)) {
+    return access;
+  }
+
+  const reminder = await getActiveReminder(access.value.reminderRepository, input.id);
+
+  if (isErr(reminder)) {
+    return reminder;
+  }
+
+  const scheduleResult = await scheduleReminderNotifications(reminder.value, access.value, dependencies);
+
+  if (isErr(scheduleResult)) {
+    return scheduleResult;
+  }
+
+  const updated = await applyScheduleResult(reminder.value, scheduleResult.value, access.value);
+
+  if (isErr(updated)) {
+    return updated;
+  }
+
+  return createReminderMutationResult(access.value, updated.value);
+}
+
+export async function disableReminder(
+  input: ReminderActionRequest,
+  dependencies: ReminderServiceDependencies = {},
+): Promise<AppResult<ReminderMutationResult>> {
+  const access = await prepareReminderAccess(dependencies);
+
+  if (isErr(access)) {
+    return access;
+  }
+
+  const reminder = await getActiveReminder(access.value.reminderRepository, input.id);
+
+  if (isErr(reminder)) {
+    return reminder;
+  }
+
+  return clearScheduledNotificationsForState(reminder.value, access.value, dependencies, 'disabled');
+}
+
+export async function enableReminder(
+  input: ReminderActionRequest,
+  dependencies: ReminderServiceDependencies = {},
+): Promise<AppResult<ReminderMutationResult>> {
+  return resumeReminder(input, dependencies);
 }
 
 export async function deleteReminder(
