@@ -1,6 +1,6 @@
 # Story 6.1: Generate Weekly And Monthly Summaries
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -16,42 +16,42 @@ so that I can understand where my time and money went.
 
 ## Tasks / Subtasks
 
-- [ ] Add period summary domain calculations. (AC: 1, 2, 3)
-  - [ ] Replace the current `weekly-summary.ts` and `monthly-summary.ts` stubs with reusable pure calculation functions or a shared `period-summary.ts` module.
-  - [ ] Define deterministic week and month period inputs using existing local-date helpers; week start must use the established `defaultWeekStartsOn` rule unless preferences later add an override.
-  - [ ] Aggregate active money records into spending, income, net amount, counts, and period records without using floating point money values.
-  - [ ] Aggregate active work entries into total minutes, earned income minor units, paid/unpaid counts, and entry counts.
-  - [ ] Aggregate direct tasks and virtual recurring task/habit occurrences into completed, open, missed/overdue, skipped, and total counts.
-  - [ ] Aggregate reminder occurrences and recovery states into scheduled/open, missed/recovery, disabled/unavailable/permission-denied, and total counts.
-  - [ ] Include budget status and savings goal progress by reusing existing budget/savings calculation helpers.
-  - [ ] Return partial/no-data flags for each section and neutral display labels only; do not generate advice, predictions, causal claims, or optimization recommendations.
+- [x] Add period summary domain calculations. (AC: 1, 2, 3)
+  - [x] Replace the current `weekly-summary.ts` and `monthly-summary.ts` stubs with reusable pure calculation functions or a shared `period-summary.ts` module.
+  - [x] Define deterministic week and month period inputs using existing local-date helpers; week start must use the established `defaultWeekStartsOn` rule unless preferences later add an override.
+  - [x] Aggregate active money records into spending, income, net amount, counts, and period records without using floating point money values.
+  - [x] Aggregate active work entries into total minutes, earned income minor units, paid/unpaid counts, and entry counts.
+  - [x] Aggregate direct tasks and virtual recurring task/habit occurrences into completed, open, missed/overdue, skipped, and total counts.
+  - [x] Aggregate reminder occurrences and recovery states into scheduled/open, missed/recovery, disabled/unavailable/permission-denied, and total counts.
+  - [x] Include budget status and savings goal progress by reusing existing budget/savings calculation helpers.
+  - [x] Return partial/no-data flags for each section and neutral display labels only; do not generate advice, predictions, causal claims, or optimization recommendations.
 
-- [ ] Add review summary service orchestration. (AC: 1, 2, 3)
-  - [ ] Add a service under `src/services/summaries` that opens/migrates the local database, loads preferences, resolves the requested weekly or monthly period, loads existing repositories, and returns typed `AppResult`.
-  - [ ] Reuse existing repositories for money, work, tasks, task recurrence, reminders, budget rules, and savings goals. React components must not import SQLite clients, Drizzle schema, or migrations.
-  - [ ] Build recurring task/habit and reminder virtual occurrences for the whole period using existing recurrence helpers and exception/completion tables.
-  - [ ] Keep summaries source-of-truth driven. If no durable summary cache exists or deterministic invalidation is not already implemented, compute from repositories on demand and expose a `cacheStatus: 'fresh_from_source'` or equivalent; do not add a cache table just for this story.
-  - [ ] If an existing cache/snapshot table is present, only use it when invalidation after add/edit/delete/migration is deterministic and covered by tests.
+- [x] Add review summary service orchestration. (AC: 1, 2, 3)
+  - [x] Add a service under `src/services/summaries` that opens/migrates the local database, loads preferences, resolves the requested weekly or monthly period, loads existing repositories, and returns typed `AppResult`.
+  - [x] Reuse existing repositories for money, work, tasks, task recurrence, reminders, budget rules, and savings goals. React components must not import SQLite clients, Drizzle schema, or migrations.
+  - [x] Build recurring task/habit and reminder virtual occurrences for the whole period using existing recurrence helpers and exception/completion tables.
+  - [x] Keep summaries source-of-truth driven. If no durable summary cache exists or deterministic invalidation is not already implemented, compute from repositories on demand and expose a `cacheStatus: 'fresh_from_source'` or equivalent; do not add a cache table just for this story.
+  - [x] If an existing cache/snapshot table is present, only use it when invalidation after add/edit/delete/migration is deterministic and covered by tests.
 
-- [ ] Expose weekly/monthly summaries in Review. (AC: 1)
-  - [ ] Add review feature state/hook support for selecting a weekly or monthly period while preserving the existing end-of-day review behavior.
-  - [ ] Update `ReviewScreen.tsx` or a review-owned child component so it shows weekly/monthly summary sections for money, work, tasks/habits, reminders, budget, and savings.
-  - [ ] Use existing UI primitives (`SegmentedControl`, `StatusBanner`, `ListRow`, `Button` where appropriate) and follow `DESIGN.md`.
-  - [ ] Ensure loading, empty, preferences-needed, failed, and partial-data states have a clear next action or neutral explanation.
-  - [ ] Keep copy neutral: "Recorded this period", "No task activity in this period", "Review data is partial" are acceptable; avoid shame, advice, prediction, or financial-advice language.
+- [x] Expose weekly/monthly summaries in Review. (AC: 1)
+  - [x] Add review feature state/hook support for selecting a weekly or monthly period while preserving the existing end-of-day review behavior.
+  - [x] Update `ReviewScreen.tsx` or a review-owned child component so it shows weekly/monthly summary sections for money, work, tasks/habits, reminders, budget, and savings.
+  - [x] Use existing UI primitives (`SegmentedControl`, `StatusBanner`, `ListRow`, `Button` where appropriate) and follow `DESIGN.md`.
+  - [x] Ensure loading, empty, preferences-needed, failed, and partial-data states have a clear next action or neutral explanation.
+  - [x] Keep copy neutral: "Recorded this period", "No task activity in this period", "Review data is partial" are acceptable; avoid shame, advice, prediction, or financial-advice language.
 
-- [ ] Preserve boundaries, privacy, and data safety. (AC: 1, 2, 3)
-  - [ ] Do not change authentication, authorization, cloud sync, bank/payment integrations, receipt OCR provider behavior, or data deletion workflows.
-  - [ ] Do not create destructive migrations or rewrite existing money/work/task/reminder modules.
-  - [ ] Do not log spending details, income values, task contents, reminder text, reflections, receipt data, or raw payload JSON to diagnostics.
-  - [ ] Preserve manual corrections and saved records as source of truth; derived summaries must not write back into source records.
+- [x] Preserve boundaries, privacy, and data safety. (AC: 1, 2, 3)
+  - [x] Do not change authentication, authorization, cloud sync, bank/payment integrations, receipt OCR provider behavior, or data deletion workflows.
+  - [x] Do not create destructive migrations or rewrite existing money/work/task/reminder modules.
+  - [x] Do not log spending details, income values, task contents, reminder text, reflections, receipt data, or raw payload JSON to diagnostics.
+  - [x] Preserve manual corrections and saved records as source of truth; derived summaries must not write back into source records.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Add domain tests for weekly/monthly period boundaries, month transitions, leap days, deleted-record exclusion, deterministic sorting/counting, budget status, savings progress, and no-data states.
-  - [ ] Add service tests proving repository period queries, recurrence occurrence generation across the period, preferences-needed errors, open-database errors, and on-demand recomputation after changed inputs.
-  - [ ] Add hook/UI state tests where reasonable for weekly/monthly mode, loading/empty/failed/preferences-needed states, and non-color-only status labels.
-  - [ ] Add a lightweight standard MVP dataset performance guard for the pure calculation path using `standardMvpDatasetCounts` or a generated non-sensitive fixture shape that does not slow the normal test suite.
-  - [ ] Run `npm run typecheck -- --pretty false`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Add domain tests for weekly/monthly period boundaries, month transitions, leap days, deleted-record exclusion, deterministic sorting/counting, budget status, savings progress, and no-data states.
+  - [x] Add service tests proving repository period queries, recurrence occurrence generation across the period, preferences-needed errors, open-database errors, and on-demand recomputation after changed inputs.
+  - [x] Add hook/UI state tests where reasonable for weekly/monthly mode, loading/empty/failed/preferences-needed states, and non-color-only status labels.
+  - [x] Add a lightweight standard MVP dataset performance guard for the pure calculation path using `standardMvpDatasetCounts` or a generated non-sensitive fixture shape that does not slow the normal test suite.
+  - [x] Run `npm run typecheck -- --pretty false`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -169,11 +169,34 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-08: Created Story 6.1 ready-for-dev from Epic 6, PRD, architecture, current Review/summaries code, Story 5.5 learnings, and project automation rules.
+- 2026-05-08: Started Story 6.1 implementation. Plan: add pure period summary calculations first, then service orchestration, review hook/UI support, focused tests, and full verification.
+- 2026-05-08: Added pure weekly/monthly period summary calculations, source-driven period review service, Review tab day/week/month selector, and focused domain/service/reducer tests.
+- 2026-05-08: Verification passed: focused Jest, typecheck, lint, full Jest, Expo install check, build-if-present, and git diff whitespace check.
 
 ### Completion Notes List
 
+- Implemented deterministic weekly/monthly summary calculations from local source records with `cacheStatus: 'fresh_from_source'`.
+- Added period review service orchestration that reuses existing repositories, recurrence builders, recovery data, budget rules, and savings goals without adding a migration or cache table.
+- Extended Review with Day/Week/Month modes while preserving the existing end-of-day flow and neutral copy.
+- Added focused tests for period boundaries, source recomputation, standard MVP dataset scale, service error paths, and period review state transitions.
+
 ### File List
+
+- `_bmad-output/implementation-artifacts/6-1-generate-weekly-and-monthly-summaries.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-6.1-review.md`
+- `src/domain/summaries/monthly-summary.ts`
+- `src/domain/summaries/period-summary.test.ts`
+- `src/domain/summaries/period-summary.ts`
+- `src/domain/summaries/weekly-summary.ts`
+- `src/features/review/ReviewScreen.tsx`
+- `src/features/review/usePeriodReviewSummary.test.ts`
+- `src/features/review/usePeriodReviewSummary.ts`
+- `src/services/summaries/period-review.service.test.ts`
+- `src/services/summaries/period-review.service.ts`
 
 ## Change Log
 
 - 2026-05-08: Created Story 6.1 ready-for-dev.
+- 2026-05-08: Started implementation.
+- 2026-05-08: Completed weekly/monthly summaries after verification.

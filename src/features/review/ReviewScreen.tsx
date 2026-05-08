@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,8 +11,10 @@ import type {
   EndOfDayTaskItemStatus,
 } from '@/domain/summaries/end-of-day-review';
 import type { EndOfDayReviewData } from '@/services/summaries/end-of-day-review.service';
+import type { PeriodReviewData } from '@/services/summaries/period-review.service';
 import { Button } from '@/ui/primitives/Button';
 import { ListRow } from '@/ui/primitives/ListRow';
+import { SegmentedControl } from '@/ui/primitives/SegmentedControl';
 import { StatusBanner } from '@/ui/primitives/StatusBanner';
 import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
@@ -21,8 +23,12 @@ import { typography } from '@/ui/tokens/typography';
 
 import { routeForEndOfDayReviewEdit } from './end-of-day-review-routes';
 import { useEndOfDayReview } from './useEndOfDayReview';
+import { usePeriodReviewSummary, type PeriodReviewState } from './usePeriodReviewSummary';
 
-function formatAmount(data: EndOfDayReviewData, amountMinor: number): string {
+type ReviewMode = 'day' | 'month' | 'week';
+type ReviewCurrencyData = Pick<EndOfDayReviewData | PeriodReviewData, 'preferences'>;
+
+function formatAmount(data: ReviewCurrencyData, amountMinor: number): string {
   const sign = amountMinor < 0 ? '-' : '';
   const formatted = formatMinorUnitsForInput(Math.abs(amountMinor), data.preferences.currencyCode, {
     locale: data.preferences.locale,
@@ -362,12 +368,231 @@ function ActivitySection({ data, summary }: { data: EndOfDayReviewData; summary:
   );
 }
 
+function ReviewModeControl({
+  mode,
+  onChange,
+}: {
+  mode: ReviewMode;
+  onChange: (mode: ReviewMode) => void;
+}) {
+  return (
+    <SegmentedControl
+      options={[
+        { label: 'Day', value: 'day' },
+        { label: 'Week', value: 'week' },
+        { label: 'Month', value: 'month' },
+      ]}
+      selectedValue={mode}
+      onChange={onChange}
+    />
+  );
+}
+
+function PeriodMoneySection({ data }: { data: PeriodReviewData }) {
+  const { summary } = data;
+
+  return (
+    <Section title="Money This Period">
+      <View style={styles.metricRow}>
+        <Metric label="Income" value={formatAmount(data, summary.money.incomeAmountMinor)} />
+        <Metric label="Spent" value={formatAmount(data, summary.money.expenseAmountMinor)} />
+        <Metric label="Net" value={formatAmount(data, summary.money.netAmountMinor)} />
+      </View>
+      {summary.partial.money ? (
+        <StatusBanner
+          title="No spending or income in this period"
+          description="This summary is calculated from saved local money records."
+        />
+      ) : (
+        <Text style={styles.sectionNote}>{summary.money.recordCount} money record(s) included.</Text>
+      )}
+    </Section>
+  );
+}
+
+function PeriodBudgetSavingsSection({ data }: { data: PeriodReviewData }) {
+  const { summary } = data;
+  const reachedSavings = summary.savings.filter((goal) => goal.targetReached).length;
+  const remainingSavingsMinor = summary.savings.reduce((total, goal) => total + goal.remainingMinor, 0);
+  const remainingBudget = summary.budget.budgetStatus
+    ? formatAmount(data, summary.budget.budgetStatus.remainingMinor)
+    : 'Not set';
+
+  return (
+    <Section title="Budget and Savings">
+      <View style={styles.metricRow}>
+        <Metric label="Budget left" value={remainingBudget} />
+        <Metric label="Goals" value={`${summary.savings.length}`} />
+        <Metric label="Reached" value={`${reachedSavings}`} />
+      </View>
+      {summary.partial.budget && summary.partial.savings ? (
+        <StatusBanner
+          title="No budget or savings setup yet"
+          description="Budget and savings summaries appear after those settings are saved."
+        />
+      ) : (
+        <Text style={styles.sectionNote}>
+          Savings remaining: {formatAmount(data, remainingSavingsMinor)}
+        </Text>
+      )}
+    </Section>
+  );
+}
+
+function PeriodWorkSection({ data }: { data: PeriodReviewData }) {
+  const { summary } = data;
+
+  return (
+    <Section title="Work This Period">
+      <View style={styles.metricRow}>
+        <Metric label="Time" value={formatMinutes(summary.work.totalDurationMinutes)} />
+        <Metric label="Earned" value={formatAmount(data, summary.work.earnedIncomeMinor)} />
+        <Metric label="Entries" value={`${summary.work.entryCount}`} />
+      </View>
+      {summary.partial.work ? (
+        <StatusBanner
+          title="No work logged in this period"
+          description="Work time and earned income will appear here when entries are saved."
+        />
+      ) : (
+        <Text style={styles.sectionNote}>
+          {summary.work.paidEntryCount} paid and {summary.work.unpaidEntryCount} unpaid work entry(s).
+        </Text>
+      )}
+    </Section>
+  );
+}
+
+function PeriodTasksSection({ data }: { data: PeriodReviewData }) {
+  const { summary } = data;
+
+  return (
+    <Section title="Tasks and Habits This Period">
+      <View style={styles.metricRow}>
+        <Metric label="Done" value={`${summary.tasks.completedCount}`} />
+        <Metric label="Open" value={`${summary.tasks.openCount}`} />
+        <Metric label="Ready to review" value={`${summary.tasks.missedCount + summary.tasks.recoveryItemCount}`} />
+      </View>
+      {summary.partial.tasks ? (
+        <StatusBanner
+          title="No task activity in this period"
+          description="Completed, open, and ready-to-review tasks will appear here when saved records exist."
+        />
+      ) : (
+        <Text style={styles.sectionNote}>
+          Includes {summary.tasks.recurringTotalCount} recurring task or habit occurrence(s).
+        </Text>
+      )}
+    </Section>
+  );
+}
+
+function PeriodRemindersSection({ data }: { data: PeriodReviewData }) {
+  const { summary } = data;
+
+  return (
+    <Section title="Reminders This Period">
+      <View style={styles.metricRow}>
+        <Metric label="Occurrences" value={`${summary.reminders.totalOccurrenceCount}`} />
+        <Metric label="Open" value={`${summary.reminders.openOccurrenceCount}`} />
+        <Metric
+          label="Review"
+          value={`${summary.reminders.missedOrRecoveryCount + summary.reminders.disabledOrUnavailableCount}`}
+        />
+      </View>
+      {summary.partial.reminders ? (
+        <StatusBanner
+          title="No reminder activity in this period"
+          description="Scheduled and ready-to-review reminder states will appear here when present."
+        />
+      ) : (
+        <Text style={styles.sectionNote}>
+          {summary.reminders.skippedOccurrenceCount} skipped reminder occurrence(s) recorded.
+        </Text>
+      )}
+    </Section>
+  );
+}
+
+function PeriodReviewContent({
+  onRetry,
+  state,
+}: {
+  onRetry: () => void;
+  state: PeriodReviewState;
+}) {
+  if (state.status === 'loading' && !state.data) {
+    return (
+      <StatusBanner
+        title="Loading period summary"
+        description="Pplant is calculating this summary from local records."
+      />
+    );
+  }
+
+  if (state.status === 'failed') {
+    return (
+      <Section
+        title="Summary"
+        action={<Button label="Retry" onPress={onRetry} variant="secondary" />}>
+        <StatusBanner
+          title="Summary could not open"
+          description="Your local data is unchanged. Try loading the summary again."
+          tone="warning"
+        />
+      </Section>
+    );
+  }
+
+  if (state.status === 'preferences_needed') {
+    return (
+      <Section
+        title="Summary"
+        action={<Button label="Open Settings" onPress={goToSettings} variant="secondary" />}>
+        <StatusBanner
+          title="Save preferences first"
+          description="Weekly and monthly summaries use your currency, locale, reset day, and wage defaults."
+        />
+      </Section>
+    );
+  }
+
+  if (!state.data) {
+    return null;
+  }
+
+  return (
+    <>
+      {state.status === 'loading' ? (
+        <StatusBanner title="Refreshing" description="The current summary stays visible while local data reloads." />
+      ) : null}
+      {state.status === 'empty' ? (
+        <StatusBanner
+          title="Nothing recorded in this period"
+          description="That is only a data state. This summary will fill in when records are saved."
+        />
+      ) : null}
+      <StatusBanner
+        title="Summary calculated from local records"
+        description={`${state.data.summary.period.label} uses the latest saved records and does not write back to them.`}
+      />
+      <PeriodMoneySection data={state.data} />
+      <PeriodBudgetSavingsSection data={state.data} />
+      <PeriodWorkSection data={state.data} />
+      <PeriodTasksSection data={state.data} />
+      <PeriodRemindersSection data={state.data} />
+    </>
+  );
+}
+
 export function ReviewScreen() {
   const review = useEndOfDayReview();
+  const [mode, setMode] = useState<ReviewMode>('day');
+  const periodReview = usePeriodReviewSummary(mode === 'day' ? null : mode);
   const { state } = review;
   const saving = state.status === 'saving';
 
-  if (state.status === 'loading' && !state.data) {
+  if (mode === 'day' && state.status === 'loading' && !state.data) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="Loading end-of-day review" accessibilityRole="summary" style={styles.centered}>
@@ -379,7 +604,7 @@ export function ReviewScreen() {
     );
   }
 
-  if (state.status === 'failed') {
+  if (mode === 'day' && state.status === 'failed') {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="End-of-day review could not be loaded" accessibilityRole="summary" style={styles.centered}>
@@ -392,7 +617,7 @@ export function ReviewScreen() {
     );
   }
 
-  if (state.status === 'preferences_needed') {
+  if (mode === 'day' && state.status === 'preferences_needed') {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="Preferences needed" accessibilityRole="summary" style={styles.centered}>
@@ -417,41 +642,49 @@ export function ReviewScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>End of day</Text>
-          <Text style={styles.title}>{summary.localDate}</Text>
+          <Text style={styles.eyebrow}>{mode === 'day' ? 'End of day' : 'Review summary'}</Text>
+          <Text style={styles.title}>{mode === 'day' ? summary.localDate : mode === 'week' ? 'This week' : 'This month'}</Text>
           <Text style={styles.description}>
-            A neutral look at what is recorded for today across money, tasks, reminders, and work.
+            A neutral look at what is recorded across money, tasks, reminders, budget, savings, and work.
           </Text>
         </View>
 
-        {state.status === 'empty' ? (
-          <StatusBanner
-            title="Nothing recorded for this day"
-            description="That is only a data state. Capture something later if it helps the day make more sense."
-          />
-        ) : null}
+        <ReviewModeControl mode={mode} onChange={setMode} />
 
-        {state.status === 'loading' ? (
-          <StatusBanner title="Refreshing" description="The current review stays visible while local data reloads." />
-        ) : null}
+        {mode === 'day' ? (
+          <>
+            {state.status === 'empty' ? (
+              <StatusBanner
+                title="Nothing recorded for this day"
+                description="That is only a data state. Capture something later if it helps the day make more sense."
+              />
+            ) : null}
 
-        {state.status === 'saved' ? (
-          <StatusBanner title="Task updated" description="The review refreshed from the saved task record." />
-        ) : null}
+            {state.status === 'loading' ? (
+              <StatusBanner title="Refreshing" description="The current review stays visible while local data reloads." />
+            ) : null}
 
-        {state.actionError ? (
-          <StatusBanner
-            title="Action did not finish"
-            description="Your local data is unchanged. Try the action again when ready."
-            tone="warning"
-          />
-        ) : null}
+            {state.status === 'saved' ? (
+              <StatusBanner title="Task updated" description="The review refreshed from the saved task record." />
+            ) : null}
 
-        <MoneySection data={data} summary={summary} />
-        <TasksSection onCompleteTask={review.markTaskDone} saving={saving} summary={summary} />
-        <RemindersSection summary={summary} />
-        <WorkSection data={data} summary={summary} />
-        <ActivitySection data={data} summary={summary} />
+            {state.actionError ? (
+              <StatusBanner
+                title="Action did not finish"
+                description="Your local data is unchanged. Try the action again when ready."
+                tone="warning"
+              />
+            ) : null}
+
+            <MoneySection data={data} summary={summary} />
+            <TasksSection onCompleteTask={review.markTaskDone} saving={saving} summary={summary} />
+            <RemindersSection summary={summary} />
+            <WorkSection data={data} summary={summary} />
+            <ActivitySection data={data} summary={summary} />
+          </>
+        ) : (
+          <PeriodReviewContent onRetry={periodReview.reload} state={periodReview.state} />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -524,6 +757,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
     justifyContent: 'space-between',
+  },
+  sectionNote: {
+    ...typography.body,
+    color: colors.body,
   },
   sectionTitle: {
     ...typography.sectionTitle,
