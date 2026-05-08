@@ -6,7 +6,7 @@
 
 ## Last Completed Story
 
-- Story 2.3: Search, Filter, Sort, And Review Money History
+- Story 2.7: Show Expense Impact As Work-Time Context
 
 ## Stories Completed
 
@@ -17,18 +17,26 @@
 - Story 2.1: Create Manual Expense And Income Records. Commit: `4af289d feat: complete story 2.1 - manual money records`
 - Story 2.2: Edit And Delete Money Records With Summary Recalculation. Commit: `c1dac23 feat: complete story 2.2 - edit and delete money records`
 - Story 2.3: Search, Filter, Sort, And Review Money History. Commit: `acd1348 feat: complete story 2.3 - money history`
+- Story 2.4: Manage Recurring Expenses And Income. Commit: `73200e6 feat: complete story 2.4 - recurring money`
+- Story 2.5: Create Work-Hour And Shift Entries. Commit: `9549002 feat: complete story 2.5 - work entries`
+- Story 2.6: Review Work History And Earned Income. Commit: `4b73039 feat: complete story 2.6 - work history`
+- Story 2.7: Show Expense Impact As Work-Time Context. Commit: `8cccc4f feat: complete story 2.7 - work-time context`
 
 ## Stories Skipped
 
-- Story 2.4 was not created or implemented because a hard stop condition was reached before schema/business-logic choices could be made safely.
-- Remaining backlog starts at `2-4-manage-recurring-expenses-and-income`.
+- Story 3.1 and later were not implemented.
+- Remaining backlog starts at `3-1-create-and-manage-daily-tasks`.
 
 ## Stop Reason
 
-- Stopped before Story 2.4 due to hard stop condition #1.
-- Story 2.4 requires recurring money items that can be edited, paused, skipped once, stopped, deleted, and generated consistently across calendar boundaries.
-- The source docs do not yet define whether recurring money should immediately materialize future `money_records`, materialize only due occurrences, or remain projected until an explicit generation action.
-- This decision affects database schema, provenance fields, history visibility, summary recalculation, series edit semantics, skip/delete behavior, and user financial data, so automation stopped instead of guessing.
+- Stopped before Story 3.1 due to hard stop condition #1.
+- Story 3.1 requires a new persisted task model, but the current docs do not fully define schema-affecting decisions:
+  - whether task deadline is a local date, local datetime, or ISO `due_at` timestamp,
+  - whether categories/topics are required in the first task story or deferred,
+  - how task summary inputs should be represented for later Today/Review stories,
+  - which provenance/source fields should be stored for user-edited task data,
+  - how Story 3.1 should prepare for recurrence/reminder behavior without implementing future stories early.
+- These choices affect database schema, business logic, and future user data, so automation stopped instead of guessing.
 
 ## Commits Created
 
@@ -41,36 +49,40 @@
 - `7837f04 docs: update overnight automation summary`
 - `c1dac23 feat: complete story 2.2 - edit and delete money records`
 - `acd1348 feat: complete story 2.3 - money history`
+- `73f9f17 docs: update overnight automation summary`
+- `73200e6 feat: complete story 2.4 - recurring money`
+- `9549002 feat: complete story 2.5 - work entries`
+- `4b73039 feat: complete story 2.6 - work history`
+- `8cccc4f feat: complete story 2.7 - work-time context`
 
 ## Commands Run
 
 - Git safety and publishing:
   - `git branch --show-current`
   - `git status --short`
+  - `git log --oneline --max-count=20`
   - `git push origin auto/codex-overnight-1`
-  - `git log --oneline`
-- Story 2.2 verification:
+- Story verification gates used repeatedly:
   - `npm run typecheck`
   - `npm run lint`
   - `npm test`
   - `npx expo install --check`
   - `npm run build --if-present`
   - `git diff --check`
-- Story 2.3 verification:
-  - `npm test -- src/data/repositories/money-records.repository.test.ts`
-  - `npm run typecheck`
-  - `npm run lint`
-  - `npm test`
-  - `npx expo install --check`
-  - `npm run build --if-present`
-  - `git diff --check`
-- Story 2.4 readiness analysis:
-  - Read `sprint-status.yaml`, `epics.md`, `prd.md`, `architecture.md`, `ux-design-specification.md`, Story 2.3, current schema, migration, repository, service, and date-rule files.
+- Focused Story 2.6 checks:
+  - `npm test -- src/domain/work/work.test.ts src/data/repositories/work-entries.repository.test.ts src/services/work/work-history.service.test.ts src/features/work/useWorkHistory.test.ts`
+  - `npm test -- src/features/work/useWorkHistory.test.ts src/services/work/work-history.service.test.ts`
+- Focused Story 2.7 checks:
+  - `npm test -- src/domain/work/work-time-equivalent.test.ts src/features/work/workTimeContextText.test.ts`
+- Story 3.1 readiness analysis:
+  - Read `sprint-status.yaml`, `epics.md`, `prd.md`, `architecture.md`, `ux-design-specification.md`, task skeleton files, current schema, and recent story artifacts.
 
 ## Test Results
 
-- Story 2.2 final verification passed: 25 suites, 138 tests.
-- Story 2.3 final verification passed: 27 suites, 148 tests.
+- Story 2.4 final verification passed: 31 suites, 172 tests.
+- Story 2.5 final verification passed: 35 suites, 191 tests.
+- Story 2.6 final verification passed: 37 suites, 199 tests.
+- Story 2.7 final verification passed: 39 suites, 206 tests.
 - `npm run typecheck`: passed for each completed story.
 - `npm run lint`: passed for each completed story.
 - `npx expo install --check`: passed for each completed story.
@@ -81,15 +93,16 @@
 
 - Native Expo SQLite persistence was not manually tested on a device/emulator; repository/service behavior is covered with fakes.
 - Mobile visual and screen-reader behavior was not manually device-tested.
+- UI component rendering is indirectly covered because the current Jest config only matches `.test.ts` files.
 - `.claude/worktrees/` remains untracked and was not committed.
-- Story 2.4 needs product/architecture clarification before implementation because recurring money can affect persisted records and summaries.
+- Story 3.1 needs product/architecture clarification before implementation because it introduces persisted task data.
 
-## What To Do Next
+## What I Should Do Next When I Wake Up
 
-- Decide Story 2.4 recurring-money materialization rules:
-  - Should recurring money create real `money_records` automatically, only when occurrences become due, only when the user confirms generation, or never in this story?
-  - If real records are created, should `money_records` store `recurrence_rule_id` and `recurrence_occurrence_date`?
-  - Should generated recurring records use `source = "recurring"` with `sourceOfTruth = "manual"`, or should a new source-of-truth value be introduced?
-  - When a series is edited, should already materialized records remain unchanged, update only future occurrences, or ask the user?
-  - Should skip/delete one occurrence be stored as an exception row even before a `money_record` exists?
-- After clarification, continue on `auto/codex-overnight-1` from Story 2.4.
+- Decide Story 3.1 task schema choices:
+  - Deadline storage: local date only, local date/time fields, or ISO `due_at` timestamp?
+  - Should tasks include category and topic fields in Story 3.1?
+  - Should tasks store `source`, `source_of_truth`, and `user_corrected_at` like money records?
+  - Should task deletion be soft-delete from the start?
+  - What summary inputs must later Today/Review stories read from tasks?
+- After those decisions, continue on `auto/codex-overnight-1` from Story 3.1.
