@@ -265,7 +265,7 @@ describe('period review summary', () => {
       ],
       budgetRules: createBudgetRules(),
       moneyRecords: [
-        createMoneyRecord({ amountMinor: 1200, id: 'expense-1' as never }),
+        createMoneyRecord({ amountMinor: 1200, id: 'expense-1' as never, source: 'receipt' }),
         createMoneyRecord({
           amountMinor: 4000,
           id: 'income-1' as never,
@@ -310,6 +310,8 @@ describe('period review summary', () => {
       incomeAmountMinor: 4000,
       incomeCount: 1,
       netAmountMinor: 2800,
+      receiptExpenseAmountMinor: 1200,
+      receiptExpenseCount: 1,
       recordCount: 2,
     });
     expect(summary.work).toMatchObject({

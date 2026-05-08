@@ -80,6 +80,8 @@ export type PeriodMoneySummary = {
   incomeAmountMinor: number;
   incomeCount: number;
   netAmountMinor: number;
+  receiptExpenseAmountMinor: number;
+  receiptExpenseCount: number;
   recordCount: number;
   records: MoneyRecord[];
 };
@@ -269,6 +271,11 @@ function calculateMoney(input: PeriodSummaryInput, maxItems: number): PeriodMone
       if (record.kind === 'expense') {
         summary.expenseAmountMinor += record.amountMinor;
         summary.expenseCount += 1;
+
+        if (record.source === 'receipt') {
+          summary.receiptExpenseAmountMinor += record.amountMinor;
+          summary.receiptExpenseCount += 1;
+        }
       } else {
         summary.incomeAmountMinor += record.amountMinor;
         summary.incomeCount += 1;
@@ -285,6 +292,8 @@ function calculateMoney(input: PeriodSummaryInput, maxItems: number): PeriodMone
       incomeAmountMinor: 0,
       incomeCount: 0,
       netAmountMinor: 0,
+      receiptExpenseAmountMinor: 0,
+      receiptExpenseCount: 0,
       recordCount: 0,
       records: records.slice(0, maxItems),
     } satisfies PeriodMoneySummary,

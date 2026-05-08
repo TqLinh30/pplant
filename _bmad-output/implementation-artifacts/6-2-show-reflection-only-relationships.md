@@ -1,6 +1,6 @@
 # Story 6.2: Show Reflection-Only Relationships
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -16,38 +16,38 @@ so that I can write my own interpretation without receiving advice or blame.
 
 ## Tasks / Subtasks
 
-- [ ] Add pure reflection-relationship domain helpers. (AC: 1, 2, 3)
-  - [ ] Add a review-owned or summary-owned pure module such as `src/domain/summaries/reflection-relationships.ts`.
-  - [ ] Build relationship cards from existing `PeriodReviewSummary` data and source records only; do not infer causes, predict future behavior, recommend changes, or give financial advice.
-  - [ ] Support MVP relationship groups: money/time, work income/savings, tasks/reminders, receipts/spending, and reflections/summary.
-  - [ ] Return explicit partial/no-data state for each relationship group.
-  - [ ] Include neutral labels and descriptions suitable for UI display, not diagnostics.
-  - [ ] Add a prohibited-copy guard test for words/phrases such as `because`, `caused`, `predict`, `optimize`, `should`, `must`, `financial advice`, and shame/blame phrasing.
+- [x] Add pure reflection-relationship domain helpers. (AC: 1, 2, 3)
+  - [x] Add a review-owned or summary-owned pure module such as `src/domain/summaries/reflection-relationships.ts`.
+  - [x] Build relationship cards from existing `PeriodReviewSummary` data and source records only; do not infer causes, predict future behavior, recommend changes, or give financial advice.
+  - [x] Support MVP relationship groups: money/time, work income/savings, tasks/reminders, receipts/spending, and reflections/summary.
+  - [x] Return explicit partial/no-data state for each relationship group.
+  - [x] Include neutral labels and descriptions suitable for UI display, not diagnostics.
+  - [x] Add a prohibited-copy guard test for words/phrases such as `because`, `caused`, `predict`, `optimize`, `should`, `must`, `financial advice`, and shame/blame phrasing.
 
-- [ ] Add source facts needed for side-by-side relationships. (AC: 1, 2)
-  - [ ] Reuse Story 6.1 period summaries and repository-loaded source records.
-  - [ ] If needed, extend `PeriodReviewSummary` with deterministic receipt-sourced expense facts (`receiptExpenseCount`, `receiptExpenseAmountMinor`) derived from `MoneyRecord.source === 'receipt'`.
-  - [ ] Do not add a reflections table or reflection persistence in this story; Story 6.3/6.4 own reflection answers/history. Until then, reflection relationship state should be partial/no-data.
-  - [ ] Do not add a summary cache or migration unless a safe existing cache path already exists and deterministic invalidation is covered.
+- [x] Add source facts needed for side-by-side relationships. (AC: 1, 2)
+  - [x] Reuse Story 6.1 period summaries and repository-loaded source records.
+  - [x] If needed, extend `PeriodReviewSummary` with deterministic receipt-sourced expense facts (`receiptExpenseCount`, `receiptExpenseAmountMinor`) derived from `MoneyRecord.source === 'receipt'`.
+  - [x] Do not add a reflections table or reflection persistence in this story; Story 6.3/6.4 own reflection answers/history. Until then, reflection relationship state should be partial/no-data.
+  - [x] Do not add a summary cache or migration unless a safe existing cache path already exists and deterministic invalidation is covered.
 
-- [ ] Show relationships in Review for weekly/monthly modes. (AC: 1, 2, 3)
-  - [ ] Add a Review feature component or section that displays relationship cards below the weekly/monthly summaries.
-  - [ ] Keep Day/end-of-day review behavior unchanged unless a small shared helper is required.
-  - [ ] Use existing UI primitives and `DESIGN.md` tokens; avoid dense charts or finance-dashboard styling.
-  - [ ] Include clear partial/no-data states such as "Not enough saved records for this pair yet" without implying failure.
-  - [ ] Ensure text labels carry the meaning; do not rely on color alone.
+- [x] Show relationships in Review for weekly/monthly modes. (AC: 1, 2, 3)
+  - [x] Add a Review feature component or section that displays relationship cards below the weekly/monthly summaries.
+  - [x] Keep Day/end-of-day review behavior unchanged unless a small shared helper is required.
+  - [x] Use existing UI primitives and `DESIGN.md` tokens; avoid dense charts or finance-dashboard styling.
+  - [x] Include clear partial/no-data states such as "Not enough saved records for this pair yet" without implying failure.
+  - [x] Ensure text labels carry the meaning; do not rely on color alone.
 
-- [ ] Preserve privacy, data safety, and story boundaries. (AC: 1, 2, 3)
-  - [ ] Do not write relationship output to diagnostics, analytics, summary cache, reflection storage, or source records.
-  - [ ] Do not log raw spending details, income values, task contents, reminder text, receipt data, reflection text, or JSON payloads.
-  - [ ] Do not change authentication, authorization, cloud sync, bank/payment integrations, receipt OCR provider behavior, or data deletion workflows.
-  - [ ] Do not implement reflection prompts, saved reflections, history, dismiss/mute controls, or insights from Stories 6.3-6.5.
+- [x] Preserve privacy, data safety, and story boundaries. (AC: 1, 2, 3)
+  - [x] Do not write relationship output to diagnostics, analytics, summary cache, reflection storage, or source records.
+  - [x] Do not log raw spending details, income values, task contents, reminder text, receipt data, reflection text, or JSON payloads.
+  - [x] Do not change authentication, authorization, cloud sync, bank/payment integrations, receipt OCR provider behavior, or data deletion workflows.
+  - [x] Do not implement reflection prompts, saved reflections, history, dismiss/mute controls, or insights from Stories 6.3-6.5.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Add domain tests for all relationship groups with complete, partial, and empty source data.
-  - [ ] Add tests that relationship copy stays neutral and does not include causal/advice/prohibited language.
-  - [ ] Add UI/reducer/component tests where reasonable to prove weekly/monthly review exposes relationship labels and partial states.
-  - [ ] Run `npm run typecheck -- --pretty false`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Add domain tests for all relationship groups with complete, partial, and empty source data.
+  - [x] Add tests that relationship copy stays neutral and does not include causal/advice/prohibited language.
+  - [x] Add UI/reducer/component tests where reasonable to prove weekly/monthly review exposes relationship labels and partial states.
+  - [x] Run `npm run typecheck -- --pretty false`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -158,11 +158,30 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-08: Created Story 6.2 ready-for-dev from Epic 6, PRD, architecture, Story 6.1 implementation, and current Review/summary code.
+- 2026-05-08: Started Story 6.2 implementation. Plan: add pure reflection relationship builder and copy guard first, extend summary receipt facts if needed, render weekly/monthly relationship cards, then run focused and full verification.
+- 2026-05-08: Added reflection-only relationship builder, receipt-sourced expense facts, Review relationship cards for period modes, and prohibited-copy tests.
+- 2026-05-08: Verification passed: focused Jest, typecheck, lint, full Jest, Expo install check, build-if-present, and git diff whitespace check.
 
 ### Completion Notes List
 
+- Implemented reflection-only relationship groups for money/time, work/savings, tasks/reminders, receipts/spending, and reflections/summary.
+- Extended period money summaries with receipt-sourced expense counts and amounts derived from `MoneyRecord.source === 'receipt'`.
+- Rendered relationship cards in weekly/monthly Review modes while preserving Day/end-of-day behavior.
+- Kept reflection persistence, prompts, history, mute/dismiss controls, diagnostics, cache, migrations, and source-record writes out of scope.
+
 ### File List
+
+- `_bmad-output/implementation-artifacts/6-2-show-reflection-only-relationships.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-6.2-review.md`
+- `src/domain/summaries/period-summary.test.ts`
+- `src/domain/summaries/period-summary.ts`
+- `src/domain/summaries/reflection-relationships.test.ts`
+- `src/domain/summaries/reflection-relationships.ts`
+- `src/features/review/ReviewScreen.tsx`
 
 ## Change Log
 
 - 2026-05-08: Created Story 6.2 ready-for-dev.
+- 2026-05-08: Started implementation.
+- 2026-05-08: Completed reflection-only relationships after verification.

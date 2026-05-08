@@ -10,6 +10,11 @@ import type {
   EndOfDayTaskItem,
   EndOfDayTaskItemStatus,
 } from '@/domain/summaries/end-of-day-review';
+import {
+  buildReflectionRelationships,
+  type ReflectionRelationship,
+  type ReflectionRelationshipValue,
+} from '@/domain/summaries/reflection-relationships';
 import type { EndOfDayReviewData } from '@/services/summaries/end-of-day-review.service';
 import type { PeriodReviewData } from '@/services/summaries/period-review.service';
 import { Button } from '@/ui/primitives/Button';
@@ -514,6 +519,49 @@ function PeriodRemindersSection({ data }: { data: PeriodReviewData }) {
   );
 }
 
+function relationshipValueText(data: PeriodReviewData, value: ReflectionRelationshipValue): string {
+  switch (value.kind) {
+    case 'amount':
+      return formatAmount(data, value.amountMinor);
+    case 'count':
+      return `${value.count}`;
+    case 'duration':
+      return formatMinutes(value.minutes);
+    case 'text':
+    default:
+      return value.text;
+  }
+}
+
+function relationshipDescription(data: PeriodReviewData, relationship: ReflectionRelationship): string {
+  if (relationship.state === 'partial') {
+    return relationship.missingReason ?? 'Not enough saved records for this pair yet.';
+  }
+
+  return `${relationship.primary.label}: ${relationshipValueText(data, relationship.primary)}; ${
+    relationship.secondary.label
+  }: ${relationshipValueText(data, relationship.secondary)}`;
+}
+
+function PeriodRelationshipsSection({ data }: { data: PeriodReviewData }) {
+  const relationships = buildReflectionRelationships({ summary: data.summary });
+
+  return (
+    <Section title="Reflection Pairs">
+      <View style={styles.listGroup}>
+        {relationships.map((relationship) => (
+          <ListRow
+            key={relationship.id}
+            title={relationship.title}
+            description={relationshipDescription(data, relationship)}
+            meta={relationship.state === 'ready' ? relationship.description : 'Partial data'}
+          />
+        ))}
+      </View>
+    </Section>
+  );
+}
+
 function PeriodReviewContent({
   onRetry,
   state,
@@ -581,6 +629,7 @@ function PeriodReviewContent({
       <PeriodWorkSection data={state.data} />
       <PeriodTasksSection data={state.data} />
       <PeriodRemindersSection data={state.data} />
+      <PeriodRelationshipsSection data={state.data} />
     </>
   );
 }
