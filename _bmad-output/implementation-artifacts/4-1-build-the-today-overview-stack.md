@@ -1,6 +1,6 @@
 # Story 4.1: Build The Today Overview Stack
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -16,39 +16,39 @@ so that I can understand my day without switching between separate dashboards.
 
 ## Tasks / Subtasks
 
-- [ ] Define Today summary contracts and deterministic calculations. (AC: 1, 2, 3)
-  - [ ] Expand `src/domain/summaries/today-summary.ts` from placeholder input into typed Today summary models.
-  - [ ] Include local date, budget period, money totals for today, budget status, savings progress, task counts, upcoming/open task items, reminder state counts, recovery item count, work minutes/income for today, and recent activity rows.
-  - [ ] Keep calculations pure, deterministic, and based on local dates; do not use locale-formatted strings as comparison inputs.
-  - [ ] Cap list surfaces and recent activity so Today does not render unbounded history.
+- [x] Define Today summary contracts and deterministic calculations. (AC: 1, 2, 3)
+  - [x] Expand `src/domain/summaries/today-summary.ts` from placeholder input into typed Today summary models.
+  - [x] Include local date, budget period, money totals for today, budget status, savings progress, task counts, upcoming/open task items, reminder state counts, recovery item count, work minutes/income for today, and recent activity rows.
+  - [x] Keep calculations pure, deterministic, and based on local dates; do not use locale-formatted strings as comparison inputs.
+  - [x] Cap list surfaces and recent activity so Today does not render unbounded history.
 
-- [ ] Implement a Today overview service. (AC: 1, 2, 3)
-  - [ ] Add `src/services/summaries/today.service.ts`.
-  - [ ] Open/migrate the local database once per Today load and coordinate existing repositories/services where practical.
-  - [ ] Reuse existing repositories and domain functions: preferences, budget planning, money records, task summaries, task recurrence virtual occurrences, reminders, recovery events/items, and work entries.
-  - [ ] Use `resolveBudgetPeriodForDate` with the saved preferences reset day.
-  - [ ] Do not add or modify database migrations for this story unless a non-destructive additive table becomes absolutely necessary; preferred approach is computed summary data.
-  - [ ] Return typed `AppResult` errors and avoid logging or persisting sensitive task/reminder/money/work details outside existing tables.
+- [x] Implement a Today overview service. (AC: 1, 2, 3)
+  - [x] Add `src/services/summaries/today.service.ts`.
+  - [x] Open/migrate the local database once per Today load and coordinate existing repositories/services where practical.
+  - [x] Reuse existing repositories and domain functions: preferences, budget planning, money records, task summaries, task recurrence virtual occurrences, reminders, recovery events/items, and work entries.
+  - [x] Use `resolveBudgetPeriodForDate` with the saved preferences reset day.
+  - [x] Do not add or modify database migrations for this story unless a non-destructive additive table becomes absolutely necessary; preferred approach is computed summary data.
+  - [x] Return typed `AppResult` errors and avoid logging or persisting sensitive task/reminder/money/work details outside existing tables.
 
-- [ ] Replace the Today placeholder with the real overview stack. (AC: 1, 2)
-  - [ ] Implement a feature hook such as `src/features/today/useTodayOverview.ts` with loading, ready, empty/partial, and failed states.
-  - [ ] Replace `src/features/today/TodayScreen.tsx` placeholder with a scrollable mobile-first overview.
-  - [ ] Use existing primitives/tokens (`StatusBanner`, `ListRow`, `Button`, `Chip`, typography, spacing, colors) instead of introducing a UI kit.
-  - [ ] Show sections in this order: date/week header, money and budget, savings, tasks and reminders, work context, recent activity.
-  - [ ] Use neutral copy and explicit text state; do not communicate status by color alone.
-  - [ ] For Story 4.1, do not build the Story 4.2 capture launcher sheet, Story 4.3 draft recovery, Story 4.4 end-of-day review, or Story 4.5 exhaustive UX state matrix early.
+- [x] Replace the Today placeholder with the real overview stack. (AC: 1, 2)
+  - [x] Implement a feature hook such as `src/features/today/useTodayOverview.ts` with loading, ready, empty/partial, and failed states.
+  - [x] Replace `src/features/today/TodayScreen.tsx` placeholder with a scrollable mobile-first overview.
+  - [x] Use existing primitives/tokens (`StatusBanner`, `ListRow`, `Button`, `Chip`, typography, spacing, colors) instead of introducing a UI kit.
+  - [x] Show sections in this order: date/week header, money and budget, savings, tasks and reminders, work context, recent activity.
+  - [x] Use neutral copy and explicit text state; do not communicate status by color alone.
+  - [x] For Story 4.1, do not build the Story 4.2 capture launcher sheet, Story 4.3 draft recovery, Story 4.4 end-of-day review, or Story 4.5 exhaustive UX state matrix early.
 
-- [ ] Surface useful empty and partial states. (AC: 2)
-  - [ ] If there are no money records today, show one clear next action pointing to capture.
-  - [ ] If there are no open tasks/reminders, show calm "clear for now" or setup copy without implying failure.
-  - [ ] If budget rules or savings goals are not configured, show one clear next action pointing to settings/setup context.
-  - [ ] If work entries are absent today, show a neutral empty state and one clear next action.
+- [x] Surface useful empty and partial states. (AC: 2)
+  - [x] If there are no money records today, show one clear next action pointing to capture.
+  - [x] If there are no open tasks/reminders, show calm "clear for now" or setup copy without implying failure.
+  - [x] If budget rules or savings goals are not configured, show one clear next action pointing to settings/setup context.
+  - [x] If work entries are absent today, show a neutral empty state and one clear next action.
 
-- [ ] Add focused tests and verification. (AC: 1, 2, 3)
-  - [ ] Add unit tests for Today summary calculations, including empty input, mixed money records, over-budget state, savings progress, task/reminder counts, and work totals.
-  - [ ] Add service tests with fake repositories/dependencies where reasonable to verify local-date filtering, bounded list counts, and failure handling.
-  - [ ] Add hook/reducer tests for loading, ready, empty/partial, and failed states.
-  - [ ] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and verification. (AC: 1, 2, 3)
+  - [x] Add unit tests for Today summary calculations, including empty input, mixed money records, over-budget state, savings progress, task/reminder counts, and work totals.
+  - [x] Add service tests with fake repositories/dependencies where reasonable to verify local-date filtering, bounded list counts, and failure handling.
+  - [x] Add hook/reducer tests for loading, ready, empty/partial, and failed states.
+  - [x] Run `npm run typecheck`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -175,16 +175,32 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-08: Created Story 4.1 ready-for-dev from Epic 4, PRD, architecture, UX, and Story 3.5 implementation context.
+- 2026-05-08: Started Story 4.1 implementation.
+- 2026-05-08: Added pure Today summary calculator, overview service, feature hook, real Today screen, focused tests, and full verification.
 
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- Implemented Today as a computed local overview with no database migration or new source of truth.
+- Reused existing repository/domain boundaries for preferences, money, budgets, savings, tasks, task recurrence, reminders, recovery, and work entries.
+- Kept recurring task/habit occurrences virtual and savings progress based on manual `currentAmountMinor`.
+- Mounted a read-only recovery summary/list instead of actionful recovery controls, preserving Story 3.5 handoff boundaries.
+- Automated verification passed; no physical-device/manual UI run was performed in this pass.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/4-1-build-the-today-overview-stack.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-4.1-review.md`
+- `src/domain/summaries/today-summary.ts`
+- `src/domain/summaries/today-summary.test.ts`
+- `src/features/today/TodayScreen.tsx`
+- `src/features/today/useTodayOverview.ts`
+- `src/features/today/useTodayOverview.test.ts`
+- `src/services/summaries/today.service.ts`
+- `src/services/summaries/today.service.test.ts`
 
 ## Change Log
 
 - 2026-05-08: Created Story 4.1 ready-for-dev.
+- 2026-05-08: Started implementation.
+- 2026-05-08: Completed Today overview stack implementation and self-review.
