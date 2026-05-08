@@ -1,6 +1,6 @@
 # Story 6.5: Make Reviews Accessible And Visually Calm
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -16,27 +16,27 @@ so that reflection feels clear rather than like a dense finance report.
 
 ## Tasks / Subtasks
 
-- [ ] Improve Review accessibility semantics without changing data behavior. (AC: 1, 2)
-  - [ ] Add or refine screen-reader labels/hints for Review mode selection, summary sections, status banners, reflection prompt actions, relationship controls, and past reflection rows.
-  - [ ] Mark section headings as headings where supported.
-  - [ ] Ensure button labels describe the action and scope, especially dismiss/mute/skip/save.
-  - [ ] Preserve existing Day, Week, and Month behavior and data loading.
+- [x] Improve Review accessibility semantics without changing data behavior. (AC: 1, 2)
+  - [x] Add or refine screen-reader labels/hints for Review mode selection, summary sections, status banners, reflection prompt actions, relationship controls, and past reflection rows.
+  - [x] Mark section headings as headings where supported.
+  - [x] Ensure button labels describe the action and scope, especially dismiss/mute/skip/save.
+  - [x] Preserve existing Day, Week, and Month behavior and data loading.
 
-- [ ] Strengthen non-color-only states. (AC: 2)
-  - [ ] Ensure status banners include text labels for loading, empty, failed, saved, partial, dismissed, muted, and warning states.
-  - [ ] Ensure relationship partial/hidden states are communicated in text, not only background color.
-  - [ ] Avoid adding icon-only controls unless accessible labels are present.
+- [x] Strengthen non-color-only states. (AC: 2)
+  - [x] Ensure status banners include text labels for loading, empty, failed, saved, partial, dismissed, muted, and warning states.
+  - [x] Ensure relationship partial/hidden states are communicated in text, not only background color.
+  - [x] Avoid adding icon-only controls unless accessible labels are present.
 
-- [ ] Apply calm token-led visual polish. (AC: 3)
-  - [ ] Use existing `DESIGN.md` tokens and UI primitives.
-  - [ ] Keep sections compact, readable, and not chart-heavy.
-  - [ ] Avoid shame, advice, prediction, optimization language, and dense finance-dashboard styling.
-  - [ ] Do not add new dependencies or large layout rewrites.
+- [x] Apply calm token-led visual polish. (AC: 3)
+  - [x] Use existing `DESIGN.md` tokens and UI primitives.
+  - [x] Keep sections compact, readable, and not chart-heavy.
+  - [x] Avoid shame, advice, prediction, optimization language, and dense finance-dashboard styling.
+  - [x] Do not add new dependencies or large layout rewrites.
 
-- [ ] Add focused tests and run verification. (AC: 1, 2, 3)
-  - [ ] Add tests for any new pure accessibility/copy helpers.
-  - [ ] Update existing reducer/domain copy tests if copy changes.
-  - [ ] Run `npm run typecheck -- --pretty false`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
+- [x] Add focused tests and run verification. (AC: 1, 2, 3)
+  - [x] Add tests for new pure accessibility/copy helpers.
+  - [x] Update existing reducer/domain copy tests if copy changes.
+  - [x] Run `npm run typecheck -- --pretty false`, `npm run lint`, `npm test`, `npx expo install --check`, `npm run build --if-present`, and `git diff --check`.
 
 ## Dev Notes
 
@@ -123,11 +123,32 @@ GPT-5 Codex.
 ### Debug Log References
 
 - 2026-05-08: Created Story 6.5 ready-for-dev from Epic 6, PRD, architecture, Story 6.4 implementation/review, current Review UI, and UI primitive patterns.
+- 2026-05-08: Started Story 6.5 implementation. Plan: add small accessibility helpers/props, improve Review labels and headings, preserve all data behavior, then run focused and full verification.
+- 2026-05-08: Added Review accessibility helpers, mode option labels, status banner labels, section heading semantics, and past reflection row labels.
 
 ### Completion Notes List
 
+- Added pure Review accessibility label helpers with focused tests.
+- Added accessibility labels to Review mode segmented options and past reflection rows.
+- Added status banner accessibility labels and Review section heading roles.
+- Updated ListRow to expose labels for non-interactive rows without grouping rows that contain action buttons.
+- Preserved data behavior, Review modes, relationship logic, reflection prompts, history, and insight preferences.
+- Full verification passed: typecheck, lint, full Jest, Expo install check, build-if-present, and whitespace diff check.
+
 ### File List
+
+- `_bmad-output/implementation-artifacts/6-5-make-reviews-accessible-and-visually-calm.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/automation-reports/story-6.5-review.md`
+- `src/features/review/ReviewScreen.tsx`
+- `src/features/review/review-accessibility.test.ts`
+- `src/features/review/review-accessibility.ts`
+- `src/ui/primitives/ListRow.tsx`
+- `src/ui/primitives/SegmentedControl.tsx`
+- `src/ui/primitives/StatusBanner.tsx`
 
 ## Change Log
 
 - 2026-05-08: Created Story 6.5 ready-for-dev.
+- 2026-05-08: Started implementation.
+- 2026-05-08: Completed review accessibility and calm visual polish after verification.

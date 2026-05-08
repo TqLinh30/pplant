@@ -38,7 +38,14 @@ export function ListRow({ title, description, meta, right, onPress, accessibilit
     );
   }
 
-  return <View style={styles.row}>{content}</View>;
+  return (
+    <View
+      accessible={Boolean(accessibilityLabel) && !right}
+      accessibilityLabel={accessibilityLabel}
+      style={styles.row}>
+      {content}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

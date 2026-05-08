@@ -36,6 +36,10 @@ import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
 import { routeForEndOfDayReviewEdit } from './end-of-day-review-routes';
+import {
+  reviewHistoryRowAccessibilityLabel,
+  reviewModeOptionAccessibilityLabel,
+} from './review-accessibility';
 import { useEndOfDayReview } from './useEndOfDayReview';
 import { usePeriodReviewSummary, type PeriodReviewState } from './usePeriodReviewSummary';
 import {
@@ -125,7 +129,9 @@ function Section({
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>
+          {title}
+        </Text>
         {action}
       </View>
       {children}
@@ -399,6 +405,10 @@ function ReviewModeControl({
 }) {
   return (
     <SegmentedControl
+      accessibilityLabel="Choose review period"
+      getOptionAccessibilityLabel={(option, selected) =>
+        reviewModeOptionAccessibilityLabel(option.label, selected)
+      }
       options={[
         { label: 'Day', value: 'day' },
         { label: 'Week', value: 'week' },
@@ -757,6 +767,11 @@ function ReflectionHistorySection({
           {state.history.map((reflection) => (
             <ListRow
               key={reflection.id}
+              accessibilityLabel={reviewHistoryRowAccessibilityLabel({
+                periodLabel: periodHistoryLabel(reflection.period),
+                promptText: reflection.promptText,
+                responseText: reflection.responseText,
+              })}
               title={periodHistoryLabel(reflection.period)}
               description={reflection.responseText ?? 'Saved reflection'}
               meta={reflection.promptText}

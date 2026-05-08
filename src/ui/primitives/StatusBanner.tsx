@@ -6,14 +6,22 @@ import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
 type StatusBannerProps = {
+  accessibilityLabel?: string;
   title: string;
   description: string;
   tone?: 'neutral' | 'success' | 'warning';
 };
 
-export function StatusBanner({ title, description, tone = 'neutral' }: StatusBannerProps) {
+function defaultAccessibilityLabel(title: string, description: string): string {
+  return `${title}. ${description}`;
+}
+
+export function StatusBanner({ accessibilityLabel, title, description, tone = 'neutral' }: StatusBannerProps) {
   return (
-    <View style={[styles.banner, styles[tone]]} accessibilityRole="summary">
+    <View
+      accessibilityLabel={accessibilityLabel ?? defaultAccessibilityLabel(title, description)}
+      accessibilityRole="summary"
+      style={[styles.banner, styles[tone]]}>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.description}>{description}</Text>
     </View>
