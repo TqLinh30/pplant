@@ -420,17 +420,27 @@ export function useTaskCapture(services: TaskCaptureServices = {}) {
       return;
     }
 
-    void createTaskDependency(validation.value).then((result) => {
+    void createTaskDependency(validation.value).then(async (result) => {
       if (!isMounted.current) {
         return;
       }
 
       if (result.ok) {
-        void markDraftSaved({
+        const draftSaved = await markDraftSaved({
           kind: 'task',
           savedRecordId: result.value.task.id,
           savedRecordKind: 'task',
         });
+
+        if (!isMounted.current) {
+          return;
+        }
+
+        if (!draftSaved.ok) {
+          dispatch({ error: draftSaved.error, type: 'save_failed' });
+          return;
+        }
+
         dispatch({
           mutation: 'created',
           nextDraft: createDefaultTaskCaptureDraft(),

@@ -613,19 +613,29 @@ export function useReminderCapture(services: ReminderCaptureServices = {}) {
         ? updateReminderDependency({ ...validation.value, id: editingReminderId })
         : createReminderDependency(validation.value);
 
-      void request.then((result) => {
+      void request.then(async (result) => {
         if (!isMounted.current) {
           return;
         }
 
         if (result.ok) {
           if (!editingReminderId) {
-            void markDraftSaved({
+            const draftSaved = await markDraftSaved({
               kind: 'reminder',
               savedRecordId: result.value.reminder.id,
               savedRecordKind: 'reminder',
             });
+
+            if (!isMounted.current) {
+              return;
+            }
+
+            if (!draftSaved.ok) {
+              dispatch({ error: draftSaved.error, type: 'action_failed' });
+              return;
+            }
           }
+
           void loadData().then((loadResult) => {
             if (!isMounted.current) {
               return;

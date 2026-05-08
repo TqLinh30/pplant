@@ -503,17 +503,27 @@ export function useManualMoneyCapture(services: ManualMoneyCaptureServices = {})
       return;
     }
 
-    void createRecord(validation.value).then((result) => {
+    void createRecord(validation.value).then(async (result) => {
       if (!isMounted.current) {
         return;
       }
 
       if (result.ok) {
-        void markDraftSaved({
+        const draftSaved = await markDraftSaved({
           kind: state.draft.kind,
           savedRecordId: result.value.id,
           savedRecordKind: 'money_record',
         });
+
+        if (!isMounted.current) {
+          return;
+        }
+
+        if (!draftSaved.ok) {
+          dispatch({ error: draftSaved.error, type: 'save_failed' });
+          return;
+        }
+
         dispatch({
           mutation: 'created',
           nextDraft: createDefaultManualMoneyCaptureDraft(now?.() ?? new Date()),

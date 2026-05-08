@@ -579,17 +579,27 @@ export function useWorkEntryCapture(services: WorkEntryCaptureServices = {}) {
       return;
     }
 
-    void createEntry(validation.value).then((result) => {
+    void createEntry(validation.value).then(async (result) => {
       if (!isMounted.current) {
         return;
       }
 
       if (result.ok) {
-        void markDraftSaved({
+        const draftSaved = await markDraftSaved({
           kind: 'work',
           savedRecordId: result.value.id,
           savedRecordKind: 'work_entry',
         });
+
+        if (!isMounted.current) {
+          return;
+        }
+
+        if (!draftSaved.ok) {
+          dispatch({ error: draftSaved.error, type: 'save_failed' });
+          return;
+        }
+
         dispatch({
           entry: result.value,
           mutation: 'created',
