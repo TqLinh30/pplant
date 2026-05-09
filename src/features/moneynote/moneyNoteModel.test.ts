@@ -4,9 +4,13 @@ import { localWorkspaceId } from '@/domain/workspace/types';
 import {
   buildMoneyNoteCalendarMonth,
   calculateMoneyNoteTotals,
+  currencySuffixForCode,
   formatDong,
+  formatMoneyNoteAmount,
+  formatMoneyNoteAmountInput,
   formatMoneyNoteDate,
   getMonthBounds,
+  parseMoneyNoteAmountInput,
   monthLabel,
   shiftLocalDate,
   shiftMonth,
@@ -70,5 +74,13 @@ describe('MoneyNote model helpers', () => {
       netMinor: 38000,
     });
     expect(formatDong(totals.netMinor)).toBe('38.000đ');
+    expect(formatMoneyNoteAmount(1250, { currencyCode: 'USD', locale: 'en-US' })).toBe('$12.50');
+    expect(currencySuffixForCode('VND')).toBe('đ');
+  });
+
+  it('formats amount input with Vietnamese thousands separators without changing saved digits', () => {
+    expect(parseMoneyNoteAmountInput('1.234.567đ')).toBe('1234567');
+    expect(formatMoneyNoteAmountInput('1234567')).toBe('1.234.567');
+    expect(formatMoneyNoteAmountInput('')).toBe('');
   });
 });

@@ -1,10 +1,10 @@
 export const typography = {
   screenTitle: {
     fontFamily: 'Montserrat_700Bold',
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: '700',
     letterSpacing: 0,
-    lineHeight: 38,
+    lineHeight: 31,
   },
   sectionTitle: {
     fontFamily: 'Montserrat_700Bold',
@@ -14,9 +14,9 @@ export const typography = {
     lineHeight: 27,
   },
   body: {
-    fontFamily: 'Montserrat_500Medium',
+    fontFamily: 'Montserrat_400Regular',
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '400',
     letterSpacing: 0,
     lineHeight: 22,
   },
@@ -28,9 +28,9 @@ export const typography = {
     lineHeight: 22,
   },
   caption: {
-    fontFamily: 'Montserrat_600SemiBold',
+    fontFamily: 'Montserrat_500Medium',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
     letterSpacing: 0,
     lineHeight: 17,
   },
@@ -42,10 +42,10 @@ export const typography = {
     lineHeight: 20,
   },
   tabLabel: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 12,
-    fontWeight: '700',
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 10,
+    fontWeight: '600',
     letterSpacing: 0,
-    lineHeight: 15,
+    lineHeight: 12,
   },
 } as const;

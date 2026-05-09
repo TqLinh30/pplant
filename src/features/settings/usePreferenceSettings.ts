@@ -54,9 +54,9 @@ export type PreferenceSettingsServices = {
 };
 
 export const defaultPreferenceSettingsForm: PreferenceSettingsForm = {
-  currencyCode: 'USD',
-  defaultHourlyWage: '0.00',
-  locale: 'en-US',
+  currencyCode: 'VND',
+  defaultHourlyWage: '0',
+  locale: 'vi-VN',
   monthlyBudgetResetDay: '1',
 };
 

@@ -13,6 +13,11 @@ export type MoneyNoteTotals = {
   netMinor: number;
 };
 
+export type MoneyNoteMoneyFormat = {
+  currencyCode: string;
+  locale: string;
+};
+
 export type MoneyNoteCalendarDay = {
   dayOfMonth: number;
   dayOfWeek: number;
@@ -144,9 +149,63 @@ export function calculateMoneyNoteTotals(records: MoneyRecord[]): MoneyNoteTotal
   );
 }
 
-export function formatDong(amountMinor: number): string {
+export function parseMoneyNoteAmountInput(value: string): string {
+  return value.replace(/[^\d]/g, '');
+}
+
+export function formatMoneyNoteAmountInput(value: string): string {
+  const digits = parseMoneyNoteAmountInput(value);
+
+  if (digits.length === 0) {
+    return '';
+  }
+
+  return new Intl.NumberFormat('vi-VN', {
+    maximumFractionDigits: 0,
+    useGrouping: true,
+  }).format(Number(digits));
+}
+
+export function currencySuffixForCode(currencyCode: string): string {
+  if (currencyCode.toUpperCase() === 'VND') {
+    return 'đ';
+  }
+
+  try {
+    const parts = new Intl.NumberFormat('vi-VN', {
+      currency: currencyCode,
+      currencyDisplay: 'narrowSymbol',
+      style: 'currency',
+    }).formatToParts(0);
+
+    return parts.find((part) => part.type === 'currency')?.value ?? currencyCode.toUpperCase();
+  } catch {
+    return currencyCode.toUpperCase();
+  }
+}
+
+export function formatMoneyNoteAmount(
+  amountMinor: number,
+  { currencyCode, locale }: MoneyNoteMoneyFormat = moneyNoteDefaultPreferences,
+): string {
   const sign = amountMinor < 0 ? '-' : '';
   const absolute = Math.abs(amountMinor);
 
-  return `${sign}${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(absolute)}đ`;
+  if (currencyCode.toUpperCase() === 'VND') {
+    return `${sign}${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(absolute)}đ`;
+  }
+
+  try {
+    return `${sign}${new Intl.NumberFormat(locale, {
+      currency: currencyCode,
+      currencyDisplay: 'narrowSymbol',
+      style: 'currency',
+    }).format(absolute / 100)}`;
+  } catch {
+    return `${sign}${absolute} ${currencyCode.toUpperCase()}`;
+  }
+}
+
+export function formatDong(amountMinor: number): string {
+  return formatMoneyNoteAmount(amountMinor);
 }

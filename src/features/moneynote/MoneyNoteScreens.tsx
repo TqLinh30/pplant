@@ -22,35 +22,93 @@ import { saveUserPreferences } from '@/services/preferences/preferences.service'
 import { saveStoredAppLanguage } from '@/i18n/language-storage';
 import { appLanguageOptions, useAppLanguage, type AppLanguage } from '@/i18n/strings';
 import { useManualMoneyCapture } from '@/features/capture/useManualMoneyCapture';
+import { usePreferenceSettings } from '@/features/settings/usePreferenceSettings';
 
 import {
   allMoneyNoteCategoryTemplates,
   buildMoneyNoteCalendarMonth,
   calculateMoneyNoteTotals,
+  currencySuffixForCode,
   expenseCategoryTemplates,
-  formatDong,
+  formatMoneyNoteAmount,
+  formatMoneyNoteAmountInput,
   formatMoneyNoteDate,
   getMonthBounds,
   incomeCategoryTemplates,
   moneyNoteDefaultPreferences,
   monthLabel,
+  parseMoneyNoteAmountInput,
   shiftLocalDate,
   shiftMonth,
   type MoneyNoteCategoryTemplate,
   type MoneyNoteTotals,
 } from './moneyNoteModel';
 
-const skyBlue = '#12A7DF';
-const lightBlue = '#EEF9FD';
-const ink = '#454545';
-const muted = '#9A9A9A';
-const line = '#E1E1E1';
-const panel = '#F4F4F4';
-const expenseColor = '#D86844';
-const incomeColor = '#3F9FDB';
+const skyBlue = '#5CC4BA';
+const lightBlue = '#DDF3F0';
+const ink = '#253030';
+const muted = '#8A9A9A';
+const line = '#DDE7E7';
+const panel = '#F2F7F7';
+const expenseColor = '#E46B6B';
+const incomeColor = '#4D8FD9';
+
+const moneyType = {
+  body: {
+    fontFamily: 'Montserrat_400Regular',
+    fontSize: 14,
+    fontWeight: '400',
+    letterSpacing: 0,
+    lineHeight: 22,
+  },
+  button: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 20,
+  },
+  caption: {
+    fontFamily: 'Montserrat_500Medium',
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 17,
+  },
+  label: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 22,
+  },
+  labelSmall: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 20,
+  },
+  title: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 24,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 31,
+  },
+  titleSmall: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 25,
+  },
+} as const;
 
 type MonthDataState = {
+  currencyCode: string;
   error?: AppError;
+  locale: string;
   records: MoneyRecord[];
   status: 'failed' | 'loading' | 'ready';
   totals: MoneyNoteTotals;
@@ -145,6 +203,8 @@ function useEnsureMoneyNoteDefaults(
 
 function useMoneyNoteMonthData(monthDate: Date): MonthDataState {
   const [state, setState] = useState<MonthDataState>({
+    currencyCode: moneyNoteDefaultPreferences.currencyCode,
+    locale: moneyNoteDefaultPreferences.locale,
     records: [],
     status: 'loading',
     totals: emptyTotals,
@@ -172,6 +232,8 @@ function useMoneyNoteMonthData(monthDate: Date): MonthDataState {
 
       if (result.ok) {
         setState({
+          currencyCode: result.value.preferences.currencyCode,
+          locale: result.value.preferences.locale,
           records: result.value.records,
           status: 'ready',
           totals: totalsFromRecordsOrSummaries(result.value.records, result.value.summaries),
@@ -190,7 +252,9 @@ function useMoneyNoteMonthData(monthDate: Date): MonthDataState {
       }
 
       setState({
+        currencyCode: moneyNoteDefaultPreferences.currencyCode,
         error: result.error,
+        locale: moneyNoteDefaultPreferences.locale,
         records: [],
         status: 'failed',
         totals: emptyTotals,
@@ -285,7 +349,7 @@ function CategoryGrid({
           onPress={() => onSelect(category)}
           style={[styles.categoryTile, selectedId === category.id ? styles.categoryTileSelected : null]}>
           <CategoryIcon color={category.color} icon={category.icon} />
-          <Text numberOfLines={1} style={styles.categoryTileLabel}>
+          <Text numberOfLines={2} style={styles.categoryTileLabel}>
             {category.label}
           </Text>
         </Pressable>
@@ -321,6 +385,8 @@ export function MoneyNoteEntryScreen() {
   const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
   const matchingCategory = findCategoryByTemplate(state.categories, selectedTemplate);
   const saving = state.status === 'saving';
+  const currencyCode = state.preferences?.currencyCode ?? moneyNoteDefaultPreferences.currencyCode;
+  const currencySuffix = currencySuffixForCode(currencyCode);
 
   useEnsureMoneyNoteDefaults(state.status, state.categories, capture.reload);
 
@@ -406,13 +472,13 @@ export function MoneyNoteEntryScreen() {
           <MoneyNoteRow label={state.draft.kind === 'expense' ? 'Tiền chi' : 'Tiền thu'}>
             <TextInput
               keyboardType="number-pad"
-              onChangeText={(value) => updateField('amount', value.replace(/[^\d]/g, ''))}
+              onChangeText={(value) => updateField('amount', parseMoneyNoteAmountInput(value))}
               placeholder="0"
               placeholderTextColor={ink}
               style={styles.amountInput}
-              value={state.draft.amount}
+              value={formatMoneyNoteAmountInput(state.draft.amount)}
             />
-            <Text style={styles.currencySuffix}>đ</Text>
+            <Text style={styles.currencySuffix}>{currencySuffix}</Text>
           </MoneyNoteRow>
         </View>
 
@@ -471,22 +537,32 @@ function MonthSwitcher({
   );
 }
 
-function SummaryStrip({ totals }: { totals: MoneyNoteTotals }) {
+function SummaryStrip({
+  currencyCode,
+  locale,
+  totals,
+}: {
+  currencyCode: string;
+  locale: string;
+  totals: MoneyNoteTotals;
+}) {
+  const formatAmount = (amountMinor: number) => formatMoneyNoteAmount(amountMinor, { currencyCode, locale });
+
   return (
     <View style={styles.summaryStrip}>
       <View style={styles.summaryCell}>
         <Text style={styles.summaryLabel}>Thu nhập</Text>
-        <Text style={[styles.summaryAmount, styles.incomeAmount]}>{formatDong(totals.incomeMinor)}</Text>
+        <Text style={[styles.summaryAmount, styles.incomeAmount]}>{formatAmount(totals.incomeMinor)}</Text>
       </View>
       <View style={styles.summaryDivider} />
       <View style={styles.summaryCell}>
         <Text style={styles.summaryLabel}>Chi tiêu</Text>
-        <Text style={[styles.summaryAmount, styles.expenseAmount]}>{formatDong(totals.expenseMinor)}</Text>
+        <Text style={[styles.summaryAmount, styles.expenseAmount]}>{formatAmount(totals.expenseMinor)}</Text>
       </View>
       <View style={styles.summaryDivider} />
       <View style={styles.summaryCell}>
         <Text style={styles.summaryLabel}>Tổng</Text>
-        <Text style={[styles.summaryAmount, styles.expenseAmount]}>{formatDong(totals.netMinor)}</Text>
+        <Text style={[styles.summaryAmount, styles.expenseAmount]}>{formatAmount(totals.netMinor)}</Text>
       </View>
     </View>
   );
@@ -532,29 +608,43 @@ export function MoneyNoteCalendarScreen() {
         {monthData.status === 'failed' ? (
           <Text style={styles.warningText}>{monthData.error?.message ?? 'Không thể tải dữ liệu.'}</Text>
         ) : null}
-        <SummaryStrip totals={monthData.totals} />
+        <SummaryStrip
+          currencyCode={monthData.currencyCode}
+          locale={monthData.locale}
+          totals={monthData.totals}
+        />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function ReportSummaryCard({ totals }: { totals: MoneyNoteTotals }) {
+function ReportSummaryCard({
+  currencyCode,
+  locale,
+  totals,
+}: {
+  currencyCode: string;
+  locale: string;
+  totals: MoneyNoteTotals;
+}) {
+  const formatAmount = (amountMinor: number) => formatMoneyNoteAmount(amountMinor, { currencyCode, locale });
+
   return (
     <View style={styles.reportCard}>
       <View style={styles.reportTopRow}>
         <View style={styles.reportHalf}>
           <Text style={styles.summaryLabel}>Chi tiêu</Text>
-          <Text style={[styles.reportAmount, styles.expenseAmount]}>-{formatDong(totals.expenseMinor)}</Text>
+          <Text style={[styles.reportAmount, styles.expenseAmount]}>-{formatAmount(totals.expenseMinor)}</Text>
         </View>
         <View style={styles.reportVerticalLine} />
         <View style={styles.reportHalf}>
           <Text style={styles.summaryLabel}>Thu nhập</Text>
-          <Text style={[styles.reportAmount, styles.incomeAmount]}>+{formatDong(totals.incomeMinor)}</Text>
+          <Text style={[styles.reportAmount, styles.incomeAmount]}>+{formatAmount(totals.incomeMinor)}</Text>
         </View>
       </View>
       <View style={styles.reportBottomRow}>
         <Text style={styles.summaryLabel}>Thu chi</Text>
-        <Text style={styles.reportNet}>{formatDong(totals.netMinor)}</Text>
+        <Text style={styles.reportNet}>{formatAmount(totals.netMinor)}</Text>
       </View>
     </View>
   );
@@ -571,7 +661,11 @@ export function MoneyNoteReportScreen() {
       <ScrollView contentContainerStyle={styles.plainContent}>
         <ScreenHeader right={<IconButton label="⌕" />} title="Báo cáo" />
         <MonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
-        <ReportSummaryCard totals={monthData.totals} />
+        <ReportSummaryCard
+          currencyCode={monthData.currencyCode}
+          locale={monthData.locale}
+          totals={monthData.totals}
+        />
         <KindTabs active={activeKind} onChange={setActiveKind} />
         <View style={styles.reportBody}>
           {monthData.status === 'loading' ? <ActivityIndicator color={skyBlue} /> : null}
@@ -587,7 +681,10 @@ export function MoneyNoteReportScreen() {
                 {record.merchantOrSource ?? (record.kind === 'expense' ? 'Chi tiêu' : 'Thu nhập')}
               </Text>
               <Text style={record.kind === 'expense' ? styles.expenseAmount : styles.incomeAmount}>
-                {formatDong(record.amountMinor)}
+                {formatMoneyNoteAmount(record.amountMinor, {
+                  currencyCode: record.currencyCode,
+                  locale: monthData.locale,
+                })}
               </Text>
             </View>
           ))}
@@ -626,8 +723,10 @@ function MoreDivider() {
 export function MoneyNoteMoreScreen() {
   const router = useRouter();
   const appLanguage = useAppLanguage();
+  const preferences = usePreferenceSettings();
   const [languageOpen, setLanguageOpen] = useState(false);
   const [languageStatus, setLanguageStatus] = useState<'failed' | 'idle' | 'saved' | 'saving'>('idle');
+  const visibleCurrency = preferences.state.form.currencyCode || moneyNoteDefaultPreferences.currencyCode;
 
   const changeLanguage = useCallback(
     (language: AppLanguage) => {
@@ -656,7 +755,7 @@ export function MoneyNoteMoreScreen() {
         <MoreDivider />
         <MoreRow icon="star-four-points-outline" title="Dịch vụ Premium (Không có quảng cáo, v.v.)" />
         <MoreDivider />
-        <MoreRow icon="palette-outline" right="Sky blue" title="Thay đổi màu chủ đề" />
+        <MoreRow icon="palette-outline" right="Mint teal" title="Thay đổi màu chủ đề" />
         <MoreDivider />
         <MoreRow icon="chart-box-outline" title="Báo cáo trong năm" />
         <MoreRow icon="chart-pie" title="Báo cáo danh mục trong năm" />
@@ -699,7 +798,164 @@ export function MoneyNoteMoreScreen() {
             ) : null}
           </View>
         ) : null}
-        <MoreRow icon="cash-multiple" right="VND" title="Thay đổi tiền tệ" onPress={() => router.push('/preferences')} />
+        <MoreRow
+          icon="cash-multiple"
+          right={visibleCurrency}
+          title="Thay đổi tiền tệ"
+          onPress={() => router.push('/preferences')}
+        />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function PreferenceField({
+  helper,
+  keyboardType,
+  label,
+  onChangeText,
+  value,
+}: {
+  helper?: string;
+  keyboardType?: 'decimal-pad' | 'number-pad';
+  label: string;
+  onChangeText: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <View style={styles.preferenceField}>
+      <Text style={styles.preferenceLabel}>{label}</Text>
+      <TextInput
+        autoCapitalize="none"
+        keyboardType={keyboardType}
+        onChangeText={onChangeText}
+        placeholderTextColor={muted}
+        style={styles.preferenceInput}
+        value={value}
+      />
+      {helper ? <Text style={styles.preferenceHelper}>{helper}</Text> : null}
+    </View>
+  );
+}
+
+export function MoneyNotePreferencesScreen() {
+  const router = useRouter();
+  const { save, state, updateField } = usePreferenceSettings();
+  const appLanguage = useAppLanguage();
+  const [languageStatus, setLanguageStatus] = useState<'failed' | 'idle' | 'saved' | 'saving'>('idle');
+  const saving = state.status === 'saving';
+  const usesWholeUnitCurrency = state.form.currencyCode.toUpperCase() === 'VND';
+
+  const updateCurrency = (value: string) => {
+    const normalized = value.replace(/[^a-z]/gi, '').toUpperCase().slice(0, 3);
+    updateField('currencyCode', normalized);
+
+    if (normalized === 'VND') {
+      updateField('locale', 'vi-VN');
+      if (state.form.defaultHourlyWage === '0.00') {
+        updateField('defaultHourlyWage', '0');
+      }
+    }
+  };
+
+  const updateLanguage = (language: AppLanguage) => {
+    if (language === appLanguage) {
+      return;
+    }
+
+    setLanguageStatus('saving');
+    void saveStoredAppLanguage(language)
+      .then(() => setLanguageStatus('saved'))
+      .catch(() => setLanguageStatus('failed'));
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.preferencesContent} keyboardShouldPersistTaps="handled">
+        <View style={styles.categoryHeader}>
+          <IconButton label="<" onPress={() => router.back()} />
+          <Text numberOfLines={1} style={styles.categoryHeaderTitle}>
+            Cài đặt cơ bản
+          </Text>
+        </View>
+
+        <View style={styles.preferenceSection}>
+          <Text style={styles.preferenceSectionTitle}>Hiển thị</Text>
+          <View style={styles.preferenceSegment}>
+            {appLanguageOptions.map((option) => {
+              const selected = option.value === appLanguage;
+
+              return (
+                <Pressable
+                  key={option.value}
+                  onPress={() => updateLanguage(option.value)}
+                  style={[styles.preferenceSegmentOption, selected ? styles.preferenceSegmentOptionActive : null]}>
+                  <Text
+                    style={[
+                      styles.preferenceSegmentLabel,
+                      selected ? styles.preferenceSegmentLabelActive : null,
+                    ]}>
+                    {option.value === 'vi' ? 'Tiếng Việt' : 'English'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {languageStatus === 'saving' ? <Text style={styles.preferenceHelper}>Đang lưu ngôn ngữ...</Text> : null}
+          {languageStatus === 'failed' ? <Text style={styles.warningText}>Không thể lưu ngôn ngữ.</Text> : null}
+        </View>
+
+        <View style={styles.preferenceSection}>
+          <Text style={styles.preferenceSectionTitle}>Tiền tệ</Text>
+          <PreferenceField
+            helper="Mặc định khuyến nghị: VND."
+            label="Mã tiền tệ"
+            onChangeText={updateCurrency}
+            value={state.form.currencyCode}
+          />
+          <PreferenceField
+            helper="Dùng vi-VN để hiển thị 1.000đ và ngày theo tiếng Việt."
+            label="Khu vực"
+            onChangeText={(value) => updateField('locale', value)}
+            value={state.form.locale}
+          />
+          <PreferenceField
+            helper="Ngày bắt đầu chu kỳ báo cáo tháng."
+            keyboardType="number-pad"
+            label="Ngày chốt tháng"
+            onChangeText={(value) => updateField('monthlyBudgetResetDay', value.replace(/[^\d]/g, ''))}
+            value={state.form.monthlyBudgetResetDay}
+          />
+          <PreferenceField
+            helper="Có thể để 0 nếu không dùng tính lương."
+            keyboardType="number-pad"
+            label="Lương giờ"
+            onChangeText={(value) =>
+              updateField(
+                'defaultHourlyWage',
+                usesWholeUnitCurrency ? parseMoneyNoteAmountInput(value) || '0' : value,
+              )
+            }
+            value={
+              usesWholeUnitCurrency
+                ? formatMoneyNoteAmountInput(state.form.defaultHourlyWage)
+                : state.form.defaultHourlyWage
+            }
+          />
+          {Object.keys(state.fieldErrors).length > 0 ? (
+            <Text style={styles.warningText}>Kiểm tra lại tiền tệ, khu vực hoặc ngày chốt tháng.</Text>
+          ) : null}
+          {state.saveError ? <Text style={styles.warningText}>{state.saveError.message}</Text> : null}
+          {state.status === 'saved' ? <Text style={styles.successText}>Đã lưu cài đặt.</Text> : null}
+
+          <Pressable
+            accessibilityRole="button"
+            disabled={saving}
+            onPress={save}
+            style={[styles.primaryCta, saving ? styles.primaryCtaDisabled : null]}>
+            <Text style={styles.primaryCtaText}>{saving ? 'Đang lưu...' : 'Lưu cài đặt'}</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -735,13 +991,13 @@ export function MoneyNoteCategoryScreen() {
 
 const styles = StyleSheet.create({
   amountInput: {
+    ...moneyType.title,
     backgroundColor: lightBlue,
-    borderRadius: 8,
+    borderRadius: 12,
     color: ink,
     flex: 1,
-    fontSize: 26,
-    minHeight: 58,
-    paddingHorizontal: 18,
+    minHeight: 48,
+    paddingHorizontal: 16,
   },
   calendarGrid: {
     backgroundColor: '#FFFFFF',
@@ -751,8 +1007,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   categoryEditText: {
+    ...moneyType.labelSmall,
     color: ink,
-    fontSize: 18,
   },
   categoryGrid: {
     flexDirection: 'row',
@@ -768,10 +1024,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   categoryHeaderTitle: {
+    ...moneyType.title,
     color: ink,
     flex: 1,
-    fontSize: 24,
-    fontWeight: '700',
   },
   categoryListContent: {
     backgroundColor: '#FFFFFF',
@@ -787,9 +1042,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   categoryListTitle: {
+    ...moneyType.titleSmall,
     color: ink,
     flex: 1,
-    fontSize: 22,
   },
   categorySection: {
     backgroundColor: '#FFFFFF',
@@ -800,18 +1055,18 @@ const styles = StyleSheet.create({
   categoryTile: {
     alignItems: 'center',
     borderColor: '#CFCFCF',
-    borderRadius: 4,
+    borderRadius: 8,
     borderWidth: 1,
     flexBasis: '22%',
     flexGrow: 1,
-    height: 76,
+    height: 84,
     justifyContent: 'center',
     minWidth: 74,
     paddingHorizontal: 6,
   },
   categoryTileLabel: {
+    ...moneyType.caption,
     color: ink,
-    fontSize: 15,
     marginTop: 4,
     textAlign: 'center',
   },
@@ -820,15 +1075,15 @@ const styles = StyleSheet.create({
     borderWidth: 3,
   },
   currencySuffix: {
+    ...moneyType.titleSmall,
     color: ink,
-    fontSize: 20,
     marginLeft: 10,
     textDecorationLine: 'underline',
   },
   datePill: {
     alignItems: 'center',
     backgroundColor: lightBlue,
-    borderRadius: 8,
+    borderRadius: 12,
     flex: 1,
     flexDirection: 'row',
     gap: 8,
@@ -838,13 +1093,13 @@ const styles = StyleSheet.create({
   },
   datePillIcon: {
     color: skyBlue,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
   },
   datePillText: {
+    ...moneyType.label,
     color: ink,
     flex: 1,
-    fontSize: 19,
   },
   dayCell: {
     alignItems: 'flex-start',
@@ -860,20 +1115,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#EAF7FC',
   },
   dayText: {
+    ...moneyType.body,
     color: '#555555',
-    fontSize: 20,
   },
   dayTextMuted: {
     color: '#B7B7B7',
   },
   dragHandle: {
+    ...moneyType.titleSmall,
     color: '#666666',
-    fontSize: 30,
-    fontWeight: '700',
   },
   emptyText: {
+    ...moneyType.titleSmall,
     color: '#666666',
-    fontSize: 24,
     marginTop: 120,
     textAlign: 'center',
   },
@@ -902,8 +1156,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   formRowLabel: {
+    ...moneyType.label,
     color: ink,
-    fontSize: 22,
     width: 106,
   },
   header: {
@@ -917,10 +1171,9 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   headerTitle: {
+    ...moneyType.title,
     color: ink,
     flex: 1,
-    fontSize: 23,
-    fontWeight: '700',
   },
   iconButton: {
     alignItems: 'center',
@@ -929,9 +1182,8 @@ const styles = StyleSheet.create({
     minWidth: 44,
   },
   iconButtonText: {
+    ...moneyType.title,
     color: ink,
-    fontSize: 28,
-    fontWeight: '600',
   },
   incomeAmount: {
     color: incomeColor,
@@ -951,9 +1203,8 @@ const styles = StyleSheet.create({
     backgroundColor: skyBlue,
   },
   kindTabText: {
+    ...moneyType.titleSmall,
     color: '#BBBBBB',
-    fontSize: 22,
-    fontWeight: '700',
   },
   kindTabTextActive: {
     color: skyBlue,
@@ -963,7 +1214,7 @@ const styles = StyleSheet.create({
     borderBottomColor: line,
     borderBottomWidth: 1,
     flexDirection: 'row',
-    height: 60,
+    height: 58,
   },
   languageOption: {
     borderColor: line,
@@ -977,8 +1228,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   languageOptionText: {
+    ...moneyType.body,
     color: ink,
-    fontSize: 18,
     textAlign: 'center',
   },
   languageOptionTextSelected: {
@@ -994,7 +1245,7 @@ const styles = StyleSheet.create({
   monthPill: {
     alignItems: 'center',
     backgroundColor: lightBlue,
-    borderRadius: 8,
+    borderRadius: 12,
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
@@ -1008,9 +1259,8 @@ const styles = StyleSheet.create({
     right: 22,
   },
   monthPillText: {
+    ...moneyType.titleSmall,
     color: ink,
-    fontSize: 23,
-    fontWeight: '700',
   },
   monthSwitcher: {
     alignItems: 'center',
@@ -1031,8 +1281,8 @@ const styles = StyleSheet.create({
     width: 48,
   },
   moreRight: {
+    ...moneyType.body,
     color: ink,
-    fontSize: 20,
     marginLeft: 12,
   },
   moreRow: {
@@ -1046,27 +1296,92 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
   },
   moreTitle: {
+    ...moneyType.label,
     color: '#5A5A5A',
     flex: 1,
-    fontSize: 21,
   },
   mutedText: {
+    ...moneyType.caption,
     color: muted,
-    fontSize: 16,
   },
   plainContent: {
     backgroundColor: '#FFFFFF',
     paddingBottom: 48,
   },
+  preferenceField: {
+    gap: 8,
+  },
+  preferenceHelper: {
+    ...moneyType.caption,
+    color: muted,
+  },
+  preferenceInput: {
+    ...moneyType.body,
+    backgroundColor: '#FFFFFF',
+    borderColor: line,
+    borderRadius: 12,
+    borderWidth: 1,
+    color: ink,
+    minHeight: 48,
+    paddingHorizontal: 16,
+  },
+  preferenceLabel: {
+    ...moneyType.labelSmall,
+    color: ink,
+  },
+  preferenceSection: {
+    backgroundColor: '#FFFFFF',
+    borderColor: line,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 16,
+    marginHorizontal: 20,
+    padding: 20,
+  },
+  preferenceSectionTitle: {
+    ...moneyType.titleSmall,
+    color: ink,
+  },
+  preferenceSegment: {
+    backgroundColor: lightBlue,
+    borderColor: line,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    padding: 8,
+  },
+  preferenceSegmentLabel: {
+    ...moneyType.caption,
+    color: '#566666',
+  },
+  preferenceSegmentLabelActive: {
+    color: skyBlue,
+  },
+  preferenceSegmentOption: {
+    alignItems: 'center',
+    borderRadius: 12,
+    flex: 1,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  preferenceSegmentOptionActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  preferencesContent: {
+    backgroundColor: panel,
+    gap: 16,
+    paddingBottom: 48,
+  },
   primaryCta: {
     alignItems: 'center',
     backgroundColor: skyBlue,
-    borderRadius: 34,
+    borderRadius: 12,
     elevation: 3,
     justifyContent: 'center',
     marginHorizontal: 28,
     marginTop: 24,
-    minHeight: 64,
+    minHeight: 48,
     shadowColor: '#000000',
     shadowOpacity: 0.18,
     shadowRadius: 5,
@@ -1075,10 +1390,8 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   primaryCtaText: {
+    ...moneyType.button,
     color: '#FFFFFF',
-    fontSize: 21,
-    fontWeight: '700',
-    letterSpacing: 2,
   },
   recordRow: {
     alignItems: 'center',
@@ -1090,13 +1403,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   recordTitle: {
+    ...moneyType.body,
     color: ink,
     flex: 1,
-    fontSize: 18,
   },
   reportAmount: {
-    fontSize: 25,
-    fontWeight: '700',
+    ...moneyType.titleSmall,
     marginTop: 8,
   },
   reportBody: {
@@ -1125,9 +1437,8 @@ const styles = StyleSheet.create({
     paddingVertical: 22,
   },
   reportNet: {
+    ...moneyType.title,
     color: ink,
-    fontSize: 28,
-    fontWeight: '700',
   },
   reportTopRow: {
     flexDirection: 'row',
@@ -1146,19 +1457,17 @@ const styles = StyleSheet.create({
     color: incomeColor,
   },
   sectionLabel: {
+    ...moneyType.label,
     color: ink,
-    fontSize: 20,
-    fontWeight: '600',
   },
   successText: {
+    ...moneyType.caption,
     color: '#148B5B',
-    fontSize: 16,
     marginHorizontal: 28,
     marginTop: 14,
   },
   summaryAmount: {
-    fontSize: 23,
-    fontWeight: '700',
+    ...moneyType.titleSmall,
     marginTop: 6,
   },
   summaryCell: {
@@ -1172,8 +1481,8 @@ const styles = StyleSheet.create({
     width: 1,
   },
   summaryLabel: {
+    ...moneyType.label,
     color: '#333333',
-    fontSize: 22,
   },
   summaryStrip: {
     alignItems: 'center',
@@ -1188,17 +1497,17 @@ const styles = StyleSheet.create({
     color: expenseColor,
   },
   textInput: {
+    ...moneyType.body,
     backgroundColor: lightBlue,
-    borderRadius: 8,
+    borderRadius: 12,
     color: ink,
     flex: 1,
-    fontSize: 21,
     minHeight: 50,
     paddingHorizontal: 14,
   },
   warningText: {
+    ...moneyType.caption,
     color: expenseColor,
-    fontSize: 16,
     marginHorizontal: 28,
     marginTop: 14,
   },
@@ -1212,8 +1521,7 @@ const styles = StyleSheet.create({
     width: `${100 / 7}%`,
   },
   weekdayText: {
+    ...moneyType.labelSmall,
     color: ink,
-    fontSize: 18,
-    fontWeight: '700',
   },
 });

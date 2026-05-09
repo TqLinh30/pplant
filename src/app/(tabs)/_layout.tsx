@@ -70,7 +70,6 @@ export default function TabLayout() {
         },
         tabBarLabelStyle: {
           ...typography.tabLabel,
-          fontSize: 14,
           marginTop: 0,
         },
         tabBarStyle: {
