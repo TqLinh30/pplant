@@ -784,6 +784,21 @@ function pointOnCircle(centerX: number, centerY: number, radius: number, angleDe
   };
 }
 
+function directionalBendX(startX: number, bendX: number, endX: number, isRightSide: boolean): number {
+  // Keep the bend between the donut edge and label so leader lines never kink back inward.
+  if (isRightSide) {
+    const min = startX + 4;
+    const max = endX - 6;
+
+    return max < min ? (startX + endX) / 2 : clampNumber(bendX, min, max);
+  }
+
+  const min = endX + 6;
+  const max = startX - 4;
+
+  return max < min ? (startX + endX) / 2 : clampNumber(bendX, min, max);
+}
+
 function buildReportChartSegments({
   centerX,
   centerY,
@@ -805,7 +820,7 @@ function buildReportChartSegments({
 }): ReportChartSegment[] {
   let arcOffset = 0;
   let angleOffset = -90;
-  const labelWidth = 96;
+  const labelWidth = 84;
   const labelPadding = 8;
 
   return rows.map((row) => {
@@ -813,7 +828,7 @@ function buildReportChartSegments({
     const midAngle = angleOffset + sweepAngle / 2;
     const outerRadius = radius + strokeWidth / 2;
     const connectorStart = pointOnCircle(centerX, centerY, outerRadius - 2, midAngle);
-    const connectorBend = pointOnCircle(centerX, centerY, outerRadius + 18, midAngle);
+    const connectorBend = pointOnCircle(centerX, centerY, outerRadius + 10, midAngle);
     const isRightSide = Math.cos((midAngle * Math.PI) / 180) >= 0;
     const labelLeft = isRightSide ? chartWidth - labelWidth - labelPadding : labelPadding;
     const connectorEndX = isRightSide ? labelLeft - 8 : labelLeft + labelWidth - 8;
@@ -821,9 +836,15 @@ function buildReportChartSegments({
     const labelTop = clampNumber(connectorEndY - 25, 8, chartHeight - 58);
     const dashLength = Math.max(0.1, (row.percent / 100) * circumference);
     // Connector geometry is derived from the segment midpoint so the label always describes that exact color.
+    const connectorBendX = directionalBendX(
+      connectorStart.x,
+      connectorBend.x,
+      connectorEndX,
+      isRightSide,
+    );
     const segment = {
       ...row,
-      connectorPoints: `${connectorStart.x},${connectorStart.y} ${connectorBend.x},${connectorBend.y} ${connectorEndX},${connectorEndY}`,
+      connectorPoints: `${connectorStart.x},${connectorStart.y} ${connectorBendX},${connectorBend.y} ${connectorEndX},${connectorEndY}`,
       dashLength,
       dashOffset: -arcOffset,
       labelLeft,
@@ -3263,7 +3284,7 @@ const styles = StyleSheet.create({
     margin: 18,
   },
   reportChartCallout: {
-    width: 96,
+    width: 84,
     position: 'absolute',
   },
   reportChartCalloutLabel: {
