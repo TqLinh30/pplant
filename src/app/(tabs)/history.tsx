@@ -1,1 +1,1 @@
-export { HistoryScreen as default } from '@/features/history/HistoryScreen';
+export { MoneyNoteReportScreen as default } from '@/features/moneynote/MoneyNoteScreens';
