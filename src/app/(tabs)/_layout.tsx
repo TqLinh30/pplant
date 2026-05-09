@@ -71,7 +71,7 @@ export default function TabLayout() {
           report: 'Báo cáo',
         };
 
-  const bottomPadding = Math.min(Math.max(insets.bottom, 2), 6);
+  const bottomPadding = Math.max(insets.bottom, 6);
   const tabBarHeight = 58 + bottomPadding;
 
   return (

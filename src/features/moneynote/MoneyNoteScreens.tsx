@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -17,6 +18,7 @@ import type { AppError } from '@/domain/common/app-error';
 import type { CategoryTopicItem } from '@/domain/categories/types';
 import type { MoneyHistorySummary } from '@/domain/money/calculations';
 import type { MoneyRecord } from '@/domain/money/types';
+import type { UserPreferences } from '@/domain/preferences/types';
 import { isErr } from '@/domain/common/result';
 import {
   createCategoryTopicItem,
@@ -515,6 +517,237 @@ function useMoneyNoteMonthData(monthDate: Date): MonthDataState {
   return state;
 }
 
+type MoneyNoteMorePanelKind =
+  | 'backup'
+  | 'categoryAllTime'
+  | 'categoryYear'
+  | 'export'
+  | 'reportAllTime'
+  | 'reportYear';
+
+type MorePanelDataState = {
+  currencyCode: string;
+  error?: AppError;
+  locale: string;
+  preferences?: UserPreferences;
+  records: MoneyRecord[];
+  status: 'failed' | 'idle' | 'loading' | 'ready';
+  totalCount: number;
+  totals: MoneyNoteTotals;
+};
+
+type CategoryReportRow = {
+  color: string;
+  expenseMinor: number;
+  icon: string;
+  incomeMinor: number;
+  key: string;
+  label: string;
+};
+
+const morePanelEmptyState: MorePanelDataState = {
+  currencyCode: moneyNoteDefaultPreferences.currencyCode,
+  locale: moneyNoteDefaultPreferences.locale,
+  records: [],
+  status: 'idle',
+  totalCount: 0,
+  totals: emptyTotals,
+};
+
+function morePanelRange(panelKind: MoneyNoteMorePanelKind | null): { dateFrom?: string; dateTo?: string } {
+  if (panelKind !== 'categoryYear' && panelKind !== 'reportYear') {
+    return {};
+  }
+
+  const year = new Date().getFullYear();
+
+  return {
+    dateFrom: `${year}-01-01`,
+    dateTo: `${year}-12-31`,
+  };
+}
+
+function useMoneyNoteMorePanelData(panelKind: MoneyNoteMorePanelKind | null): MorePanelDataState {
+  const [state, setState] = useState<MorePanelDataState>(morePanelEmptyState);
+
+  useEffect(() => {
+    if (!panelKind) {
+      setState(morePanelEmptyState);
+      return;
+    }
+
+    let cancelled = false;
+
+    const load = async () => {
+      setState((current) => ({ ...current, error: undefined, status: 'loading' }));
+
+      const result = await loadMoneyHistory({
+        ...morePanelRange(panelKind),
+        limit: 50,
+        sort: 'date_desc',
+        summaryMode: 'month',
+      });
+
+      if (cancelled) {
+        return;
+      }
+
+      if (result.ok) {
+        setState({
+          currencyCode: result.value.preferences.currencyCode,
+          locale: result.value.preferences.locale,
+          preferences: result.value.preferences,
+          records: result.value.records,
+          status: 'ready',
+          totalCount: result.value.page.totalCount,
+          totals: totalsFromRecordsOrSummaries(result.value.records, result.value.summaries),
+        });
+        return;
+      }
+
+      setState({
+        ...morePanelEmptyState,
+        error: result.error,
+        status: 'failed',
+      });
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [panelKind]);
+
+  return state;
+}
+
+function buildCategoryReportRows(records: MoneyRecord[], language: AppLanguage): CategoryReportRow[] {
+  const rows = new Map<string, CategoryReportRow>();
+
+  records.forEach((record) => {
+    if (record.deletedAt !== null) {
+      return;
+    }
+
+    const template = templateForRecord(record);
+    const key = record.categoryId ?? record.merchantOrSource ?? 'uncategorized';
+    const existing =
+      rows.get(key) ??
+      ({
+        color: template?.color ?? skyBlue,
+        expenseMinor: 0,
+        icon: template?.icon ?? 'tag-outline',
+        incomeMinor: 0,
+        key,
+        label: recordDisplayLabel(record, language, language === 'en' ? 'Uncategorized' : 'Khác'),
+      } satisfies CategoryReportRow);
+
+    if (record.kind === 'expense') {
+      existing.expenseMinor += record.amountMinor;
+    } else {
+      existing.incomeMinor += record.amountMinor;
+    }
+
+    rows.set(key, existing);
+  });
+
+  return Array.from(rows.values()).sort(
+    (left, right) =>
+      right.expenseMinor + right.incomeMinor - (left.expenseMinor + left.incomeMinor),
+  );
+}
+
+function escapeCsvCell(value: unknown): string {
+  const text = String(value ?? '');
+
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function moneyRecordsToCsv(records: MoneyRecord[], language: AppLanguage): string {
+  const header = ['date', 'kind', 'category', 'amountMinor', 'currencyCode', 'note'].map(escapeCsvCell);
+  const rows = records.map((record) =>
+    [
+      record.localDate,
+      record.kind,
+      recordDisplayLabel(record, language, ''),
+      record.amountMinor,
+      record.currencyCode,
+      record.note ?? '',
+    ].map(escapeCsvCell),
+  );
+
+  return [header, ...rows].map((row) => row.join(',')).join('\n');
+}
+
+async function writeMoneyNoteDocument(
+  fileBaseName: string,
+  extension: 'csv' | 'json',
+  contents: string,
+): Promise<string> {
+  if (!FileSystem.documentDirectory) {
+    throw new Error('Document directory is not available.');
+  }
+
+  const directory = `${FileSystem.documentDirectory.endsWith('/') ? FileSystem.documentDirectory : `${FileSystem.documentDirectory}/`}moneynote/`;
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const uri = `${directory}${fileBaseName}-${timestamp}.${extension}`;
+
+  await FileSystem.makeDirectoryAsync(directory, {
+    intermediates: true,
+  });
+  await FileSystem.writeAsStringAsync(uri, contents);
+
+  return uri;
+}
+
+async function loadMoneyNoteExportSnapshot(panelKind: MoneyNoteMorePanelKind): Promise<{
+  preferences: UserPreferences;
+  records: MoneyRecord[];
+  totalCount: number;
+  totals: MoneyNoteTotals;
+}> {
+  const records: MoneyRecord[] = [];
+  let offset = 0;
+  let preferences: UserPreferences | null = null;
+  let totalCount = 0;
+
+  for (let page = 0; page < 100; page += 1) {
+    const result = await loadMoneyHistory({
+      ...morePanelRange(panelKind),
+      limit: 50,
+      offset,
+      sort: 'date_desc',
+      summaryMode: 'month',
+    });
+
+    if (!result.ok) {
+      throw new Error(result.error.message);
+    }
+
+    preferences = result.value.preferences;
+    totalCount = result.value.page.totalCount;
+    records.push(...result.value.records);
+
+    if (!result.value.page.hasMore || records.length >= totalCount) {
+      break;
+    }
+
+    offset += result.value.page.limit;
+  }
+
+  if (!preferences) {
+    throw new Error('Preferences are not available.');
+  }
+
+  return {
+    preferences,
+    records,
+    totalCount,
+    totals: calculateMoneyNoteTotals(records),
+  };
+}
+
 function ScreenHeader({
   right,
   title,
@@ -810,7 +1043,12 @@ function MonthSwitcher({
       <IconButton label="<" onPress={() => onChange(shiftMonth(monthDate, -1))} />
       <View style={styles.monthPill}>
         <Text style={styles.monthPillText}>{monthLabel(monthDate)}</Text>
-        <Text style={styles.monthPillIcon}>▣</Text>
+        <MaterialCommunityIcons
+          color={skyBlue}
+          name="calendar-month-outline"
+          size={22}
+          style={styles.monthPillCalendarIcon}
+        />
       </View>
       <IconButton label=">" onPress={() => onChange(shiftMonth(monthDate, 1))} />
     </View>
@@ -1168,6 +1406,156 @@ function MoreDivider() {
   return <View style={styles.moreDivider} />;
 }
 
+function MoreToolPanel({
+  copy,
+  data,
+  fileBusy,
+  fileError,
+  fileMessage,
+  kind,
+  language,
+  onCreateBackup,
+  onCreateCsv,
+}: {
+  copy: typeof moneyNoteCopy.vi;
+  data: MorePanelDataState;
+  fileBusy: boolean;
+  fileError: string | null;
+  fileMessage: string | null;
+  kind: MoneyNoteMorePanelKind;
+  language: AppLanguage;
+  onCreateBackup: () => void;
+  onCreateCsv: () => void;
+}) {
+  const categoryRows = buildCategoryReportRows(data.records, language);
+  const isCategoryReport = kind === 'categoryAllTime' || kind === 'categoryYear';
+  const titleByKind: Record<MoneyNoteMorePanelKind, string> = {
+    backup: copy.backupData,
+    categoryAllTime: copy.categoryAllTimeReport,
+    categoryYear: copy.categoryYearReport,
+    export: copy.exportData,
+    reportAllTime: copy.reportAllTime,
+    reportYear: copy.reportYear,
+  };
+  const formatAmount = (amountMinor: number) =>
+    formatMoneyNoteAmount(amountMinor, {
+      currencyCode: data.currencyCode,
+      locale: data.locale,
+    });
+  const recordsLabel =
+    language === 'en'
+      ? `${data.totalCount} records in this view`
+      : `${data.totalCount} bản ghi trong mục này`;
+
+  return (
+    <View style={styles.morePanel}>
+      <Text style={styles.morePanelTitle}>{titleByKind[kind]}</Text>
+      {data.status === 'loading' ? (
+        <ActivityIndicator color={skyBlue} />
+      ) : null}
+      {data.status === 'failed' ? (
+        <Text style={styles.warningText}>{data.error?.message ?? copy.saveFailed}</Text>
+      ) : null}
+      {data.status === 'ready' ? (
+        <>
+          <SummaryStrip
+            copy={copy}
+            currencyCode={data.currencyCode}
+            locale={data.locale}
+            totals={data.totals}
+          />
+          <Text style={styles.morePanelNote}>{recordsLabel}</Text>
+          {isCategoryReport ? (
+            <View style={styles.moreReportList}>
+              {categoryRows.length === 0 ? (
+                <Text style={styles.mutedText}>{copy.noData}</Text>
+              ) : null}
+              {categoryRows.slice(0, 8).map((row) => (
+                <View key={row.key} style={styles.moreReportRow}>
+                  <MaterialCommunityIcons
+                    color={row.color}
+                    name={row.icon as never}
+                    size={28}
+                    style={styles.moreReportIcon}
+                  />
+                  <View style={styles.moreReportText}>
+                    <Text numberOfLines={1} style={styles.moreReportTitle}>
+                      {row.label}
+                    </Text>
+                    <Text style={styles.moreReportMeta}>
+                      {formatAmount(row.incomeMinor)} / {formatAmount(row.expenseMinor)}
+                    </Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.moreReportAmount,
+                      row.incomeMinor - row.expenseMinor < 0 ? styles.expenseAmount : styles.incomeAmount,
+                    ]}>
+                    {formatAmount(row.incomeMinor - row.expenseMinor)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.moreReportList}>
+              {data.records.length === 0 ? <Text style={styles.mutedText}>{copy.noData}</Text> : null}
+              {data.records.slice(0, 6).map((record) => (
+                <View key={record.id} style={styles.moreReportRow}>
+                  <MaterialCommunityIcons
+                    color={record.kind === 'expense' ? expenseColor : incomeColor}
+                    name={record.kind === 'expense' ? 'arrow-down-circle-outline' : 'arrow-up-circle-outline'}
+                    size={28}
+                    style={styles.moreReportIcon}
+                  />
+                  <View style={styles.moreReportText}>
+                    <Text numberOfLines={1} style={styles.moreReportTitle}>
+                      {recordDisplayLabel(record, language, copy.category)}
+                    </Text>
+                    <Text style={styles.moreReportMeta}>{formatMoneyNoteShortDate(record.localDate)}</Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.moreReportAmount,
+                      record.kind === 'expense' ? styles.expenseAmount : styles.incomeAmount,
+                    ]}>
+                    {formatAmount(record.kind === 'expense' ? -record.amountMinor : record.amountMinor)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+          {kind === 'export' || kind === 'backup' ? (
+            <View style={styles.morePanelActions}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={fileBusy || data.records.length === 0}
+                onPress={kind === 'export' ? onCreateCsv : onCreateBackup}
+                style={[
+                  styles.morePanelButton,
+                  fileBusy || data.records.length === 0 ? styles.primaryCtaDisabled : null,
+                ]}>
+                <Text style={styles.morePanelButtonText}>
+                  {fileBusy
+                    ? copy.saving
+                    : kind === 'export'
+                      ? language === 'en'
+                        ? 'Create CSV'
+                        : 'Tạo file CSV'
+                      : language === 'en'
+                        ? 'Create JSON backup'
+                        : 'Tạo bản sao JSON'}
+                </Text>
+              </Pressable>
+              {fileMessage ? <Text style={styles.successTextInline}>{fileMessage}</Text> : null}
+              {fileError ? <Text style={styles.warningText}>{fileError}</Text> : null}
+            </View>
+          ) : null}
+        </>
+      ) : null}
+    </View>
+  );
+}
+
 export function MoneyNoteMoreScreen() {
   const router = useRouter();
   const { copy, language: appLanguage } = useMoneyNoteCopy();
@@ -1175,7 +1563,12 @@ export function MoneyNoteMoreScreen() {
   const [languageOpen, setLanguageOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const [languageStatus, setLanguageStatus] = useState<'failed' | 'idle' | 'saved' | 'saving'>('idle');
+  const [activePanel, setActivePanel] = useState<MoneyNoteMorePanelKind | null>(null);
+  const [fileBusy, setFileBusy] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [fileMessage, setFileMessage] = useState<string | null>(null);
   const visibleCurrency = preferences.state.form.currencyCode || moneyNoteDefaultPreferences.currencyCode;
+  const panelData = useMoneyNoteMorePanelData(activePanel);
 
   const changeLanguage = useCallback(
     (language: AppLanguage) => {
@@ -1205,6 +1598,86 @@ export function MoneyNoteMoreScreen() {
     }
   };
 
+  const togglePanel = (panelKind: MoneyNoteMorePanelKind) => {
+    setFileBusy(false);
+    setFileError(null);
+    setFileMessage(null);
+    setActivePanel((current) => (current === panelKind ? null : panelKind));
+  };
+
+  const createCsvExport = useCallback(async () => {
+    if (panelData.status !== 'ready') {
+      return;
+    }
+
+    setFileBusy(true);
+    setFileError(null);
+    setFileMessage(null);
+
+    try {
+      const snapshot = await loadMoneyNoteExportSnapshot('export');
+      const uri = await writeMoneyNoteDocument(
+        'moneynote-export',
+        'csv',
+        moneyRecordsToCsv(snapshot.records, appLanguage),
+      );
+      setFileMessage(appLanguage === 'en' ? `CSV saved: ${uri}` : `Đã tạo CSV: ${uri}`);
+    } catch (error) {
+      setFileError(error instanceof Error ? error.message : copy.saveFailed);
+    } finally {
+      setFileBusy(false);
+    }
+  }, [appLanguage, copy.saveFailed, panelData.status]);
+
+  const createJsonBackup = useCallback(async () => {
+    if (panelData.status !== 'ready') {
+      return;
+    }
+
+    setFileBusy(true);
+    setFileError(null);
+    setFileMessage(null);
+
+    try {
+      const snapshot = await loadMoneyNoteExportSnapshot('backup');
+      const uri = await writeMoneyNoteDocument(
+        'moneynote-backup',
+        'json',
+        JSON.stringify(
+          {
+            exportedAt: new Date().toISOString(),
+            preferences: snapshot.preferences,
+            records: snapshot.records,
+            totalCount: snapshot.totalCount,
+            totals: snapshot.totals,
+          },
+          null,
+          2,
+        ),
+      );
+      setFileMessage(appLanguage === 'en' ? `Backup saved: ${uri}` : `Đã tạo sao lưu: ${uri}`);
+    } catch (error) {
+      setFileError(error instanceof Error ? error.message : copy.saveFailed);
+    } finally {
+      setFileBusy(false);
+    }
+  }, [appLanguage, copy.saveFailed, panelData.status]);
+
+  const renderActivePanel = (panelKind: MoneyNoteMorePanelKind) =>
+    activePanel === panelKind ? (
+      <MoreToolPanel
+        copy={copy}
+        data={panelData}
+        fileBusy={fileBusy}
+        fileError={fileError}
+        fileMessage={fileMessage}
+        kind={panelKind}
+        language={appLanguage}
+        onCreateBackup={createJsonBackup}
+        onCreateCsv={createCsvExport}
+      />
+    ) : null;
+
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.moreContent}>
@@ -1212,17 +1685,19 @@ export function MoneyNoteMoreScreen() {
         <MoreDivider />
         <MoreRow icon="cog-outline" onPress={() => router.push('/preferences')} title={copy.basicSettings} />
         <MoreDivider />
-        <MoreRow icon="star-four-points-outline" title={copy.premium} />
+        <MoreRow icon="chart-box-outline" onPress={() => togglePanel('reportYear')} title={copy.reportYear} />
+        {renderActivePanel('reportYear')}
+        <MoreRow icon="chart-pie" onPress={() => togglePanel('categoryYear')} title={copy.categoryYearReport} />
+        {renderActivePanel('categoryYear')}
+        <MoreRow icon="chart-box-outline" onPress={() => togglePanel('reportAllTime')} title={copy.reportAllTime} />
+        {renderActivePanel('reportAllTime')}
+        <MoreRow icon="chart-pie" onPress={() => togglePanel('categoryAllTime')} title={copy.categoryAllTimeReport} />
+        {renderActivePanel('categoryAllTime')}
         <MoreDivider />
-        <MoreRow icon="palette-outline" right={copy.themeValue} title={copy.theme} />
-        <MoreDivider />
-        <MoreRow icon="chart-box-outline" title={copy.reportYear} />
-        <MoreRow icon="chart-pie" title={copy.categoryYearReport} />
-        <MoreRow icon="chart-box-outline" title={copy.reportAllTime} />
-        <MoreRow icon="chart-pie" title={copy.categoryAllTimeReport} />
-        <MoreDivider />
-        <MoreRow icon="download-outline" title={copy.exportData} />
-        <MoreRow icon="archive-arrow-down-outline" title={copy.backupData} />
+        <MoreRow icon="download-outline" onPress={() => togglePanel('export')} title={copy.exportData} />
+        {renderActivePanel('export')}
+        <MoreRow icon="archive-arrow-down-outline" onPress={() => togglePanel('backup')} title={copy.backupData} />
+        {renderActivePanel('backup')}
         <MoreDivider />
         <MoreRow icon="help-circle-outline" title={copy.help} />
         <MoreRow icon="information-outline" title={copy.appInfo} />
@@ -2200,9 +2675,7 @@ const styles = StyleSheet.create({
     minHeight: 52,
     paddingHorizontal: 18,
   },
-  monthPillIcon: {
-    color: skyBlue,
-    fontSize: 20,
+  monthPillCalendarIcon: {
     position: 'absolute',
     right: 22,
   },
@@ -2247,6 +2720,73 @@ const styles = StyleSheet.create({
     ...moneyType.label,
     color: '#5A5A5A',
     flex: 1,
+  },
+  morePanel: {
+    backgroundColor: '#FFFFFF',
+    borderBottomColor: line,
+    borderBottomWidth: 1,
+    gap: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+  },
+  morePanelActions: {
+    gap: 10,
+  },
+  morePanelButton: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: skyBlue,
+    borderRadius: 10,
+    minHeight: 42,
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+  },
+  morePanelButtonText: {
+    ...moneyType.button,
+    color: '#FFFFFF',
+  },
+  morePanelNote: {
+    ...moneyType.caption,
+    color: muted,
+  },
+  morePanelTitle: {
+    ...moneyType.label,
+    color: ink,
+  },
+  moreReportAmount: {
+    ...moneyType.label,
+    color: ink,
+    marginLeft: 8,
+  },
+  moreReportIcon: {
+    width: 38,
+  },
+  moreReportList: {
+    borderColor: line,
+    borderRadius: 10,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  moreReportMeta: {
+    ...moneyType.caption,
+    color: muted,
+  },
+  moreReportRow: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderBottomColor: line,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    minHeight: 58,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  moreReportText: {
+    flex: 1,
+  },
+  moreReportTitle: {
+    ...moneyType.label,
+    color: ink,
   },
   mutedText: {
     ...moneyType.caption,
