@@ -8,8 +8,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { AppError } from '@/domain/common/app-error';
@@ -17,8 +18,12 @@ import type { CategoryTopicItem } from '@/domain/categories/types';
 import type { MoneyHistorySummary } from '@/domain/money/calculations';
 import type { MoneyRecord } from '@/domain/money/types';
 import { isErr } from '@/domain/common/result';
-import { createCategoryTopicItem } from '@/services/categories/category-topic.service';
+import {
+  createCategoryTopicItem,
+  deleteCategoryTopicItem,
+} from '@/services/categories/category-topic.service';
 import { loadMoneyHistory } from '@/services/money/money-history.service';
+import { loadManualMoneyRecordForEdit } from '@/services/money/money-record.service';
 import { saveUserPreferences } from '@/services/preferences/preferences.service';
 import { saveStoredAppLanguage } from '@/i18n/language-storage';
 import { appLanguageOptions, useAppLanguage, type AppLanguage } from '@/i18n/strings';
@@ -62,6 +67,7 @@ const incomeColor = '#4D8FD9';
 const moneyNoteCopy = {
   vi: {
     appTitle: 'Sổ thu chi MoneyNote',
+    addCategory: 'Thêm danh mục',
     appInfo: 'Thông tin ứng dụng',
     backupData: 'Sao lưu dữ liệu',
     basicSettings: 'Cài đặt cơ bản',
@@ -70,6 +76,7 @@ const moneyNoteCopy = {
     categoryYearReport: 'Báo cáo danh mục trong năm',
     category: 'Danh mục',
     categoryEditTitle: 'Thêm danh mục',
+    categoryName: 'Tên danh mục',
     changeCurrency: 'Thay đổi tiền tệ',
     changeLanguage: 'Thay đổi ngôn ngữ',
     currency: 'Tiền tệ',
@@ -77,6 +84,7 @@ const moneyNoteCopy = {
     currencyHelper: 'Chọn nhanh ở đây hoặc chỉnh chi tiết trong Cài đặt cơ bản.',
     currencySaved: 'Đã lưu tiền tệ.',
     date: 'Ngày',
+    delete: 'Xóa',
     display: 'Hiển thị',
     edit: 'Chỉnh sửa',
     exportData: 'Đầu ra dữ liệu',
@@ -93,6 +101,8 @@ const moneyNoteCopy = {
     noData: 'Không có dữ liệu',
     note: 'Ghi chú',
     notePlaceholder: 'Thêm ghi chú',
+    overwrite: 'Ghi đè',
+    recordUpdated: 'Đã lưu thay đổi.',
     report: 'Báo cáo',
     reportAllTime: 'Báo cáo toàn kì',
     reportYear: 'Báo cáo trong năm',
@@ -107,6 +117,7 @@ const moneyNoteCopy = {
   },
   en: {
     appTitle: 'MoneyNote Ledger',
+    addCategory: 'Add category',
     appInfo: 'App information',
     backupData: 'Back up data',
     basicSettings: 'Basic settings',
@@ -115,6 +126,7 @@ const moneyNoteCopy = {
     categoryYearReport: 'Yearly category report',
     category: 'Category',
     categoryEditTitle: 'Categories',
+    categoryName: 'Category name',
     changeCurrency: 'Change currency',
     changeLanguage: 'Change language',
     currency: 'Currency',
@@ -122,6 +134,7 @@ const moneyNoteCopy = {
     currencyHelper: 'Change it here quickly, or fine-tune it in Basic settings.',
     currencySaved: 'Currency saved.',
     date: 'Date',
+    delete: 'Delete',
     display: 'Display',
     edit: 'Edit',
     exportData: 'Export data',
@@ -138,6 +151,8 @@ const moneyNoteCopy = {
     noData: 'No data',
     note: 'Note',
     notePlaceholder: 'Add a note',
+    overwrite: 'Overwrite',
+    recordUpdated: 'Changes saved.',
     report: 'Report',
     reportAllTime: 'All-time report',
     reportYear: 'Yearly report',
@@ -173,8 +188,8 @@ const englishCategoryLabels: Record<string, string> = {
 };
 
 const quickCurrencyOptions = [
-  { code: 'VND', label: 'VND', locale: 'vi-VN' },
   { code: 'TWD', label: 'NT$', locale: 'zh-TW' },
+  { code: 'VND', label: 'VND', locale: 'vi-VN' },
   { code: 'USD', label: 'USD', locale: 'en-US' },
   { code: 'JPY', label: 'JPY', locale: 'ja-JP' },
 ] as const;
@@ -198,6 +213,64 @@ function languageDisplayName(language: AppLanguage, displayLanguage: AppLanguage
 
 function categoryDisplayLabel(template: MoneyNoteCategoryTemplate, language: AppLanguage): string {
   return language === 'en' ? englishCategoryLabels[template.id] ?? template.label : template.label;
+}
+
+type MoneyNoteCategoryOption = MoneyNoteCategoryTemplate & {
+  categoryId?: string;
+  isCustom?: boolean;
+};
+
+function customCategoryPrefix(kind: 'expense' | 'income'): string {
+  return `category-moneynote-custom-${kind}`;
+}
+
+function categoryBelongsToKind(category: CategoryTopicItem, kind: 'expense' | 'income'): boolean {
+  const id = String(category.id);
+
+  if (id.startsWith(customCategoryPrefix(kind))) {
+    return true;
+  }
+
+  return (
+    !id.startsWith(customCategoryPrefix('expense')) &&
+    !id.startsWith(customCategoryPrefix('income')) &&
+    !allMoneyNoteCategoryTemplates.some((template) => template.label === category.name)
+  );
+}
+
+function categoryOptionsForKind(
+  baseTemplates: MoneyNoteCategoryTemplate[],
+  categories: CategoryTopicItem[],
+  kind: 'expense' | 'income',
+): MoneyNoteCategoryOption[] {
+  const customIcon = kind === 'expense' ? 'tag-outline' : 'cash-plus';
+  const customColor = kind === 'expense' ? expenseColor : incomeColor;
+
+  return [
+    ...baseTemplates,
+    ...categories
+      .filter((category) => category.archivedAt === null && categoryBelongsToKind(category, kind))
+      .map<MoneyNoteCategoryOption>((category) => ({
+        categoryId: category.id,
+        color: customColor,
+        icon: customIcon,
+        id: `custom-${category.id}`,
+        isCustom: true,
+        label: category.name,
+      })),
+  ];
+}
+
+function categoryOptionIdForDraft(
+  options: MoneyNoteCategoryOption[],
+  categoryId: string | null,
+  merchantOrSource: string,
+): string {
+  return (
+    options.find((option) => option.categoryId === categoryId || option.label === merchantOrSource)?.id ??
+    options[0]?.id ??
+    ''
+  );
 }
 
 function templateForRecord(record: MoneyRecord): MoneyNoteCategoryTemplate | null {
@@ -509,10 +582,10 @@ function CategoryGrid({
   onSelect,
   selectedId,
 }: {
-  categories: MoneyNoteCategoryTemplate[];
+  categories: MoneyNoteCategoryOption[];
   language: AppLanguage;
   onEdit: () => void;
-  onSelect: (category: MoneyNoteCategoryTemplate) => void;
+  onSelect: (category: MoneyNoteCategoryOption) => void;
   selectedId: string;
 }) {
   return (
@@ -555,17 +628,29 @@ export function MoneyNoteEntryScreen() {
   const router = useRouter();
   const { copy, language } = useMoneyNoteCopy();
   const capture = useManualMoneyCapture();
-  const { state, selectCategory, setKind, updateField } = capture;
-  const templates = state.draft.kind === 'expense' ? expenseCategoryTemplates : incomeCategoryTemplates;
+  const { reload, state, selectCategory, setKind, updateField } = capture;
+  const baseTemplates = state.draft.kind === 'expense' ? expenseCategoryTemplates : incomeCategoryTemplates;
+  const templates = useMemo(
+    () => categoryOptionsForKind(baseTemplates, state.categories, state.draft.kind),
+    [baseTemplates, state.categories, state.draft.kind],
+  );
   const [selectedTemplateId, setSelectedTemplateId] = useState(templates[0].id);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
-  const matchingCategory = findCategoryByTemplate(state.categories, selectedTemplate);
+  const matchingCategory = selectedTemplate.isCustom
+    ? null
+    : findCategoryByTemplate(state.categories, selectedTemplate);
   const saving = state.status === 'saving';
   const currencyCode = state.preferences?.currencyCode ?? moneyNoteDefaultPreferences.currencyCode;
   const currencySuffix = currencySuffixForCode(currencyCode);
   const currencyUsesPrefix = currencyCode.toUpperCase() !== 'VND';
 
-  useEnsureMoneyNoteDefaults(state.status, state.categories, capture.reload);
+  useEnsureMoneyNoteDefaults(state.status, state.categories, reload);
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload]),
+  );
 
   useEffect(() => {
     const firstTemplate = templates[0];
@@ -576,7 +661,7 @@ export function MoneyNoteEntryScreen() {
   }, [selectedTemplateId, templates]);
 
   useEffect(() => {
-    const nextCategoryId = matchingCategory?.id ?? null;
+    const nextCategoryId = selectedTemplate.categoryId ?? matchingCategory?.id ?? null;
 
     if (state.draft.categoryId !== nextCategoryId) {
       selectCategory(nextCategoryId);
@@ -588,6 +673,7 @@ export function MoneyNoteEntryScreen() {
   }, [
     matchingCategory?.id,
     selectCategory,
+    selectedTemplate.categoryId,
     selectedTemplate.label,
     state.draft.categoryId,
     state.draft.merchantOrSource,
@@ -600,10 +686,10 @@ export function MoneyNoteEntryScreen() {
     setKind(kind);
   };
 
-  const selectTemplate = (template: MoneyNoteCategoryTemplate) => {
+  const selectTemplate = (template: MoneyNoteCategoryOption) => {
     setSelectedTemplateId(template.id);
-    const category = findCategoryByTemplate(state.categories, template);
-    selectCategory(category?.id ?? null);
+    const category = template.categoryId ? null : findCategoryByTemplate(state.categories, template);
+    selectCategory(template.categoryId ?? category?.id ?? null);
     updateField('merchantOrSource', template.label);
   };
 
@@ -618,23 +704,32 @@ export function MoneyNoteEntryScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.entryContent} keyboardShouldPersistTaps="handled">
-        <ScreenHeader
-          right={<IconButton label="✎" onPress={openCategories} />}
-          title={copy.appTitle}
-        />
+        <ScreenHeader title={copy.appTitle} />
         <KindTabs active={state.draft.kind} copy={copy} onChange={changeKind} />
 
         <View style={styles.formPanel}>
           <MoneyNoteRow label={copy.date}>
             <IconButton label="<" onPress={() => changeDateBy(-1)} />
-            <View style={styles.datePill}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setDatePickerOpen((current) => !current)}
+              style={styles.datePill}>
               <Text numberOfLines={1} style={styles.datePillText}>
                 {formatMoneyNoteDate(state.draft.localDate)}
               </Text>
-              <Text style={styles.datePillIcon}>▣</Text>
-            </View>
+              <MaterialCommunityIcons color={skyBlue} name="calendar-month-outline" size={18} />
+            </Pressable>
             <IconButton label=">" onPress={() => changeDateBy(1)} />
           </MoneyNoteRow>
+          {datePickerOpen ? (
+            <InlineDatePicker
+              onSelect={(localDate) => {
+                updateField('localDate', localDate);
+                setDatePickerOpen(false);
+              }}
+              value={state.draft.localDate}
+            />
+          ) : null}
 
           <MoneyNoteRow label={copy.note}>
             <TextInput
@@ -722,6 +817,55 @@ function MonthSwitcher({
   );
 }
 
+function InlineDatePicker({
+  onSelect,
+  value,
+}: {
+  onSelect: (localDate: string) => void;
+  value: string;
+}) {
+  const [visibleMonth, setVisibleMonth] = useState(() => parseLocalDate(value));
+  const days = useMemo(() => buildMoneyNoteCalendarMonth(visibleMonth), [visibleMonth]);
+  const weekdayLabels = ['T.2', 'T.3', 'T.4', 'T.5', 'T.6', 'T.7', 'CN'];
+
+  useEffect(() => {
+    setVisibleMonth(parseLocalDate(value));
+  }, [value]);
+
+  return (
+    <View style={styles.inlineDatePicker}>
+      <MonthSwitcher monthDate={visibleMonth} onChange={setVisibleMonth} />
+      <View style={styles.inlineCalendarGrid}>
+        {weekdayLabels.map((label) => (
+          <View key={label} style={styles.inlineWeekdayCell}>
+            <Text style={styles.inlineWeekdayText}>{label}</Text>
+          </View>
+        ))}
+        {days.map((day) => (
+          <Pressable
+            accessibilityRole="button"
+            key={day.localDate}
+            onPress={() => onSelect(day.localDate)}
+            style={[
+              styles.inlineDayCell,
+              day.localDate === value ? styles.inlineDayCellSelected : null,
+            ]}>
+            <Text
+              style={[
+                styles.inlineDayText,
+                !day.inCurrentMonth ? styles.dayTextMuted : null,
+                day.dayOfWeek === 6 && day.inCurrentMonth ? styles.saturdayText : null,
+                day.dayOfWeek === 0 && day.inCurrentMonth ? styles.sundayText : null,
+              ]}>
+              {day.dayOfMonth}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function SummaryStrip({
   copy,
   currencyCode,
@@ -757,6 +901,7 @@ function SummaryStrip({
 }
 
 export function MoneyNoteCalendarScreen() {
+  const router = useRouter();
   const { copy, language } = useMoneyNoteCopy();
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [selectedLocalDate, setSelectedLocalDate] = useState(() => formatLocalDate(new Date()));
@@ -886,8 +1031,10 @@ export function MoneyNoteCalendarScreen() {
             const fallback = record.kind === 'expense' ? copy.expense : copy.income;
 
             return (
-              <View
+              <Pressable
+                accessibilityRole="button"
                 key={record.id}
+                onPress={() => router.push(`/money/${record.id}`)}
                 style={styles.calendarRecordRow}>
                 {template ? (
                   <CategoryIcon color={template.color} icon={template.icon} />
@@ -903,7 +1050,7 @@ export function MoneyNoteCalendarScreen() {
                     locale: monthData.locale,
                   })}
                 </Text>
-              </View>
+              </Pressable>
             );
           })}
         </View>
@@ -1199,6 +1346,10 @@ export function MoneyNotePreferencesScreen() {
     const normalized = value.replace(/[^a-z]/gi, '').toUpperCase().slice(0, 3);
     updateField('currencyCode', normalized);
 
+    if (normalized === 'TWD') {
+      updateField('locale', 'zh-TW');
+    }
+
     if (normalized === 'VND') {
       updateField('locale', 'vi-VN');
       if (state.form.defaultHourlyWage === '0.00') {
@@ -1259,13 +1410,13 @@ export function MoneyNotePreferencesScreen() {
         <View style={styles.preferenceSection}>
           <Text style={styles.preferenceSectionTitle}>{copy.currency}</Text>
           <PreferenceField
-            helper={appLanguage === 'en' ? 'Recommended default: VND.' : 'Mặc định khuyến nghị: VND.'}
+            helper={appLanguage === 'en' ? 'Recommended default: TWD.' : 'Mặc định khuyến nghị: TWD.'}
             label={copy.currencyCode}
             onChangeText={updateCurrency}
             value={state.form.currencyCode}
           />
           <PreferenceField
-            helper={appLanguage === 'en' ? 'Use vi-VN to display 1.000đ and Vietnamese dates.' : 'Dùng vi-VN để hiển thị 1.000đ và ngày theo tiếng Việt.'}
+            helper={appLanguage === 'en' ? 'Use zh-TW to display NT$ and Taiwan currency style.' : 'Dùng zh-TW để hiển thị NT$ đúng kiểu Đài Loan.'}
             label={copy.locale}
             onChangeText={(value) => updateField('locale', value)}
             value={state.form.locale}
@@ -1316,11 +1467,268 @@ export function MoneyNotePreferencesScreen() {
   );
 }
 
+export function MoneyNoteRecordEditScreen() {
+  const router = useRouter();
+  const { moneyRecordId } = useLocalSearchParams<{ moneyRecordId: string }>();
+  const { copy, language } = useMoneyNoteCopy();
+  const capture = useManualMoneyCapture();
+  const { state, selectCategory, setKind, updateField } = capture;
+  const [recordToEdit, setRecordToEdit] = useState<MoneyRecord | null>(null);
+  const [recordLoadError, setRecordLoadError] = useState<AppError | null>(null);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const editStartedFor = useRef<string | null>(null);
+  const baseTemplates = state.draft.kind === 'expense' ? expenseCategoryTemplates : incomeCategoryTemplates;
+  const templates = useMemo(
+    () => categoryOptionsForKind(baseTemplates, state.categories, state.draft.kind),
+    [baseTemplates, state.categories, state.draft.kind],
+  );
+  const selectedTemplateId = categoryOptionIdForDraft(
+    templates,
+    state.draft.categoryId,
+    state.draft.merchantOrSource,
+  );
+  const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
+  const saving = state.status === 'saving';
+  const currencyCode = state.preferences?.currencyCode ?? recordToEdit?.currencyCode ?? moneyNoteDefaultPreferences.currencyCode;
+  const currencySuffix = currencySuffixForCode(currencyCode);
+  const currencyUsesPrefix = currencyCode.toUpperCase() !== 'VND';
+
+  useEnsureMoneyNoteDefaults(state.status, state.categories, capture.reload);
+
+  useEffect(() => {
+    if (!moneyRecordId) {
+      return;
+    }
+
+    let cancelled = false;
+    setRecordLoadError(null);
+    editStartedFor.current = null;
+
+    void loadManualMoneyRecordForEdit({ id: moneyRecordId }).then((result) => {
+      if (cancelled) {
+        return;
+      }
+
+      if (result.ok) {
+        setRecordToEdit(result.value.record);
+        return;
+      }
+
+      setRecordLoadError(result.error);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [moneyRecordId]);
+
+  useEffect(() => {
+    if (!recordToEdit || state.status !== 'ready' || editStartedFor.current === recordToEdit.id) {
+      return;
+    }
+
+    capture.startEdit(recordToEdit);
+    editStartedFor.current = recordToEdit.id;
+  }, [capture, recordToEdit, state.status]);
+
+  useEffect(() => {
+    if (state.status === 'deleted') {
+      router.back();
+    }
+  }, [router, state.status]);
+
+  useEffect(() => {
+    if (state.status === 'saved' && state.lastMutation === 'updated') {
+      router.back();
+    }
+  }, [router, state.lastMutation, state.status]);
+
+  const changeKind = (kind: 'expense' | 'income') => {
+    const nextTemplate = kind === 'expense' ? expenseCategoryTemplates[0] : incomeCategoryTemplates[0];
+    setKind(kind);
+    selectCategory(findCategoryByTemplate(state.categories, nextTemplate)?.id ?? null);
+    updateField('merchantOrSource', nextTemplate.label);
+  };
+
+  const selectTemplate = (template: MoneyNoteCategoryOption) => {
+    const category = template.categoryId ? null : findCategoryByTemplate(state.categories, template);
+    selectCategory(template.categoryId ?? category?.id ?? null);
+    updateField('merchantOrSource', template.label);
+  };
+
+  const changeDateBy = (days: number) => {
+    updateField('localDate', shiftLocalDate(state.draft.localDate, days));
+  };
+
+  const loading = state.status === 'loading' || (!recordToEdit && !recordLoadError);
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.entryContent} keyboardShouldPersistTaps="handled">
+        <View style={styles.categoryHeader}>
+          <IconButton label="<" onPress={() => router.back()} />
+          <Text numberOfLines={1} style={styles.categoryHeaderTitle}>
+            {language === 'en' ? 'Edit' : 'Chỉnh sửa'}
+          </Text>
+        </View>
+
+        {loading ? <ActivityIndicator color={skyBlue} style={styles.loadingIndicator} /> : null}
+        {recordLoadError ? <Text style={styles.warningText}>{recordLoadError.message}</Text> : null}
+
+        {!loading && !recordLoadError ? (
+          <>
+            <KindTabs active={state.draft.kind} copy={copy} onChange={changeKind} />
+            <View style={styles.formPanel}>
+              <MoneyNoteRow label={copy.date}>
+                <IconButton label="<" onPress={() => changeDateBy(-1)} />
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setDatePickerOpen((current) => !current)}
+                  style={styles.datePill}>
+                  <Text numberOfLines={1} style={styles.datePillText}>
+                    {formatMoneyNoteDate(state.draft.localDate)}
+                  </Text>
+                  <MaterialCommunityIcons color={skyBlue} name="calendar-month-outline" size={18} />
+                </Pressable>
+                <IconButton label=">" onPress={() => changeDateBy(1)} />
+              </MoneyNoteRow>
+              {datePickerOpen ? (
+                <InlineDatePicker
+                  onSelect={(localDate) => {
+                    updateField('localDate', localDate);
+                    setDatePickerOpen(false);
+                  }}
+                  value={state.draft.localDate}
+                />
+              ) : null}
+
+              <MoneyNoteRow label={copy.note}>
+                <TextInput
+                  onChangeText={(value) => updateField('note', value)}
+                  placeholder={copy.notePlaceholder}
+                  placeholderTextColor="#BBBBBB"
+                  style={styles.textInput}
+                  value={state.draft.note}
+                />
+              </MoneyNoteRow>
+
+              <MoneyNoteRow label={state.draft.kind === 'expense' ? copy.expenseAmount : copy.incomeAmount}>
+                {currencyUsesPrefix ? <Text style={styles.currencyPrefix}>{currencySuffix}</Text> : null}
+                <TextInput
+                  keyboardType="number-pad"
+                  onChangeText={(value) => updateField('amount', parseMoneyNoteAmountInput(value))}
+                  placeholder="0"
+                  placeholderTextColor={ink}
+                  style={styles.amountInput}
+                  value={formatMoneyNoteAmountInput(state.draft.amount)}
+                />
+                {currencyUsesPrefix ? null : <Text style={styles.currencySuffix}>{currencySuffix}</Text>}
+              </MoneyNoteRow>
+            </View>
+
+            <View style={styles.categorySection}>
+              <Text style={styles.sectionLabel}>{copy.category}</Text>
+              <CategoryGrid
+                categories={templates}
+                language={language}
+                onEdit={() => router.push('/categories')}
+                onSelect={selectTemplate}
+                selectedId={selectedTemplate?.id ?? ''}
+              />
+            </View>
+
+            {state.fieldErrors.amount ? <Text style={styles.warningText}>{state.fieldErrors.amount}</Text> : null}
+            {state.actionError ? <Text style={styles.warningText}>{state.actionError.message}</Text> : null}
+            {state.status === 'saved' ? <Text style={styles.successText}>{copy.recordUpdated}</Text> : null}
+
+            <Pressable
+              accessibilityRole="button"
+              disabled={saving}
+              onPress={capture.save}
+              style={[styles.primaryCta, saving ? styles.primaryCtaDisabled : null]}>
+              <Text style={styles.primaryCtaText}>{saving ? copy.saving : copy.overwrite}</Text>
+            </Pressable>
+            <View style={styles.editFooterActions}>
+              <View />
+              <Pressable accessibilityRole="button" onPress={capture.deleteEditingRecord}>
+                <Text style={styles.deleteActionText}>{copy.delete}</Text>
+              </Pressable>
+            </View>
+          </>
+        ) : null}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
 export function MoneyNoteCategoryScreen() {
   const router = useRouter();
   const { copy, language } = useMoneyNoteCopy();
+  const capture = useManualMoneyCapture();
+  const { state } = capture;
   const [activeKind, setActiveKind] = useState<'expense' | 'income'>('expense');
-  const templates = activeKind === 'expense' ? expenseCategoryTemplates : incomeCategoryTemplates;
+  const [addOpen, setAddOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [categoryActionError, setCategoryActionError] = useState<AppError | null>(null);
+  const [categoryActionStatus, setCategoryActionStatus] = useState<'idle' | 'saving'>('idle');
+  const baseTemplates = activeKind === 'expense' ? expenseCategoryTemplates : incomeCategoryTemplates;
+  const templates = useMemo(
+    () => categoryOptionsForKind(baseTemplates, state.categories, activeKind),
+    [activeKind, baseTemplates, state.categories],
+  );
+
+  useEnsureMoneyNoteDefaults(state.status, state.categories, capture.reload);
+
+  const addCategory = () => {
+    const name = newCategoryName.trim();
+
+    if (!name) {
+      return;
+    }
+
+    setCategoryActionError(null);
+    setCategoryActionStatus('saving');
+
+    void createCategoryTopicItem(
+      { kind: 'category', name },
+      { createId: () => `${customCategoryPrefix(activeKind)}-${Date.now().toString(36)}` },
+    ).then((result) => {
+      setCategoryActionStatus('idle');
+
+      if (result.ok || (!result.ok && result.error.code === 'conflict')) {
+        setNewCategoryName('');
+        setAddOpen(false);
+        capture.reload();
+        return;
+      }
+
+      setCategoryActionError(result.error);
+    });
+  };
+
+  const removeCategory = (category: MoneyNoteCategoryOption) => {
+    if (!category.categoryId) {
+      return;
+    }
+
+    setCategoryActionError(null);
+    setCategoryActionStatus('saving');
+
+    void deleteCategoryTopicItem({
+      id: category.categoryId,
+      kind: 'category',
+      mode: 'archive',
+    }).then((result) => {
+      setCategoryActionStatus('idle');
+
+      if (result.ok) {
+        capture.reload();
+        return;
+      }
+
+      setCategoryActionError(result.error);
+    });
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -1329,15 +1737,48 @@ export function MoneyNoteCategoryScreen() {
         <Text numberOfLines={1} style={styles.categoryHeaderTitle}>
           {copy.categoryEditTitle}
         </Text>
-        <IconButton label="+" onPress={() => router.push('/preferences')} />
+        <IconButton label="+" onPress={() => setAddOpen((current) => !current)} />
       </View>
       <KindTabs active={activeKind} copy={copy} onChange={setActiveKind} />
       <ScrollView contentContainerStyle={styles.categoryListContent}>
+        {addOpen ? (
+          <View style={styles.addCategoryPanel}>
+            <TextInput
+              autoFocus
+              onChangeText={setNewCategoryName}
+              placeholder={copy.categoryName}
+              placeholderTextColor={muted}
+              style={styles.addCategoryInput}
+              value={newCategoryName}
+            />
+            <Pressable
+              accessibilityRole="button"
+              disabled={categoryActionStatus === 'saving' || newCategoryName.trim().length === 0}
+              onPress={addCategory}
+              style={[
+                styles.inlineSaveButton,
+                categoryActionStatus === 'saving' || newCategoryName.trim().length === 0
+                  ? styles.primaryCtaDisabled
+                  : null,
+              ]}>
+              <Text style={styles.inlineSaveButtonText}>
+                {categoryActionStatus === 'saving' ? copy.saving : copy.addCategory}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {categoryActionError ? <Text style={styles.warningText}>{categoryActionError.message}</Text> : null}
         {templates.map((template) => (
           <View key={template.id} style={styles.categoryListRow}>
             <CategoryIcon color={template.color} icon={template.icon} />
             <Text style={styles.categoryListTitle}>{categoryDisplayLabel(template, language)}</Text>
-            <Text style={styles.dragHandle}>=</Text>
+            {template.isCustom ? (
+              <Pressable accessibilityRole="button" onPress={() => removeCategory(template)}>
+                <Text style={styles.deleteActionText}>{copy.delete}</Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.dragHandle}>=</Text>
+            )}
           </View>
         ))}
       </ScrollView>
@@ -1346,6 +1787,24 @@ export function MoneyNoteCategoryScreen() {
 }
 
 const styles = StyleSheet.create({
+  addCategoryInput: {
+    ...moneyType.body,
+    backgroundColor: '#FFFFFF',
+    borderColor: line,
+    borderRadius: 10,
+    borderWidth: 1,
+    color: ink,
+    flex: 1,
+    minHeight: 44,
+    paddingHorizontal: 14,
+  },
+  addCategoryPanel: {
+    alignItems: 'center',
+    backgroundColor: panel,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 14,
+  },
   amountInput: {
     ...moneyType.title,
     backgroundColor: lightBlue,
@@ -1386,7 +1845,7 @@ const styles = StyleSheet.create({
   },
   categoryListContent: {
     backgroundColor: '#FFFFFF',
-    paddingBottom: 36,
+    paddingBottom: 18,
   },
   categoryListRow: {
     alignItems: 'center',
@@ -1492,6 +1951,10 @@ const styles = StyleSheet.create({
     color: ink,
     flex: 1,
   },
+  deleteActionText: {
+    ...moneyType.label,
+    color: expenseColor,
+  },
   dayCell: {
     alignItems: 'flex-start',
     aspectRatio: 1.35,
@@ -1560,7 +2023,14 @@ const styles = StyleSheet.create({
   },
   entryContent: {
     backgroundColor: '#FFFFFF',
-    paddingBottom: 48,
+    paddingBottom: 18,
+  },
+  editFooterActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 70,
+    paddingHorizontal: 30,
   },
   expenseAmount: {
     color: expenseColor,
@@ -1585,7 +2055,7 @@ const styles = StyleSheet.create({
   formRowLabel: {
     ...moneyType.label,
     color: ink,
-    width: 106,
+    width: 86,
   },
   header: {
     alignItems: 'center',
@@ -1605,12 +2075,46 @@ const styles = StyleSheet.create({
   iconButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
-    minWidth: 44,
+    minHeight: 40,
+    minWidth: 36,
   },
   iconButtonText: {
     ...moneyType.title,
     color: ink,
+  },
+  inlineCalendarGrid: {
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  inlineDatePicker: {
+    borderBottomColor: line,
+    borderBottomWidth: 1,
+    paddingBottom: 10,
+  },
+  inlineDayCell: {
+    alignItems: 'center',
+    aspectRatio: 1.35,
+    justifyContent: 'center',
+    width: `${100 / 7}%`,
+  },
+  inlineDayCellSelected: {
+    backgroundColor: lightBlue,
+    borderRadius: 8,
+  },
+  inlineDayText: {
+    ...moneyType.caption,
+    color: ink,
+  },
+  inlineWeekdayCell: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 26,
+    width: `${100 / 7}%`,
+  },
+  inlineWeekdayText: {
+    ...moneyType.caption,
+    color: muted,
   },
   incomeAmount: {
     color: incomeColor,
@@ -1670,6 +2174,9 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 14,
   },
+  loadingIndicator: {
+    marginTop: 32,
+  },
   inlineSaveButton: {
     alignItems: 'center',
     alignSelf: 'flex-start',
@@ -1712,7 +2219,7 @@ const styles = StyleSheet.create({
   },
   moreContent: {
     backgroundColor: '#FFFFFF',
-    paddingBottom: 48,
+    paddingBottom: 18,
   },
   moreDivider: {
     backgroundColor: panel,
@@ -1747,7 +2254,7 @@ const styles = StyleSheet.create({
   },
   plainContent: {
     backgroundColor: '#FFFFFF',
-    paddingBottom: 48,
+    paddingBottom: 18,
   },
   preferenceField: {
     gap: 8,
@@ -1812,7 +2319,7 @@ const styles = StyleSheet.create({
   preferencesContent: {
     backgroundColor: panel,
     gap: 16,
-    paddingBottom: 48,
+    paddingBottom: 18,
   },
   primaryCta: {
     alignItems: 'center',

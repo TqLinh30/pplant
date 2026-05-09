@@ -29,9 +29,9 @@ export type MoneyNoteCalendarDay = {
 export type MoneyNoteDailyTotals = Record<string, MoneyNoteTotals>;
 
 export const moneyNoteDefaultPreferences = {
-  currencyCode: 'VND',
+  currencyCode: 'TWD',
   defaultHourlyWageMinor: 0,
-  locale: 'vi-VN',
+  locale: 'zh-TW',
   monthlyBudgetResetDay: 1,
 } as const;
 
@@ -190,7 +190,8 @@ export function parseMoneyNoteAmountInput(value: string): string {
 }
 
 export function formatMoneyNoteAmountInput(value: string): string {
-  const digits = parseMoneyNoteAmountInput(value);
+  const decimalInput = value.trim().match(/^(\d+)\.\d+$/);
+  const digits = decimalInput ? decimalInput[1] : parseMoneyNoteAmountInput(value);
 
   if (digits.length === 0) {
     return '';
@@ -268,5 +269,5 @@ export function formatMoneyNoteAmountMagnitude(
 }
 
 export function formatDong(amountMinor: number): string {
-  return formatMoneyNoteAmount(amountMinor);
+  return formatMoneyNoteAmount(amountMinor, { currencyCode: 'VND', locale: 'vi-VN' });
 }

@@ -120,6 +120,7 @@ describe('MoneyNote model helpers', () => {
   it('formats amount input with Vietnamese thousands separators without changing saved digits', () => {
     expect(parseMoneyNoteAmountInput('1.234.567đ')).toBe('1234567');
     expect(formatMoneyNoteAmountInput('1234567')).toBe('1.234.567');
+    expect(formatMoneyNoteAmountInput('90.00')).toBe('90');
     expect(formatMoneyNoteAmountInput('')).toBe('');
   });
 });

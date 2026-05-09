@@ -52,6 +52,10 @@ export type ManualMoneyCaptureData = {
   topics: CategoryTopicItem[];
 };
 
+export type ManualMoneyRecordEditData = ManualMoneyCaptureData & {
+  record: MoneyRecord;
+};
+
 export type CreateManualMoneyRecordRequest = {
   kind: MoneyRecordKind;
   amountMinor: number;
@@ -351,6 +355,59 @@ export async function loadManualMoneyCaptureData(
     categories: categories.value,
     preferences: access.value.preferences,
     recentRecords: recentRecords.value,
+    topics: topics.value,
+  });
+}
+
+export async function loadManualMoneyRecordForEdit(
+  input: { id: string },
+  dependencies: MoneyRecordServiceDependencies = {},
+): Promise<AppResult<ManualMoneyRecordEditData>> {
+  const access = await prepareMoneyRecordAccess(dependencies);
+
+  if (isErr(access)) {
+    return access;
+  }
+
+  const id = asEntityId(input.id);
+
+  if (!id.ok) {
+    return err(createAppError('validation_failed', 'Choose a valid money record.', 'edit', id.error));
+  }
+
+  const record = await access.value.moneyRecordRepository.getRecord(localWorkspaceId, id.value);
+
+  if (isErr(record)) {
+    return record;
+  }
+
+  if (!record.value) {
+    return err(createAppError('not_found', 'Money record was not found.', 'edit'));
+  }
+
+  const categories = await access.value.categoryTopicRepository.listItems('category', localWorkspaceId);
+
+  if (isErr(categories)) {
+    return categories;
+  }
+
+  const topics = await access.value.categoryTopicRepository.listItems('topic', localWorkspaceId);
+
+  if (isErr(topics)) {
+    return topics;
+  }
+
+  const recentRecords = await access.value.moneyRecordRepository.listRecentRecords(localWorkspaceId);
+
+  if (isErr(recentRecords)) {
+    return recentRecords;
+  }
+
+  return ok({
+    categories: categories.value,
+    preferences: access.value.preferences,
+    recentRecords: recentRecords.value,
+    record: record.value,
     topics: topics.value,
   });
 }

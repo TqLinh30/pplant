@@ -71,29 +71,30 @@ export default function TabLayout() {
           report: 'Báo cáo',
         };
 
-  const bottomPadding = Math.max(insets.bottom, 12);
-  const tabBarHeight = 72 + bottomPadding;
+  const bottomPadding = Math.max(insets.bottom, 6);
+  const tabBarHeight = 56 + bottomPadding;
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#12A7DF',
+        tabBarActiveTintColor: '#5CC4BA',
         tabBarInactiveTintColor: '#A8A8A8',
+        tabBarHideOnKeyboard: true,
         tabBarItemStyle: {
           justifyContent: 'center',
-          paddingVertical: 6,
+          paddingVertical: 2,
         },
         tabBarLabelStyle: {
           ...typography.tabLabel,
           marginTop: 0,
         },
         tabBarStyle: {
-          backgroundColor: '#FAFAFA',
-          borderTopColor: '#E4E4E4',
+          backgroundColor: '#FFFFFF',
+          borderTopColor: '#DDE7E7',
           height: tabBarHeight,
           paddingBottom: bottomPadding,
-          paddingTop: 8,
+          paddingTop: 4,
         },
       }}>
       <Tabs.Screen

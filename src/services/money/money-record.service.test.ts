@@ -15,6 +15,7 @@ import {
   deleteMoneyRecord,
   editManualMoneyRecord,
   loadManualMoneyCaptureData,
+  loadManualMoneyRecordForEdit,
   type MoneyRecordServiceDependencies,
 } from './money-record.service';
 
@@ -292,6 +293,20 @@ describe('money record service', () => {
       expect(result.value.preferences.currencyCode).toBe('USD');
       expect(result.value.categories[0].id).toBe('cat-food');
       expect(result.value.topics[0].id).toBe('topic-campus');
+    }
+  });
+
+  it('loads a specific active money record for editing', async () => {
+    const record = createMoneyRecordFixture({ id: 'money-edit' });
+    const { dependencies } = createDependencies({ recentRecords: [record] });
+
+    const result = await loadManualMoneyRecordForEdit({ id: record.id }, dependencies);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.record.id).toBe(record.id);
+      expect(result.value.preferences.currencyCode).toBe('USD');
+      expect(result.value.categories[0].id).toBe('cat-food');
     }
   });
 
