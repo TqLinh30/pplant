@@ -1,6 +1,50 @@
+import { useSyncExternalStore } from 'react';
+
 export type AppLanguage = 'en' | 'vi';
 
-export const appLanguage: AppLanguage = 'vi';
+const appLanguages = ['en', 'vi'] as const satisfies readonly AppLanguage[];
+const appLanguageListeners = new Set<() => void>();
+let currentAppLanguage: AppLanguage = 'vi';
+
+export const appLanguageOptions: { label: string; value: AppLanguage }[] = [
+  { label: 'Vietnamese', value: 'vi' },
+  { label: 'English', value: 'en' },
+];
+
+export function isAppLanguage(value: unknown): value is AppLanguage {
+  return typeof value === 'string' && appLanguages.includes(value as AppLanguage);
+}
+
+export function getAppLanguage(): AppLanguage {
+  return currentAppLanguage;
+}
+
+export function setAppLanguage(language: AppLanguage): void {
+  if (currentAppLanguage === language) {
+    return;
+  }
+
+  currentAppLanguage = language;
+  for (const listener of appLanguageListeners) {
+    listener();
+  }
+}
+
+export function subscribeAppLanguage(listener: () => void): () => void {
+  appLanguageListeners.add(listener);
+  return () => {
+    appLanguageListeners.delete(listener);
+  };
+}
+
+export function useAppLanguage(): AppLanguage {
+  return useSyncExternalStore(subscribeAppLanguage, getAppLanguage, getAppLanguage);
+}
+
+export function useTranslateText(): typeof translateText {
+  const language = useAppLanguage();
+  return (value: string) => translateTextForLanguage(language, value);
+}
 
 const viTranslations: Record<string, string> = {
   'Add': 'Thêm',
@@ -777,6 +821,20 @@ const viTranslations: Record<string, string> = {
   'You stay in control': 'Bạn vẫn kiểm soát',
   'Your local task data is unchanged. Try loading recurring tasks again.':
     'Dữ liệu nhiệm vụ cục bộ không đổi. Hãy thử tải nhiệm vụ định kỳ lại.',
+  'App labels and messages now use the selected language.':
+    'Nhãn và thông báo trong app hiện dùng ngôn ngữ đã chọn.',
+  'App language': 'Ngôn ngữ ứng dụng',
+  'Choose the language used for app labels and messages.':
+    'Chọn ngôn ngữ dùng cho nhãn và thông báo trong app.',
+  'Display': 'Hiển thị',
+  'English': 'Tiếng Anh',
+  'Language saved': 'Đã lưu ngôn ngữ',
+  'Language was not saved': 'Chưa lưu ngôn ngữ',
+  'Pplant is saving the selected app language.': 'Pplant đang lưu ngôn ngữ ứng dụng đã chọn.',
+  'Saving language': 'Đang lưu ngôn ngữ',
+  'Try changing language again. The app keeps using the current language.':
+    'Thử đổi ngôn ngữ lại. Ứng dụng vẫn dùng ngôn ngữ hiện tại.',
+  'Vietnamese': 'Tiếng Việt',
   'on': 'vào',
   'Your local data is unchanged. Try loading it again.':
     'Dữ liệu cục bộ không đổi. Hãy thử tải lại.',
@@ -888,7 +946,7 @@ const dynamicViTranslations: DynamicTranslation[] = [
   },
   {
     pattern: /^Open (.+) privacy details$/,
-    translate: (title) => `Mở chi tiết quyền riêng tư của ${translateText(title)}`,
+    translate: (title) => `Mở chi tiết quyền riêng tư của ${translateTextForLanguage('vi', title)}`,
   },
   {
     pattern: /^Add a local (category|topic) for future records\.$/,
@@ -937,11 +995,11 @@ const dynamicViTranslations: DynamicTranslation[] = [
   },
   {
     pattern: /^(.+) Receipt image deleted by your retention choice\.$/,
-    translate: (message) => `${translateText(message)} Ảnh hóa đơn đã được xóa theo lựa chọn lưu giữ của bạn.`,
+    translate: (message) => `${translateTextForLanguage('vi', message)} Ảnh hóa đơn đã được xóa theo lựa chọn lưu giữ của bạn.`,
   },
   {
     pattern: /^(.+) Receipt image stayed retained; you can delete it later\.$/,
-    translate: (message) => `${translateText(message)} Ảnh hóa đơn vẫn được giữ; bạn có thể xóa sau.`,
+    translate: (message) => `${translateTextForLanguage('vi', message)} Ảnh hóa đơn vẫn được giữ; bạn có thể xóa sau.`,
   },
   {
     pattern: /^Image deleted; expense details remain\. (.+)$/,
@@ -949,7 +1007,7 @@ const dynamicViTranslations: DynamicTranslation[] = [
   },
   {
     pattern: /^(.+) confidence$/,
-    translate: (confidence) => `Độ tin cậy ${translateText(confidence).toLowerCase()}`,
+    translate: (confidence) => `Độ tin cậy ${translateTextForLanguage('vi', confidence).toLowerCase()}`,
   },
   {
     pattern: /^Income (.+) - Expense (.+)$/,
@@ -977,12 +1035,16 @@ const dynamicViTranslations: DynamicTranslation[] = [
   },
   {
     pattern: /^(.+) priority$/,
-    translate: (priority) => `Ưu tiên ${translateText(priority).toLowerCase()}`,
+    translate: (priority) => `Ưu tiên ${translateTextForLanguage('vi', priority).toLowerCase()}`,
   },
 ];
 
 export function translateText(value: string): string {
-  if (appLanguage !== 'vi') {
+  return translateTextForLanguage(currentAppLanguage, value);
+}
+
+export function translateTextForLanguage(language: AppLanguage, value: string): string {
+  if (language !== 'vi') {
     return value;
   }
 

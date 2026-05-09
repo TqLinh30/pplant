@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { translateText } from '@/i18n/strings';
+import { useTranslateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
@@ -15,6 +15,8 @@ type BottomSheetProps = {
 };
 
 export function BottomSheet({ title, visible, onClose, children }: BottomSheetProps) {
+  const translateText = useTranslateText();
+
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
       <Pressable

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { translateOptionalText, translateText } from '@/i18n/strings';
+import { useTranslateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
@@ -17,8 +17,9 @@ type ListRowProps = {
 };
 
 export function ListRow({ title, description, meta, right, onPress, accessibilityLabel }: ListRowProps) {
-  const translatedDescription = translateOptionalText(description);
-  const translatedMeta = translateOptionalText(meta);
+  const translateText = useTranslateText();
+  const translatedDescription = description ? translateText(description) : undefined;
+  const translatedMeta = meta ? translateText(meta) : undefined;
   const translatedTitle = translateText(title);
   const content = (
     <>

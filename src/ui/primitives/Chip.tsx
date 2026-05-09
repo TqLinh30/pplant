@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { translateText } from '@/i18n/strings';
+import { useTranslateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
@@ -12,6 +12,8 @@ type ChipProps = {
 };
 
 export function Chip({ label, tone = 'neutral' }: ChipProps) {
+  const translateText = useTranslateText();
+
   return (
     <View style={[styles.chip, styles[tone]]}>
       <Text style={styles.label}>{translateText(label)}</Text>

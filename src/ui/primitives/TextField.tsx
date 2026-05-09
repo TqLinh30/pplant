@@ -1,7 +1,7 @@
 import type { TextInputProps } from 'react-native';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { translateOptionalText, translateText } from '@/i18n/strings';
+import { useTranslateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
@@ -14,8 +14,9 @@ type TextFieldProps = TextInputProps & {
 };
 
 export function TextField({ errorText, helperText, label, ...inputProps }: TextFieldProps) {
-  const translatedErrorText = translateOptionalText(errorText);
-  const translatedHelperText = translateOptionalText(helperText);
+  const translateText = useTranslateText();
+  const translatedErrorText = errorText ? translateText(errorText) : undefined;
+  const translatedHelperText = helperText ? translateText(helperText) : undefined;
   const translatedLabel = translateText(label);
 
   return (

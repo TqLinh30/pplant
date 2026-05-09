@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { translateText } from '@/i18n/strings';
+import { useTranslateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
@@ -26,6 +26,8 @@ export function SegmentedControl<T extends string>({
   selectedValue,
   onChange,
 }: SegmentedControlProps<T>) {
+  const translateText = useTranslateText();
+
   return (
     <View accessibilityLabel={accessibilityLabel} style={styles.container}>
       {options.map((option) => {

@@ -1,8 +1,10 @@
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { calculateSavingsGoalProgress } from '@/domain/budgets/schemas';
-import { translateText } from '@/i18n/strings';
+import { appLanguageOptions, useAppLanguage, useTranslateText, type AppLanguage } from '@/i18n/strings';
+import { saveStoredAppLanguage } from '@/i18n/language-storage';
 import type { SavingsGoal } from '@/domain/budgets/types';
 import type { CategoryTopicItem, CategoryTopicKind } from '@/domain/categories/types';
 import { formatMinorUnitsForInput } from '@/domain/common/money';
@@ -30,6 +32,9 @@ const organizationOptions: { label: string; value: CategoryTopicKind }[] = [
 
 export function SettingsScreen() {
   const { reload, save, state, updateField } = usePreferenceSettings();
+  const appLanguage = useAppLanguage();
+  const translateText = useTranslateText();
+  const [languageStatus, setLanguageStatus] = useState<'failed' | 'idle' | 'saved' | 'saving'>('idle');
   const categoryTopics = useCategoryTopicSettings({
     enabled: state.status !== 'failed' && state.status !== 'loading',
   });
@@ -37,6 +42,19 @@ export function SettingsScreen() {
     enabled: state.hasSavedPreferences,
   });
   const privacySettings = usePrivacySettings();
+  const updateAppLanguage = useCallback(
+    (language: AppLanguage) => {
+      if (language === appLanguage) {
+        return;
+      }
+
+      setLanguageStatus('saving');
+      void saveStoredAppLanguage(language)
+        .then(() => setLanguageStatus('saved'))
+        .catch(() => setLanguageStatus('failed'));
+    },
+    [appLanguage],
+  );
 
   if (state.status === 'loading') {
     return (
@@ -85,7 +103,6 @@ export function SettingsScreen() {
   const dataDeletionCounts = dataDeletion.result
     ? Object.entries(dataDeletion.result.counts).filter(([, count]) => count > 0)
     : [];
-
   const formatBudgetAmount = (amountMinor: number) => {
     if (!budgetPreferences) {
       return `${amountMinor}`;
@@ -255,6 +272,44 @@ export function SettingsScreen() {
             {translateText('Set the local defaults Pplant uses for money, calendar grouping, and work-time context.')}
           </Text>
         </View>
+
+        <View style={styles.section}>
+          <View style={styles.header}>
+            <Text style={styles.eyebrow}>{translateText('Display')}</Text>
+            <Text style={styles.sectionTitle}>{translateText('App language')}</Text>
+            <Text style={styles.description}>
+              {translateText('Choose the language used for app labels and messages.')}
+            </Text>
+          </View>
+          <SegmentedControl
+            accessibilityLabel={translateText('App language')}
+            options={appLanguageOptions}
+            selectedValue={appLanguage}
+            onChange={updateAppLanguage}
+          />
+          {languageStatus === 'saving' ? (
+            <StatusBanner
+              title="Saving language"
+              description="Pplant is saving the selected app language."
+            />
+          ) : null}
+          {languageStatus === 'saved' ? (
+            <StatusBanner
+              title="Language saved"
+              description="App labels and messages now use the selected language."
+              tone="success"
+            />
+          ) : null}
+          {languageStatus === 'failed' ? (
+            <StatusBanner
+              title="Language was not saved"
+              description="Try changing language again. The app keeps using the current language."
+              tone="warning"
+            />
+          ) : null}
+        </View>
+
+        <View style={styles.divider} />
 
         {!state.hasSavedPreferences ? (
           <StatusBanner

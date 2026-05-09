@@ -1,7 +1,7 @@
 import type { PressableProps, StyleProp, ViewStyle } from 'react-native';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
-import { translateText } from '@/i18n/strings';
+import { useTranslateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
@@ -16,6 +16,7 @@ type ButtonProps = Omit<PressableProps, 'style'> & {
 };
 
 export function Button({ label, variant = 'primary', disabled, style, ...pressableProps }: ButtonProps) {
+  const translateText = useTranslateText();
   const labelStyle =
     variant === 'primary'
       ? styles.primaryLabel

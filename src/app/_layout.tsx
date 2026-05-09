@@ -8,11 +8,12 @@ import {
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { WorkspaceGate } from '@/features/workspace/WorkspaceGate';
+import { loadStoredAppLanguage } from '@/i18n/language-storage';
 import { colors } from '@/ui/tokens/colors';
 
 const pplantTheme = {
@@ -35,6 +36,10 @@ export default function RootLayout() {
     Montserrat_700Bold,
     Montserrat_800ExtraBold,
   });
+
+  useEffect(() => {
+    void loadStoredAppLanguage();
+  }, []);
 
   if (!fontsLoaded) {
     return null;
