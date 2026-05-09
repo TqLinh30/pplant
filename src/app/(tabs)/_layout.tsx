@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAppLanguage } from '@/i18n/strings';
 import { typography } from '@/ui/tokens/typography';
 
 type MoneyNoteTabIconName = 'calendar' | 'entry' | 'more' | 'report';
@@ -54,6 +55,21 @@ function MoneyNoteTabIcon({
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const appLanguage = useAppLanguage();
+  const titles =
+    appLanguage === 'en'
+      ? {
+          calendar: 'Calendar',
+          entry: 'Entry',
+          more: 'More',
+          report: 'Report',
+        }
+      : {
+          calendar: 'Lịch',
+          entry: 'Nhập vào',
+          more: 'Khác',
+          report: 'Báo cáo',
+        };
 
   const bottomPadding = Math.max(insets.bottom, 12);
   const tabBarHeight = 72 + bottomPadding;
@@ -84,21 +100,21 @@ export default function TabLayout() {
         name="index"
         options={{
           tabBarIcon: ({ color }) => <MoneyNoteTabIcon color={color} name="entry" />,
-          title: 'Nhập vào',
+          title: titles.entry,
         }}
       />
       <Tabs.Screen
         name="capture"
         options={{
           tabBarIcon: ({ color }) => <MoneyNoteTabIcon color={color} name="calendar" />,
-          title: 'Lịch',
+          title: titles.calendar,
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
           tabBarIcon: ({ color }) => <MoneyNoteTabIcon color={color} name="report" />,
-          title: 'Báo cáo',
+          title: titles.report,
         }}
       />
       <Tabs.Screen name="review" options={{ href: null }} />
@@ -106,7 +122,7 @@ export default function TabLayout() {
         name="settings"
         options={{
           tabBarIcon: ({ color }) => <MoneyNoteTabIcon color={color} name="more" />,
-          title: 'Khác',
+          title: titles.more,
         }}
       />
     </Tabs>

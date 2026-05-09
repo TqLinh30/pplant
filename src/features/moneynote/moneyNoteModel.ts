@@ -26,6 +26,8 @@ export type MoneyNoteCalendarDay = {
   localDate: string;
 };
 
+export type MoneyNoteDailyTotals = Record<string, MoneyNoteTotals>;
+
 export const moneyNoteDefaultPreferences = {
   currencyCode: 'VND',
   defaultHourlyWageMinor: 0,
@@ -90,6 +92,16 @@ export function formatMoneyNoteDate(value: string): string {
   )}/${date.getFullYear()} (${weekdays[date.getDay()]})`;
 }
 
+export function formatMoneyNoteShortDate(value: string): string {
+  const date = parseLocalDate(value);
+  const weekdays = ['CN', 'T.2', 'T.3', 'T.4', 'T.5', 'T.6', 'T.7'];
+
+  return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(
+    2,
+    '0',
+  )} (${weekdays[date.getDay()]})`;
+}
+
 export function monthLabel(date: Date): string {
   return `${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
 }
@@ -149,6 +161,30 @@ export function calculateMoneyNoteTotals(records: MoneyRecord[]): MoneyNoteTotal
   );
 }
 
+export function calculateMoneyNoteDailyTotals(records: MoneyRecord[]): MoneyNoteDailyTotals {
+  return records.reduce<MoneyNoteDailyTotals>((totalsByDate, record) => {
+    if (record.deletedAt !== null) {
+      return totalsByDate;
+    }
+
+    const existing = totalsByDate[record.localDate] ?? {
+      expenseMinor: 0,
+      incomeMinor: 0,
+      netMinor: 0,
+    };
+
+    if (record.kind === 'expense') {
+      existing.expenseMinor += record.amountMinor;
+    } else {
+      existing.incomeMinor += record.amountMinor;
+    }
+
+    existing.netMinor = existing.incomeMinor - existing.expenseMinor;
+    totalsByDate[record.localDate] = existing;
+    return totalsByDate;
+  }, {});
+}
+
 export function parseMoneyNoteAmountInput(value: string): string {
   return value.replace(/[^\d]/g, '');
 }
@@ -169,6 +205,10 @@ export function formatMoneyNoteAmountInput(value: string): string {
 export function currencySuffixForCode(currencyCode: string): string {
   if (currencyCode.toUpperCase() === 'VND') {
     return 'đ';
+  }
+
+  if (currencyCode.toUpperCase() === 'TWD') {
+    return 'NT$';
   }
 
   try {
@@ -195,6 +235,12 @@ export function formatMoneyNoteAmount(
     return `${sign}${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(absolute)}đ`;
   }
 
+  if (currencyCode.toUpperCase() === 'TWD') {
+    return `${sign}NT$${new Intl.NumberFormat(locale, {
+      maximumFractionDigits: 0,
+    }).format(absolute / 100)}`;
+  }
+
   try {
     return `${sign}${new Intl.NumberFormat(locale, {
       currency: currencyCode,
@@ -204,6 +250,21 @@ export function formatMoneyNoteAmount(
   } catch {
     return `${sign}${absolute} ${currencyCode.toUpperCase()}`;
   }
+}
+
+export function formatMoneyNoteAmountMagnitude(
+  amountMinor: number,
+  { currencyCode, locale }: MoneyNoteMoneyFormat = moneyNoteDefaultPreferences,
+): string {
+  const absolute = Math.abs(amountMinor);
+  const majorAmount =
+    currencyCode.toUpperCase() === 'VND' || currencyCode.toUpperCase() === 'JPY'
+      ? absolute
+      : absolute / 100;
+
+  return new Intl.NumberFormat(locale, {
+    maximumFractionDigits: Number.isInteger(majorAmount) ? 0 : 2,
+  }).format(majorAmount);
 }
 
 export function formatDong(amountMinor: number): string {

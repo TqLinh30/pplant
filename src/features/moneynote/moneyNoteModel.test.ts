@@ -4,11 +4,14 @@ import { localWorkspaceId } from '@/domain/workspace/types';
 import {
   buildMoneyNoteCalendarMonth,
   calculateMoneyNoteTotals,
+  calculateMoneyNoteDailyTotals,
   currencySuffixForCode,
   formatDong,
   formatMoneyNoteAmount,
+  formatMoneyNoteAmountMagnitude,
   formatMoneyNoteAmountInput,
   formatMoneyNoteDate,
+  formatMoneyNoteShortDate,
   getMonthBounds,
   parseMoneyNoteAmountInput,
   monthLabel,
@@ -43,6 +46,7 @@ function createRecord(overrides: Partial<MoneyRecord>): MoneyRecord {
 describe('MoneyNote model helpers', () => {
   it('formats Vietnamese calendar labels and shifts local dates', () => {
     expect(formatMoneyNoteDate('2026-05-09')).toBe('09/05/2026 (T.7)');
+    expect(formatMoneyNoteShortDate('2026-05-09')).toBe('09/05 (T.7)');
     expect(shiftLocalDate('2026-05-01', -1)).toBe('2026-04-30');
     expect(monthLabel(new Date(2026, 4, 1))).toBe('05/2026');
     expect(shiftMonth(new Date(2026, 4, 9), 1)).toEqual(new Date(2026, 5, 1));
@@ -75,7 +79,42 @@ describe('MoneyNote model helpers', () => {
     });
     expect(formatDong(totals.netMinor)).toBe('38.000đ');
     expect(formatMoneyNoteAmount(1250, { currencyCode: 'USD', locale: 'en-US' })).toBe('$12.50');
+    expect(formatMoneyNoteAmountMagnitude(1250, { currencyCode: 'USD', locale: 'en-US' })).toBe('12.5');
+    expect(formatMoneyNoteAmount(29100, { currencyCode: 'TWD', locale: 'zh-TW' })).toBe('NT$291');
     expect(currencySuffixForCode('VND')).toBe('đ');
+    expect(currencySuffixForCode('TWD')).toBe('NT$');
+  });
+
+  it('groups active money records into daily calendar totals', () => {
+    expect(
+      calculateMoneyNoteDailyTotals([
+        createRecord({ amountMinor: 9000, id: 'food' as never, localDate: '2026-05-09' as never }),
+        createRecord({ amountMinor: 20100, id: 'train' as never, localDate: '2026-05-09' as never }),
+        createRecord({
+          amountMinor: 50000,
+          id: 'income' as never,
+          kind: 'income',
+          localDate: '2026-05-10' as never,
+        }),
+        createRecord({
+          amountMinor: 1,
+          deletedAt: '2026-05-10T00:00:00.000Z',
+          id: 'deleted' as never,
+          localDate: '2026-05-09' as never,
+        }),
+      ]),
+    ).toEqual({
+      '2026-05-09': {
+        expenseMinor: 29100,
+        incomeMinor: 0,
+        netMinor: -29100,
+      },
+      '2026-05-10': {
+        expenseMinor: 0,
+        incomeMinor: 50000,
+        netMinor: 50000,
+      },
+    });
   });
 
   it('formats amount input with Vietnamese thousands separators without changing saved digits', () => {
