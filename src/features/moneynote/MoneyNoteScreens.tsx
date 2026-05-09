@@ -30,6 +30,7 @@ import { saveUserPreferences } from '@/services/preferences/preferences.service'
 import { saveStoredAppLanguage } from '@/i18n/language-storage';
 import { appLanguageOptions, useAppLanguage, type AppLanguage } from '@/i18n/strings';
 import { useManualMoneyCapture } from '@/features/capture/useManualMoneyCapture';
+import { subscribeMoneyRecordsChanged } from '@/features/money/money-record-change-events';
 import { usePreferenceSettings } from '@/features/settings/usePreferenceSettings';
 
 import {
@@ -445,6 +446,7 @@ function useEnsureMoneyNoteDefaults(
 }
 
 function useMoneyNoteMonthData(monthDate: Date): MonthDataState {
+  const [reloadToken, setReloadToken] = useState(0);
   const [state, setState] = useState<MonthDataState>({
     currencyCode: moneyNoteDefaultPreferences.currencyCode,
     locale: moneyNoteDefaultPreferences.locale,
@@ -454,6 +456,23 @@ function useMoneyNoteMonthData(monthDate: Date): MonthDataState {
     totals: emptyTotals,
   });
   const preferencesAttempted = useRef(false);
+  const focusedOnce = useRef(false);
+  const reload = useCallback(() => {
+    setReloadToken((current) => current + 1);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (focusedOnce.current) {
+        reload();
+        return;
+      }
+
+      focusedOnce.current = true;
+    }, [reload]),
+  );
+
+  useEffect(() => subscribeMoneyRecordsChanged(reload), [reload]);
 
   useEffect(() => {
     let cancelled = false;
@@ -512,7 +531,7 @@ function useMoneyNoteMonthData(monthDate: Date): MonthDataState {
     return () => {
       cancelled = true;
     };
-  }, [monthDate]);
+  }, [monthDate, reloadToken]);
 
   return state;
 }
@@ -568,7 +587,25 @@ function morePanelRange(panelKind: MoneyNoteMorePanelKind | null): { dateFrom?: 
 }
 
 function useMoneyNoteMorePanelData(panelKind: MoneyNoteMorePanelKind | null): MorePanelDataState {
+  const [reloadToken, setReloadToken] = useState(0);
   const [state, setState] = useState<MorePanelDataState>(morePanelEmptyState);
+  const focusedOnce = useRef(false);
+  const reload = useCallback(() => {
+    setReloadToken((current) => current + 1);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (focusedOnce.current) {
+        reload();
+        return;
+      }
+
+      focusedOnce.current = true;
+    }, [reload]),
+  );
+
+  useEffect(() => subscribeMoneyRecordsChanged(reload), [reload]);
 
   useEffect(() => {
     if (!panelKind) {
@@ -617,7 +654,7 @@ function useMoneyNoteMorePanelData(panelKind: MoneyNoteMorePanelKind | null): Mo
     return () => {
       cancelled = true;
     };
-  }, [panelKind]);
+  }, [panelKind, reloadToken]);
 
   return state;
 }

@@ -30,6 +30,7 @@ import {
   type ManualMoneyCaptureData,
   type MoneyRecordMutationResult,
 } from '@/services/money/money-record.service';
+import { notifyMoneyRecordsChanged } from '@/features/money/money-record-change-events';
 import {
   isMoneyCaptureDraftMeaningful,
   toCaptureDraftPayload,
@@ -489,6 +490,7 @@ export function useManualMoneyCapture(services: ManualMoneyCaptureServices = {})
         }
 
         if (result.ok) {
+          notifyMoneyRecordsChanged('updated', result.value.record);
           dispatch({
             mutation: 'updated',
             nextDraft: createDefaultManualMoneyCaptureDraft(now?.() ?? new Date()),
@@ -524,6 +526,7 @@ export function useManualMoneyCapture(services: ManualMoneyCaptureServices = {})
           return;
         }
 
+        notifyMoneyRecordsChanged('created', result.value);
         dispatch({
           mutation: 'created',
           nextDraft: createDefaultManualMoneyCaptureDraft(now?.() ?? new Date()),
@@ -573,6 +576,7 @@ export function useManualMoneyCapture(services: ManualMoneyCaptureServices = {})
       }
 
       if (result.ok) {
+        notifyMoneyRecordsChanged('deleted', result.value.record);
         dispatch({
           nextDraft: createDefaultManualMoneyCaptureDraft(now?.() ?? new Date()),
           record: result.value.record,
