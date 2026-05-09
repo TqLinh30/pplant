@@ -805,20 +805,22 @@ function buildReportChartSegments({
 }): ReportChartSegment[] {
   let arcOffset = 0;
   let angleOffset = -90;
-  const labelWidth = 104;
+  const labelWidth = 96;
+  const labelPadding = 8;
 
   return rows.map((row) => {
     const sweepAngle = (row.percent / 100) * 360;
     const midAngle = angleOffset + sweepAngle / 2;
     const outerRadius = radius + strokeWidth / 2;
     const connectorStart = pointOnCircle(centerX, centerY, outerRadius - 2, midAngle);
-    const connectorBend = pointOnCircle(centerX, centerY, outerRadius + 22, midAngle);
+    const connectorBend = pointOnCircle(centerX, centerY, outerRadius + 18, midAngle);
     const isRightSide = Math.cos((midAngle * Math.PI) / 180) >= 0;
-    const connectorEndX = isRightSide ? chartWidth - 84 : 84;
+    const labelLeft = isRightSide ? chartWidth - labelWidth - labelPadding : labelPadding;
+    const connectorEndX = isRightSide ? labelLeft - 8 : labelLeft + labelWidth - 8;
     const connectorEndY = connectorBend.y;
-    const labelLeft = isRightSide ? connectorEndX + 10 : connectorEndX - labelWidth - 10;
-    const labelTop = clampNumber(connectorEndY - 25, 12, chartHeight - 58);
+    const labelTop = clampNumber(connectorEndY - 25, 8, chartHeight - 58);
     const dashLength = Math.max(0.1, (row.percent / 100) * circumference);
+    // Connector geometry is derived from the segment midpoint so the label always describes that exact color.
     const segment = {
       ...row,
       connectorPoints: `${connectorStart.x},${connectorStart.y} ${connectorBend.x},${connectorBend.y} ${connectorEndX},${connectorEndY}`,
@@ -1544,12 +1546,12 @@ function ReportDonutChart({
   language: AppLanguage;
   rows: ReportBreakdownRow[];
 }) {
-  const chartHeight = 278;
+  const chartHeight = 230;
   const chartWidth = 340;
   const centerX = chartWidth / 2;
   const centerY = chartHeight / 2;
-  const radius = 72;
-  const strokeWidth = 34;
+  const radius = 52;
+  const strokeWidth = 26;
   const circumference = 2 * Math.PI * radius;
   const segments = buildReportChartSegments({
     centerX,
@@ -3261,7 +3263,7 @@ const styles = StyleSheet.create({
     margin: 18,
   },
   reportChartCallout: {
-    width: 104,
+    width: 96,
     position: 'absolute',
   },
   reportChartCalloutLabel: {
@@ -3275,9 +3277,9 @@ const styles = StyleSheet.create({
   reportChartCanvas: {
     alignItems: 'center',
     alignSelf: 'center',
-    height: 278,
+    height: 230,
     justifyContent: 'center',
-    maxWidth: 360,
+    maxWidth: 340,
     width: '100%',
   },
   reportChartEmptyText: {
@@ -3288,16 +3290,20 @@ const styles = StyleSheet.create({
   reportChartHole: {
     backgroundColor: '#FFFFFF',
     borderColor: '#E9EFEF',
-    borderRadius: 43,
-    borderWidth: 6,
-    height: 86,
+    borderRadius: 39,
+    borderWidth: 5,
+    height: 78,
+    left: '50%',
+    marginLeft: -39,
+    marginTop: -39,
     position: 'absolute',
-    width: 86,
+    top: '50%',
+    width: 78,
   },
   reportChartPanel: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 10,
-    paddingVertical: 22,
+    paddingVertical: 10,
   },
   reportHalf: {
     alignItems: 'center',
