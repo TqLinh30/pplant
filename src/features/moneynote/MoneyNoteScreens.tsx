@@ -13,7 +13,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, G } from 'react-native-svg';
+import Svg, { Circle, G, Polyline } from 'react-native-svg';
 
 import type { AppError } from '@/domain/common/app-error';
 import type { CategoryTopicItem } from '@/domain/categories/types';
@@ -574,6 +574,14 @@ type ReportBreakdownRow = {
   percent: number;
 };
 
+type ReportChartSegment = ReportBreakdownRow & {
+  connectorPoints: string;
+  dashLength: number;
+  dashOffset: number;
+  labelLeft: number;
+  labelTop: number;
+};
+
 const morePanelEmptyState: MorePanelDataState = {
   currencyCode: moneyNoteDefaultPreferences.currencyCode,
   locale: moneyNoteDefaultPreferences.locale,
@@ -710,32 +718,49 @@ function buildReportBreakdownRows(
   kind: 'expense' | 'income',
   language: AppLanguage,
 ): ReportBreakdownRow[] {
-  const categoryRows = buildCategoryReportRows(
-    records.filter((record) => record.kind === kind),
-    language,
-  );
-  const totalMinor = categoryRows.reduce(
-    (total, row) => total + (kind === 'expense' ? row.expenseMinor : row.incomeMinor),
-    0,
-  );
+  const rows = new Map<
+    string,
+    ReportBreakdownRow & {
+      order: number;
+    }
+  >();
+
+  records
+    .filter((record) => record.kind === kind && record.deletedAt === null)
+    .forEach((record) => {
+      const template = templateForRecord(record);
+      const key = record.categoryId ?? record.merchantOrSource ?? 'uncategorized';
+      const templateIndex = template
+        ? allMoneyNoteCategoryTemplates.findIndex((candidate) => candidate.id === template.id)
+        : -1;
+      const existing =
+        rows.get(key) ??
+        ({
+          amountMinor: 0,
+          color: template?.color ?? skyBlue,
+          icon: template?.icon ?? 'tag-outline',
+          key,
+          label: recordDisplayLabel(record, language, language === 'en' ? 'Uncategorized' : 'Khác'),
+          order: templateIndex >= 0 ? templateIndex : allMoneyNoteCategoryTemplates.length,
+          percent: 0,
+        } satisfies ReportBreakdownRow & { order: number });
+
+      existing.amountMinor += record.amountMinor;
+      rows.set(key, existing);
+    });
+
+  const totalMinor = Array.from(rows.values()).reduce((total, row) => total + row.amountMinor, 0);
 
   if (totalMinor <= 0) {
     return [];
   }
 
-  return categoryRows
-    .map((row) => {
-      const amountMinor = kind === 'expense' ? row.expenseMinor : row.incomeMinor;
-
-      return {
-        amountMinor,
-        color: row.color,
-        icon: row.icon,
-        key: row.key,
-        label: row.label,
-        percent: (amountMinor / totalMinor) * 100,
-      };
-    })
+  return Array.from(rows.values())
+    .sort((left, right) => left.order - right.order || right.amountMinor - left.amountMinor)
+    .map(({ order: _order, ...row }) => ({
+      ...row,
+      percent: (row.amountMinor / totalMinor) * 100,
+    }))
     .filter((row) => row.amountMinor > 0);
 }
 
@@ -744,6 +769,70 @@ function formatReportPercent(value: number, language: AppLanguage): string {
     maximumFractionDigits: 1,
     minimumFractionDigits: value < 10 && value % 1 !== 0 ? 1 : 0,
   }).format(value)} %`;
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function pointOnCircle(centerX: number, centerY: number, radius: number, angleDeg: number) {
+  const angle = (angleDeg * Math.PI) / 180;
+
+  return {
+    x: centerX + Math.cos(angle) * radius,
+    y: centerY + Math.sin(angle) * radius,
+  };
+}
+
+function buildReportChartSegments({
+  centerX,
+  centerY,
+  chartHeight,
+  chartWidth,
+  circumference,
+  radius,
+  rows,
+  strokeWidth,
+}: {
+  centerX: number;
+  centerY: number;
+  chartHeight: number;
+  chartWidth: number;
+  circumference: number;
+  radius: number;
+  rows: ReportBreakdownRow[];
+  strokeWidth: number;
+}): ReportChartSegment[] {
+  let arcOffset = 0;
+  let angleOffset = -90;
+  const labelWidth = 104;
+
+  return rows.map((row) => {
+    const sweepAngle = (row.percent / 100) * 360;
+    const midAngle = angleOffset + sweepAngle / 2;
+    const outerRadius = radius + strokeWidth / 2;
+    const connectorStart = pointOnCircle(centerX, centerY, outerRadius - 2, midAngle);
+    const connectorBend = pointOnCircle(centerX, centerY, outerRadius + 22, midAngle);
+    const isRightSide = Math.cos((midAngle * Math.PI) / 180) >= 0;
+    const connectorEndX = isRightSide ? chartWidth - 84 : 84;
+    const connectorEndY = connectorBend.y;
+    const labelLeft = isRightSide ? connectorEndX + 10 : connectorEndX - labelWidth - 10;
+    const labelTop = clampNumber(connectorEndY - 25, 12, chartHeight - 58);
+    const dashLength = Math.max(0.1, (row.percent / 100) * circumference);
+    const segment = {
+      ...row,
+      connectorPoints: `${connectorStart.x},${connectorStart.y} ${connectorBend.x},${connectorBend.y} ${connectorEndX},${connectorEndY}`,
+      dashLength,
+      dashOffset: -arcOffset,
+      labelLeft,
+      labelTop,
+    };
+
+    arcOffset += dashLength;
+    angleOffset += sweepAngle;
+
+    return segment;
+  });
 }
 
 function escapeCsvCell(value: unknown): string {
@@ -1421,28 +1510,27 @@ function ReportSummaryCard({
 }
 
 function ReportChartCallout({
-  align,
   language,
-  row,
+  segment,
 }: {
-  align: 'left' | 'right';
   language: AppLanguage;
-  row: ReportBreakdownRow;
+  segment: ReportChartSegment;
 }) {
   return (
     <View
       style={[
         styles.reportChartCallout,
-        align === 'left' ? styles.reportChartCalloutLeft : styles.reportChartCalloutRight,
+        {
+          left: segment.labelLeft,
+          top: segment.labelTop,
+        },
       ]}>
-      {align === 'left' ? <View style={[styles.reportChartCalloutLine, { backgroundColor: row.color }]} /> : null}
       <View>
-        <Text style={styles.reportChartCalloutPercent}>{formatReportPercent(row.percent, language)}</Text>
+        <Text style={styles.reportChartCalloutPercent}>{formatReportPercent(segment.percent, language)}</Text>
         <Text numberOfLines={1} style={styles.reportChartCalloutLabel}>
-          {row.label}
+          {segment.label}
         </Text>
       </View>
-      {align === 'right' ? <View style={[styles.reportChartCalloutLine, { backgroundColor: row.color }]} /> : null}
     </View>
   );
 }
@@ -1456,52 +1544,68 @@ function ReportDonutChart({
   language: AppLanguage;
   rows: ReportBreakdownRow[];
 }) {
-  const size = 238;
-  const center = size / 2;
+  const chartHeight = 278;
+  const chartWidth = 340;
+  const centerX = chartWidth / 2;
+  const centerY = chartHeight / 2;
   const radius = 72;
   const strokeWidth = 34;
   const circumference = 2 * Math.PI * radius;
-  let offset = 0;
-  const biggestRow = rows[0] ?? null;
-  const secondRow = rows[1] ?? null;
+  const segments = buildReportChartSegments({
+    centerX,
+    centerY,
+    chartHeight,
+    chartWidth,
+    circumference,
+    radius,
+    rows,
+    strokeWidth,
+  });
+  const calloutSegments = [...segments]
+    .sort((left, right) => right.amountMinor - left.amountMinor)
+    .slice(0, 2);
 
   return (
     <View style={styles.reportChartPanel}>
       <View style={styles.reportChartCanvas}>
-        <Svg height={size} width={size} viewBox={`0 0 ${size} ${size}`}>
+        <Svg height={chartHeight} width={chartWidth} viewBox={`0 0 ${chartWidth} ${chartHeight}`}>
           <Circle
-            cx={center}
-            cy={center}
+            cx={centerX}
+            cy={centerY}
             fill="none"
             r={radius}
             stroke="#E9EFEF"
             strokeWidth={strokeWidth}
           />
-          <G origin={`${center}, ${center}`} rotation="-90">
-            {rows.map((row) => {
-              const arcLength = Math.max(0.1, (row.percent / 100) * circumference);
-              const dashOffset = -offset;
-              offset += arcLength;
-
-              return (
-                <Circle
-                  cx={center}
-                  cy={center}
-                  fill="none"
-                  key={row.key}
-                  r={radius}
-                  stroke={row.color}
-                  strokeDasharray={`${arcLength} ${circumference - arcLength}`}
-                  strokeDashoffset={dashOffset}
-                  strokeWidth={strokeWidth}
-                />
-              );
-            })}
+          <G origin={`${centerX}, ${centerY}`} rotation="-90">
+            {segments.map((segment) => (
+              <Circle
+                cx={centerX}
+                cy={centerY}
+                fill="none"
+                key={segment.key}
+                r={radius}
+                stroke={segment.color}
+                strokeDasharray={`${segment.dashLength} ${circumference - segment.dashLength}`}
+                strokeDashoffset={segment.dashOffset}
+                strokeWidth={strokeWidth}
+              />
+            ))}
           </G>
+          {calloutSegments.map((segment) => (
+            <Polyline
+              fill="none"
+              key={`connector-${segment.key}`}
+              points={segment.connectorPoints}
+              stroke={segment.color}
+              strokeWidth={2}
+            />
+          ))}
         </Svg>
         <View style={styles.reportChartHole} />
-        {secondRow ? <ReportChartCallout align="right" language={language} row={secondRow} /> : null}
-        {biggestRow ? <ReportChartCallout align={secondRow ? 'left' : 'right'} language={language} row={biggestRow} /> : null}
+        {calloutSegments.map((segment) => (
+          <ReportChartCallout key={`callout-${segment.key}`} language={language} segment={segment} />
+        ))}
         {rows.length === 0 ? (
           <Text style={styles.reportChartEmptyText}>{copy.noData}</Text>
         ) : null}
@@ -3157,31 +3261,16 @@ const styles = StyleSheet.create({
     margin: 18,
   },
   reportChartCallout: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    maxWidth: 124,
+    width: 104,
     position: 'absolute',
   },
   reportChartCalloutLabel: {
     ...moneyType.label,
     color: '#555555',
   },
-  reportChartCalloutLeft: {
-    bottom: 48,
-    left: 12,
-  },
-  reportChartCalloutLine: {
-    height: 2,
-    width: 34,
-  },
   reportChartCalloutPercent: {
     ...moneyType.body,
     color: '#555555',
-  },
-  reportChartCalloutRight: {
-    right: 10,
-    top: 46,
   },
   reportChartCanvas: {
     alignItems: 'center',
