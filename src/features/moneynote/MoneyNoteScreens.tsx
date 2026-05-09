@@ -1274,7 +1274,7 @@ export function MoneyNoteCalendarScreen() {
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.plainContent}>
-        <ScreenHeader right={<IconButton label="⌕" />} title={copy.calendar} />
+        <ScreenHeader title={copy.calendar} />
         <MonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
         <View style={styles.calendarGrid}>
           {weekdayLabels.map((label) => (
@@ -1553,7 +1553,7 @@ export function MoneyNoteReportScreen() {
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.plainContent}>
-        <ScreenHeader right={<IconButton label="⌕" />} title={copy.report} />
+        <ScreenHeader title={copy.report} />
         <MonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
         <ReportSummaryCard
           copy={copy}
