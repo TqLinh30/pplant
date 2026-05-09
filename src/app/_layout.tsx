@@ -9,7 +9,7 @@ import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import React, { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text, TextInput } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { WorkspaceGate } from '@/features/workspace/WorkspaceGate';
@@ -26,6 +26,24 @@ const pplantTheme = {
     primary: colors.primary,
     text: colors.ink,
   },
+};
+
+type FontScalingDefaults = {
+  defaultProps?: {
+    maxFontSizeMultiplier?: number;
+  };
+};
+
+// Keep MoneyNote typography close to DESIGN.md while still allowing a small accessibility bump.
+const maxDesignFontScale = 1.08;
+
+(Text as unknown as FontScalingDefaults).defaultProps = {
+  ...(Text as unknown as FontScalingDefaults).defaultProps,
+  maxFontSizeMultiplier: maxDesignFontScale,
+};
+(TextInput as unknown as FontScalingDefaults).defaultProps = {
+  ...(TextInput as unknown as FontScalingDefaults).defaultProps,
+  maxFontSizeMultiplier: maxDesignFontScale,
 };
 
 export default function RootLayout() {

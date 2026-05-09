@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -15,12 +16,7 @@ function MoneyNoteTabIcon({
   name: MoneyNoteTabIconName;
 }) {
   if (name === 'entry') {
-    return (
-      <View style={tabIconStyles.pencilBox}>
-        <View style={[tabIconStyles.pencilShaft, { backgroundColor: color }]} />
-        <View style={[tabIconStyles.pencilTip, { borderLeftColor: color }]} />
-      </View>
-    );
+    return <MaterialCommunityIcons color={color} name="pencil-plus-outline" size={30} />;
   }
 
   if (name === 'calendar') {
@@ -162,30 +158,6 @@ const tabIconStyles = StyleSheet.create({
     flexDirection: 'row',
     gap: 5,
     paddingTop: 12,
-  },
-  pencilBox: {
-    height: 28,
-    justifyContent: 'center',
-    width: 28,
-  },
-  pencilShaft: {
-    borderRadius: 2,
-    height: 6,
-    transform: [{ rotate: '-38deg' }],
-    width: 25,
-  },
-  pencilTip: {
-    borderBottomColor: 'transparent',
-    borderBottomWidth: 4,
-    borderLeftWidth: 8,
-    borderTopColor: 'transparent',
-    borderTopWidth: 4,
-    height: 0,
-    position: 'absolute',
-    right: 0,
-    top: 7,
-    transform: [{ rotate: '-38deg' }],
-    width: 0,
   },
   reportCircle: {
     borderRadius: 14,

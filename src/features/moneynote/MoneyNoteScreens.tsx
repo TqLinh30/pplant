@@ -1004,7 +1004,7 @@ function KindTabs({
 
 function CategoryIcon({ color, icon }: { color: string; icon: string }) {
   return (
-    <MaterialCommunityIcons color={color} name={icon as never} size={30} />
+    <MaterialCommunityIcons color={color} name={icon as never} size={28} />
   );
 }
 
@@ -2619,8 +2619,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     color: ink,
     flex: 1,
-    minHeight: 48,
-    paddingHorizontal: 16,
+    minHeight: 44,
+    paddingHorizontal: 14,
   },
   calendarGrid: {
     backgroundColor: '#FFFFFF',
@@ -2636,7 +2636,7 @@ const styles = StyleSheet.create({
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
   },
   categoryHeader: {
     alignItems: 'center',
@@ -2671,9 +2671,9 @@ const styles = StyleSheet.create({
   },
   categorySection: {
     backgroundColor: '#FFFFFF',
-    gap: 12,
+    gap: 10,
     paddingHorizontal: 18,
-    paddingTop: 14,
+    paddingTop: 10,
   },
   categoryTile: {
     alignItems: 'center',
@@ -2682,7 +2682,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexBasis: '22%',
     flexGrow: 1,
-    height: 84,
+    height: 74,
     justifyContent: 'center',
     minWidth: 74,
     paddingHorizontal: 6,
@@ -2690,7 +2690,7 @@ const styles = StyleSheet.create({
   categoryTileLabel: {
     ...moneyType.caption,
     color: ink,
-    marginTop: 4,
+    marginTop: 3,
     textAlign: 'center',
   },
   categoryTileSelected: {
@@ -2746,7 +2746,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     justifyContent: 'space-between',
-    minHeight: 50,
+    minHeight: 44,
     paddingHorizontal: 14,
   },
   datePillIcon: {
@@ -2831,7 +2831,7 @@ const styles = StyleSheet.create({
   },
   entryContent: {
     backgroundColor: '#FFFFFF',
-    paddingBottom: 18,
+    paddingBottom: 112,
   },
   editFooterActions: {
     alignItems: 'center',
@@ -2846,14 +2846,14 @@ const styles = StyleSheet.create({
   formPanel: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 18,
-    paddingTop: 18,
+    paddingTop: 10,
   },
   formRow: {
     alignItems: 'center',
     borderBottomColor: line,
     borderBottomWidth: 1,
     flexDirection: 'row',
-    minHeight: 68,
+    minHeight: 58,
   },
   formRowBody: {
     alignItems: 'center',
@@ -2869,7 +2869,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
-    minHeight: 64,
+    minHeight: 56,
     paddingHorizontal: 18,
   },
   headerRight: {
@@ -2935,7 +2935,7 @@ const styles = StyleSheet.create({
   kindTabLine: {
     backgroundColor: 'transparent',
     height: 4,
-    marginTop: 12,
+    marginTop: 8,
     width: '100%',
   },
   kindTabLineActive: {
@@ -2953,7 +2953,7 @@ const styles = StyleSheet.create({
     borderBottomColor: line,
     borderBottomWidth: 1,
     flexDirection: 'row',
-    height: 58,
+    height: 50,
   },
   languageOption: {
     borderColor: line,
@@ -3201,8 +3201,8 @@ const styles = StyleSheet.create({
     elevation: 3,
     justifyContent: 'center',
     marginHorizontal: 28,
-    marginTop: 24,
-    minHeight: 48,
+    marginTop: 16,
+    minHeight: 46,
     shadowColor: '#000000',
     shadowOpacity: 0.18,
     shadowRadius: 5,
@@ -3417,7 +3417,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     color: ink,
     flex: 1,
-    minHeight: 50,
+    minHeight: 44,
     paddingHorizontal: 14,
   },
   warningText: {
