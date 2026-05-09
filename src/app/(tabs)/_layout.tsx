@@ -71,8 +71,8 @@ export default function TabLayout() {
           report: 'Báo cáo',
         };
 
-  const bottomPadding = Math.max(insets.bottom, 6);
-  const tabBarHeight = 56 + bottomPadding;
+  const bottomPadding = Math.min(Math.max(insets.bottom, 2), 6);
+  const tabBarHeight = 58 + bottomPadding;
 
   return (
     <Tabs
@@ -94,7 +94,7 @@ export default function TabLayout() {
           borderTopColor: '#DDE7E7',
           height: tabBarHeight,
           paddingBottom: bottomPadding,
-          paddingTop: 4,
+          paddingTop: 2,
         },
       }}>
       <Tabs.Screen

@@ -702,7 +702,7 @@ export function MoneyNoteEntryScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.entryContent} keyboardShouldPersistTaps="handled">
         <ScreenHeader title={copy.appTitle} />
         <KindTabs active={state.draft.kind} copy={copy} onChange={changeKind} />
@@ -946,7 +946,7 @@ export function MoneyNoteCalendarScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.plainContent}>
         <ScreenHeader right={<IconButton label="⌕" />} title={copy.calendar} />
         <MonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
@@ -1102,7 +1102,7 @@ export function MoneyNoteReportScreen() {
   const visibleRecords = monthData.records.filter((record) => record.kind === activeKind);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.plainContent}>
         <ScreenHeader right={<IconButton label="⌕" />} title={copy.report} />
         <MonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
@@ -1206,7 +1206,7 @@ export function MoneyNoteMoreScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.moreContent}>
         <ScreenHeader title={copy.more} />
         <MoreDivider />
@@ -1371,7 +1371,7 @@ export function MoneyNotePreferencesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.preferencesContent} keyboardShouldPersistTaps="handled">
         <View style={styles.categoryHeader}>
           <IconButton label="<" onPress={() => router.back()} />
@@ -1563,7 +1563,7 @@ export function MoneyNoteRecordEditScreen() {
   const loading = state.status === 'loading' || (!recordToEdit && !recordLoadError);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.entryContent} keyboardShouldPersistTaps="handled">
         <View style={styles.categoryHeader}>
           <IconButton label="<" onPress={() => router.back()} />
@@ -1731,7 +1731,7 @@ export function MoneyNoteCategoryScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <View style={styles.categoryHeader}>
         <IconButton label="<" onPress={() => router.back()} />
         <Text numberOfLines={1} style={styles.categoryHeaderTitle}>
