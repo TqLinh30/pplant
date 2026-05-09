@@ -13,6 +13,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Circle, G } from 'react-native-svg';
 
 import type { AppError } from '@/domain/common/app-error';
 import type { CategoryTopicItem } from '@/domain/categories/types';
@@ -564,6 +565,15 @@ type CategoryReportRow = {
   label: string;
 };
 
+type ReportBreakdownRow = {
+  amountMinor: number;
+  color: string;
+  icon: string;
+  key: string;
+  label: string;
+  percent: number;
+};
+
 const morePanelEmptyState: MorePanelDataState = {
   currencyCode: moneyNoteDefaultPreferences.currencyCode,
   locale: moneyNoteDefaultPreferences.locale,
@@ -693,6 +703,47 @@ function buildCategoryReportRows(records: MoneyRecord[], language: AppLanguage):
     (left, right) =>
       right.expenseMinor + right.incomeMinor - (left.expenseMinor + left.incomeMinor),
   );
+}
+
+function buildReportBreakdownRows(
+  records: MoneyRecord[],
+  kind: 'expense' | 'income',
+  language: AppLanguage,
+): ReportBreakdownRow[] {
+  const categoryRows = buildCategoryReportRows(
+    records.filter((record) => record.kind === kind),
+    language,
+  );
+  const totalMinor = categoryRows.reduce(
+    (total, row) => total + (kind === 'expense' ? row.expenseMinor : row.incomeMinor),
+    0,
+  );
+
+  if (totalMinor <= 0) {
+    return [];
+  }
+
+  return categoryRows
+    .map((row) => {
+      const amountMinor = kind === 'expense' ? row.expenseMinor : row.incomeMinor;
+
+      return {
+        amountMinor,
+        color: row.color,
+        icon: row.icon,
+        key: row.key,
+        label: row.label,
+        percent: (amountMinor / totalMinor) * 100,
+      };
+    })
+    .filter((row) => row.amountMinor > 0);
+}
+
+function formatReportPercent(value: number, language: AppLanguage): string {
+  return `${new Intl.NumberFormat(language === 'en' ? 'en-US' : 'vi-VN', {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: value < 10 && value % 1 !== 0 ? 1 : 0,
+  }).format(value)} %`;
 }
 
 function escapeCsvCell(value: unknown): string {
@@ -1369,12 +1420,135 @@ function ReportSummaryCard({
   );
 }
 
+function ReportChartCallout({
+  align,
+  language,
+  row,
+}: {
+  align: 'left' | 'right';
+  language: AppLanguage;
+  row: ReportBreakdownRow;
+}) {
+  return (
+    <View
+      style={[
+        styles.reportChartCallout,
+        align === 'left' ? styles.reportChartCalloutLeft : styles.reportChartCalloutRight,
+      ]}>
+      {align === 'left' ? <View style={[styles.reportChartCalloutLine, { backgroundColor: row.color }]} /> : null}
+      <View>
+        <Text style={styles.reportChartCalloutPercent}>{formatReportPercent(row.percent, language)}</Text>
+        <Text numberOfLines={1} style={styles.reportChartCalloutLabel}>
+          {row.label}
+        </Text>
+      </View>
+      {align === 'right' ? <View style={[styles.reportChartCalloutLine, { backgroundColor: row.color }]} /> : null}
+    </View>
+  );
+}
+
+function ReportDonutChart({
+  copy,
+  language,
+  rows,
+}: {
+  copy: typeof moneyNoteCopy.vi;
+  language: AppLanguage;
+  rows: ReportBreakdownRow[];
+}) {
+  const size = 238;
+  const center = size / 2;
+  const radius = 72;
+  const strokeWidth = 34;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+  const biggestRow = rows[0] ?? null;
+  const secondRow = rows[1] ?? null;
+
+  return (
+    <View style={styles.reportChartPanel}>
+      <View style={styles.reportChartCanvas}>
+        <Svg height={size} width={size} viewBox={`0 0 ${size} ${size}`}>
+          <Circle
+            cx={center}
+            cy={center}
+            fill="none"
+            r={radius}
+            stroke="#E9EFEF"
+            strokeWidth={strokeWidth}
+          />
+          <G origin={`${center}, ${center}`} rotation="-90">
+            {rows.map((row) => {
+              const arcLength = Math.max(0.1, (row.percent / 100) * circumference);
+              const dashOffset = -offset;
+              offset += arcLength;
+
+              return (
+                <Circle
+                  cx={center}
+                  cy={center}
+                  fill="none"
+                  key={row.key}
+                  r={radius}
+                  stroke={row.color}
+                  strokeDasharray={`${arcLength} ${circumference - arcLength}`}
+                  strokeDashoffset={dashOffset}
+                  strokeWidth={strokeWidth}
+                />
+              );
+            })}
+          </G>
+        </Svg>
+        <View style={styles.reportChartHole} />
+        {secondRow ? <ReportChartCallout align="right" language={language} row={secondRow} /> : null}
+        {biggestRow ? <ReportChartCallout align={secondRow ? 'left' : 'right'} language={language} row={biggestRow} /> : null}
+        {rows.length === 0 ? (
+          <Text style={styles.reportChartEmptyText}>{copy.noData}</Text>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function ReportBreakdownList({
+  currencyCode,
+  language,
+  locale,
+  rows,
+}: {
+  currencyCode: string;
+  language: AppLanguage;
+  locale: string;
+  rows: ReportBreakdownRow[];
+}) {
+  return (
+    <View style={styles.reportBreakdownList}>
+      {rows.map((row) => (
+        <View key={row.key} style={styles.reportBreakdownRow}>
+          <CategoryIcon color={row.color} icon={row.icon} />
+          <Text numberOfLines={1} style={styles.reportBreakdownTitle}>
+            {row.label}
+          </Text>
+          <Text style={styles.reportBreakdownAmount}>
+            {formatMoneyNoteAmount(row.amountMinor, { currencyCode, locale })}
+          </Text>
+          <Text style={styles.reportBreakdownPercent}>{formatReportPercent(row.percent, language)}</Text>
+          <MaterialCommunityIcons color="#666666" name="chevron-right" size={22} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function MoneyNoteReportScreen() {
   const { copy, language } = useMoneyNoteCopy();
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [activeKind, setActiveKind] = useState<'expense' | 'income'>('expense');
   const monthData = useMoneyNoteMonthData(monthDate);
-  const visibleRecords = monthData.records.filter((record) => record.kind === activeKind);
+  const breakdownRows = useMemo(
+    () => buildReportBreakdownRows(monthData.records, activeKind, language),
+    [activeKind, language, monthData.records],
+  );
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -1395,22 +1569,17 @@ export function MoneyNoteReportScreen() {
               {monthData.error?.message ?? (language === 'en' ? 'Could not load report.' : 'Không thể tải báo cáo.')}
             </Text>
           ) : null}
-          {monthData.status === 'ready' && visibleRecords.length === 0 ? (
-            <Text style={styles.emptyText}>{copy.noData}</Text>
+          {monthData.status === 'ready' ? (
+            <>
+              <ReportDonutChart copy={copy} language={language} rows={breakdownRows} />
+              <ReportBreakdownList
+                currencyCode={monthData.currencyCode}
+                language={language}
+                locale={monthData.locale}
+                rows={breakdownRows}
+              />
+            </>
           ) : null}
-          {visibleRecords.map((record) => (
-            <View key={record.id} style={styles.recordRow}>
-              <Text numberOfLines={1} style={styles.recordTitle}>
-                {recordDisplayLabel(record, language, record.kind === 'expense' ? copy.expense : copy.income)}
-              </Text>
-              <Text style={record.kind === 'expense' ? styles.expenseAmount : styles.incomeAmount}>
-                {formatMoneyNoteAmount(record.amountMinor, {
-                  currencyCode: record.currencyCode,
-                  locale: monthData.locale,
-                })}
-              </Text>
-            </View>
-          ))}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -2940,6 +3109,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     minHeight: 360,
   },
+  reportBreakdownAmount: {
+    ...moneyType.label,
+    color: ink,
+    marginLeft: 8,
+  },
+  reportBreakdownList: {
+    backgroundColor: '#FFFFFF',
+    borderTopColor: line,
+    borderTopWidth: 1,
+  },
+  reportBreakdownPercent: {
+    ...moneyType.caption,
+    color: '#666666',
+    marginLeft: 14,
+    minWidth: 52,
+    textAlign: 'right',
+  },
+  reportBreakdownRow: {
+    alignItems: 'center',
+    borderBottomColor: line,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 68,
+    paddingHorizontal: 18,
+  },
+  reportBreakdownTitle: {
+    ...moneyType.label,
+    color: ink,
+    flex: 1,
+  },
   reportBottomRow: {
     alignItems: 'center',
     borderTopColor: line,
@@ -2955,6 +3155,60 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     margin: 18,
+  },
+  reportChartCallout: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    maxWidth: 124,
+    position: 'absolute',
+  },
+  reportChartCalloutLabel: {
+    ...moneyType.label,
+    color: '#555555',
+  },
+  reportChartCalloutLeft: {
+    bottom: 48,
+    left: 12,
+  },
+  reportChartCalloutLine: {
+    height: 2,
+    width: 34,
+  },
+  reportChartCalloutPercent: {
+    ...moneyType.body,
+    color: '#555555',
+  },
+  reportChartCalloutRight: {
+    right: 10,
+    top: 46,
+  },
+  reportChartCanvas: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    height: 278,
+    justifyContent: 'center',
+    maxWidth: 360,
+    width: '100%',
+  },
+  reportChartEmptyText: {
+    ...moneyType.body,
+    color: muted,
+    position: 'absolute',
+  },
+  reportChartHole: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E9EFEF',
+    borderRadius: 43,
+    borderWidth: 6,
+    height: 86,
+    position: 'absolute',
+    width: 86,
+  },
+  reportChartPanel: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 22,
   },
   reportHalf: {
     alignItems: 'center',
