@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { translateOptionalText, translateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
@@ -16,12 +17,15 @@ type ListRowProps = {
 };
 
 export function ListRow({ title, description, meta, right, onPress, accessibilityLabel }: ListRowProps) {
+  const translatedDescription = translateOptionalText(description);
+  const translatedMeta = translateOptionalText(meta);
+  const translatedTitle = translateText(title);
   const content = (
     <>
       <View style={styles.textGroup}>
-        <Text style={styles.title}>{title}</Text>
-        {description ? <Text style={styles.description}>{description}</Text> : null}
-        {meta ? <Text style={styles.meta}>{meta}</Text> : null}
+        <Text style={styles.title}>{translatedTitle}</Text>
+        {translatedDescription ? <Text style={styles.description}>{translatedDescription}</Text> : null}
+        {translatedMeta ? <Text style={styles.meta}>{translatedMeta}</Text> : null}
       </View>
       {right}
     </>
@@ -31,7 +35,7 @@ export function ListRow({ title, description, meta, right, onPress, accessibilit
     return (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel ?? title}
+        accessibilityLabel={accessibilityLabel ?? translatedTitle}
         style={({ pressed }) => [styles.row, pressed && styles.pressed]}
         onPress={onPress}>
         {content}

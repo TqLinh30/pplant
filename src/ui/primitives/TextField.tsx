@@ -1,6 +1,7 @@
 import type { TextInputProps } from 'react-native';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { translateOptionalText, translateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
@@ -13,18 +14,22 @@ type TextFieldProps = TextInputProps & {
 };
 
 export function TextField({ errorText, helperText, label, ...inputProps }: TextFieldProps) {
+  const translatedErrorText = translateOptionalText(errorText);
+  const translatedHelperText = translateOptionalText(helperText);
+  const translatedLabel = translateText(label);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label}>{translatedLabel}</Text>
       <TextInput
-        accessibilityLabel={inputProps.accessibilityLabel ?? label}
-        accessibilityHint={errorText ?? inputProps.accessibilityHint}
+        accessibilityLabel={inputProps.accessibilityLabel ?? translatedLabel}
+        accessibilityHint={translatedErrorText ?? inputProps.accessibilityHint}
         placeholderTextColor={colors.muted}
         style={[styles.input, errorText && styles.inputError]}
         {...inputProps}
       />
-      {errorText ? <Text style={styles.error}>{errorText}</Text> : null}
-      {!errorText && helperText ? <Text style={styles.helper}>{helperText}</Text> : null}
+      {translatedErrorText ? <Text style={styles.error}>{translatedErrorText}</Text> : null}
+      {!translatedErrorText && translatedHelperText ? <Text style={styles.helper}>{translatedHelperText}</Text> : null}
     </View>
   );
 }

@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { formatMinorUnitsForInput } from '@/domain/common/money';
 import type { WorkEntry, WorkEntryMode } from '@/domain/work/types';
+import { translateText } from '@/i18n/strings';
 import { Button } from '@/ui/primitives/Button';
 import { ListRow } from '@/ui/primitives/ListRow';
 import { SegmentedControl } from '@/ui/primitives/SegmentedControl';
@@ -122,7 +123,7 @@ export function WorkEntryForm() {
     return (
       <View accessibilityLabel="Loading work entries" accessibilityRole="summary" style={styles.inlineLoading}>
         <ActivityIndicator color={colors.primary} />
-        <Text style={styles.helper}>Loading work entry capture.</Text>
+        <Text style={styles.helper}>{translateText('Loading work entry capture.')}</Text>
       </View>
     );
   }
@@ -150,8 +151,8 @@ export function WorkEntryForm() {
   return (
     <View style={styles.section}>
       <View style={styles.header}>
-        <Text style={styles.sectionTitle}>Work entry</Text>
-        <Text style={styles.description}>Record direct hours or a shift with a wage snapshot for this entry.</Text>
+        <Text style={styles.sectionTitle}>{translateText('Work entry')}</Text>
+        <Text style={styles.description}>{translateText('Record direct hours or a shift with a wage snapshot for this entry.')}</Text>
       </View>
 
       {(state.status === 'saved' || state.status === 'deleted') && savedDescription ? (
@@ -257,7 +258,7 @@ export function WorkEntryForm() {
         />
 
         <View style={styles.optionGroup}>
-          <Text style={styles.label}>Work category</Text>
+          <Text style={styles.label}>{translateText('Work category')}</Text>
           <ListRow
             title="No category"
             description="Optional for quick capture."
@@ -276,9 +277,9 @@ export function WorkEntryForm() {
         </View>
 
         <View style={styles.optionGroup}>
-          <Text style={styles.label}>Work topics</Text>
+          <Text style={styles.label}>{translateText('Work topics')}</Text>
           {state.topics.length === 0 ? (
-            <Text style={styles.helper}>Topics are optional. Add them later in Settings.</Text>
+            <Text style={styles.helper}>{translateText('Topics are optional. Add them later in Settings.')}</Text>
           ) : null}
           {state.topics.map((topic) => {
             const selected = state.draft.topicIds.includes(topic.id);
@@ -324,8 +325,8 @@ export function WorkEntryForm() {
       </View>
 
       <View style={styles.header}>
-        <Text style={styles.subsectionTitle}>Recent work entries</Text>
-        <Text style={styles.description}>Tap an entry to edit or remove it from active work entries.</Text>
+        <Text style={styles.subsectionTitle}>{translateText('Recent work entries')}</Text>
+        <Text style={styles.description}>{translateText('Tap an entry to edit or remove it from active work entries.')}</Text>
       </View>
 
       {state.recentEntries.length === 0 ? (

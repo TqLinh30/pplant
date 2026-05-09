@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { translateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
@@ -17,13 +18,16 @@ function defaultAccessibilityLabel(title: string, description: string): string {
 }
 
 export function StatusBanner({ accessibilityLabel, title, description, tone = 'neutral' }: StatusBannerProps) {
+  const translatedDescription = translateText(description);
+  const translatedTitle = translateText(title);
+
   return (
     <View
-      accessibilityLabel={accessibilityLabel ?? defaultAccessibilityLabel(title, description)}
+      accessibilityLabel={accessibilityLabel ?? defaultAccessibilityLabel(translatedTitle, translatedDescription)}
       accessibilityRole="summary"
       style={[styles.banner, styles[tone]]}>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.description}>{description}</Text>
+      <Text style={styles.title}>{translatedTitle}</Text>
+      <Text style={styles.description}>{translatedDescription}</Text>
     </View>
   );
 }

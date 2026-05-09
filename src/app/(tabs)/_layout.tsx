@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 
+import { translateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
 import { typography } from '@/ui/tokens/typography';
 
@@ -30,11 +31,11 @@ export default function TabLayout() {
           paddingTop: 8,
         },
       }}>
-      <Tabs.Screen name="index" options={{ title: 'Today' }} />
-      <Tabs.Screen name="capture" options={{ title: 'Capture' }} />
-      <Tabs.Screen name="history" options={{ title: 'History' }} />
-      <Tabs.Screen name="review" options={{ title: 'Review' }} />
-      <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
+      <Tabs.Screen name="index" options={{ title: translateText('Today') }} />
+      <Tabs.Screen name="capture" options={{ title: translateText('Capture') }} />
+      <Tabs.Screen name="history" options={{ title: translateText('History') }} />
+      <Tabs.Screen name="review" options={{ title: translateText('Review') }} />
+      <Tabs.Screen name="settings" options={{ title: translateText('Settings') }} />
     </Tabs>
   );
 }

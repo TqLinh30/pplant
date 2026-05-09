@@ -1,5 +1,6 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { translateText } from '@/i18n/strings';
 import { formatMinorUnitsForInput } from '@/domain/common/money';
 import type {
   WorkEntry,
@@ -108,7 +109,7 @@ export function WorkHistoryPanel() {
     return (
       <View accessibilityLabel="Loading work history" accessibilityRole="summary" style={styles.inlineLoading}>
         <ActivityIndicator color={colors.primary} />
-        <Text style={styles.helper}>Loading work history.</Text>
+        <Text style={styles.helper}>{translateText('Loading work history.')}</Text>
       </View>
     );
   }
@@ -142,8 +143,8 @@ export function WorkHistoryPanel() {
   return (
     <View style={styles.section}>
       <View style={styles.header}>
-        <Text style={styles.sectionTitle}>Work history</Text>
-        <Text style={styles.description}>Review active work entries, hours, earned income, and wage snapshots.</Text>
+        <Text style={styles.sectionTitle}>{translateText('Work history')}</Text>
+        <Text style={styles.description}>{translateText('Review active work entries, hours, earned income, and wage snapshots.')}</Text>
       </View>
 
       {state.filterError ? (
@@ -155,7 +156,7 @@ export function WorkHistoryPanel() {
       ) : null}
 
       <View style={styles.section}>
-        <Text style={styles.subsectionTitle}>Work summary</Text>
+        <Text style={styles.subsectionTitle}>{translateText('Work summary')}</Text>
         <SegmentedControl options={summaryOptions} selectedValue={state.summaryMode} onChange={history.setSummaryMode} />
         {state.data?.summaries.length === 0 ? (
           <StatusBanner title="No work summary yet" description="Save a work entry or adjust filters." />
@@ -178,7 +179,7 @@ export function WorkHistoryPanel() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.subsectionTitle}>Work filters</Text>
+        <Text style={styles.subsectionTitle}>{translateText('Work filters')}</Text>
         <SegmentedControl options={modeOptions} selectedValue={state.filterDraft.entryMode} onChange={history.setEntryMode} />
         <SegmentedControl options={paidOptions} selectedValue={state.filterDraft.paid} onChange={history.setPaid} />
         <TextField
@@ -203,7 +204,7 @@ export function WorkHistoryPanel() {
           />
         </View>
 
-        <Text style={styles.label}>Work category</Text>
+          <Text style={styles.label}>{translateText('Work category')}</Text>
         <ListRow
           title="Any category"
           meta={state.filterDraft.categoryId === null ? 'Selected' : 'Available'}
@@ -218,7 +219,7 @@ export function WorkHistoryPanel() {
           />
         ))}
 
-        <Text style={styles.label}>Work topic</Text>
+          <Text style={styles.label}>{translateText('Work topic')}</Text>
         <ListRow
           title="Any topic"
           meta={state.filterDraft.topicId === null ? 'Selected' : 'Available'}
@@ -243,7 +244,7 @@ export function WorkHistoryPanel() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.subsectionTitle}>Work records</Text>
+        <Text style={styles.subsectionTitle}>{translateText('Work records')}</Text>
         {state.data?.records.length === 0 ? (
           <StatusBanner title="No matching work entries" description="Adjust filters or save a work entry from Capture." />
         ) : null}

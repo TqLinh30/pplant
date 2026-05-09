@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { translateText } from '@/i18n/strings';
 import { Button } from '@/ui/primitives/Button';
 import { ListRow } from '@/ui/primitives/ListRow';
 import { StatusBanner } from '@/ui/primitives/StatusBanner';
@@ -22,7 +23,7 @@ export function CaptureDraftRecoveryPanel() {
     return (
       <View accessibilityLabel="Loading saved drafts" accessibilityRole="summary" style={styles.inlineLoading}>
         <ActivityIndicator color={colors.primary} />
-        <Text style={styles.helper}>Checking saved drafts.</Text>
+        <Text style={styles.helper}>{translateText('Checking saved drafts.')}</Text>
       </View>
     );
   }
@@ -44,8 +45,8 @@ export function CaptureDraftRecoveryPanel() {
   return (
     <View style={styles.section}>
       <View style={styles.header}>
-        <Text style={styles.sectionTitle}>Saved drafts</Text>
-        <Text style={styles.description}>Resume an unfinished capture, discard it, or keep it for later.</Text>
+        <Text style={styles.sectionTitle}>{translateText('Saved drafts')}</Text>
+        <Text style={styles.description}>{translateText('Resume an unfinished capture, discard it, or keep it for later.')}</Text>
       </View>
 
       {state.actionError ? (

@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 
+import { translateText } from '@/i18n/strings';
 import { BottomSheet } from '@/ui/primitives/BottomSheet';
 import { ListRow } from '@/ui/primitives/ListRow';
 import { colors } from '@/ui/tokens/colors';
@@ -26,7 +27,9 @@ export function QuickCaptureLauncher({ onClose, visible }: QuickCaptureLauncherP
 
   return (
     <BottomSheet title="Quick capture" visible={visible} onClose={onClose}>
-      <Text style={styles.description}>Start one focused flow. Receipt capture saves a local draft first.</Text>
+      <Text style={styles.description}>
+        {translateText('Start one focused flow. Receipt capture saves a local draft first.')}
+      </Text>
       <ScrollView contentContainerStyle={styles.actions} style={styles.actionScroller}>
         {quickCaptureActions.map((action) => (
           <ListRow

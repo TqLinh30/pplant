@@ -19,6 +19,7 @@ import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 import { CaptureDraftRecoveryPanel } from '@/features/capture-drafts/CaptureDraftRecoveryPanel';
 import { RecoveryPanel } from '@/features/recovery/RecoveryPanel';
+import { translateText } from '@/i18n/strings';
 
 import { QuickCaptureLauncher } from './QuickCaptureLauncher';
 import { todayMinimumTouchTarget, todayUxNoticeFor } from './today-ux-states';
@@ -38,14 +39,14 @@ function formatMinutes(minutes: number): string {
   const remainder = minutes % 60;
 
   if (hours === 0) {
-    return `${remainder} min`;
+    return translateText(`${remainder} min`);
   }
 
   if (remainder === 0) {
-    return `${hours} hr`;
+    return translateText(`${hours} hr`);
   }
 
-  return `${hours} hr ${remainder} min`;
+  return translateText(`${hours} hr ${remainder} min`);
 }
 
 function taskStatusLabel(status: TodayTaskItemStatus): string {
@@ -84,7 +85,7 @@ function goToSettings() {
 function OverviewMetric({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.metric}>
-      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={styles.metricLabel}>{translateText(label)}</Text>
       <Text style={styles.metricValue}>{value}</Text>
     </View>
   );
@@ -102,7 +103,7 @@ function Section({
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={styles.sectionTitle}>{translateText(title)}</Text>
         {action}
       </View>
       {children}
@@ -324,8 +325,8 @@ export function TodayScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="Loading today" accessibilityRole="summary" style={styles.centered}>
           <ActivityIndicator color={colors.primary} />
-          <Text style={styles.title}>{loadingNotice.title}</Text>
-          <Text style={styles.description}>{loadingNotice.description}</Text>
+          <Text style={styles.title}>{translateText(loadingNotice.title)}</Text>
+          <Text style={styles.description}>{translateText(loadingNotice.description)}</Text>
         </View>
       </SafeAreaView>
     );
@@ -335,9 +336,9 @@ export function TodayScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="Today could not be loaded" accessibilityRole="summary" style={styles.centered}>
-          <Text style={styles.eyebrow}>Today</Text>
-          <Text style={styles.title}>{failedNotice.title}</Text>
-          <Text style={styles.description}>{failedNotice.description}</Text>
+          <Text style={styles.eyebrow}>{translateText('Today')}</Text>
+          <Text style={styles.title}>{translateText(failedNotice.title)}</Text>
+          <Text style={styles.description}>{translateText(failedNotice.description)}</Text>
           <Button label={failedNotice.actionLabel} onPress={overview.reload} variant="secondary" />
         </View>
       </SafeAreaView>
@@ -348,9 +349,9 @@ export function TodayScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="Preferences needed" accessibilityRole="summary" style={styles.centered}>
-          <Text style={styles.eyebrow}>Today</Text>
-          <Text style={styles.title}>{preferencesNotice.title}</Text>
-          <Text style={styles.description}>{preferencesNotice.description}</Text>
+          <Text style={styles.eyebrow}>{translateText('Today')}</Text>
+          <Text style={styles.title}>{translateText(preferencesNotice.title)}</Text>
+          <Text style={styles.description}>{translateText(preferencesNotice.description)}</Text>
           <Button label={preferencesNotice.actionLabel} onPress={goToSettings} variant="secondary" />
         </View>
       </SafeAreaView>
@@ -372,10 +373,10 @@ export function TodayScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>Today</Text>
+          <Text style={styles.eyebrow}>{translateText('Today')}</Text>
           <Text style={styles.title}>{summary.localDate}</Text>
           <Text style={styles.description}>
-            Budget period {summary.budgetPeriod.startDate} to {summary.budgetPeriod.endDateExclusive}.
+            {translateText(`Budget period ${summary.budgetPeriod.startDate} to ${summary.budgetPeriod.endDateExclusive}.`)}
           </Text>
           <View style={styles.headerActions}>
             <Button label="Capture" onPress={() => setQuickCaptureVisible(true)} />

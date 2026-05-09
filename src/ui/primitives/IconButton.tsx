@@ -1,6 +1,7 @@
 import type { PressableProps } from 'react-native';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
+import { translateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
 import { typography } from '@/ui/tokens/typography';
@@ -13,7 +14,7 @@ type IconButtonProps = PressableProps & {
 export function IconButton({ icon, label, disabled, ...pressableProps }: IconButtonProps) {
   return (
     <Pressable
-      accessibilityLabel={label}
+      accessibilityLabel={translateText(label)}
       accessibilityRole="button"
       disabled={disabled}
       style={({ pressed }) => [styles.button, pressed && styles.pressed, disabled && styles.disabled]}

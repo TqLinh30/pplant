@@ -16,6 +16,7 @@ import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 import { TaskForm } from '@/features/tasks/TaskForm';
 import { WorkEntryForm } from '@/features/work/WorkEntryForm';
+import { translateText } from '@/i18n/strings';
 import { buildExpenseWorkTimeContextText } from '@/features/work/workTimeContextText';
 import { CaptureDraftRecoveryPanel } from '@/features/capture-drafts/CaptureDraftRecoveryPanel';
 import { parseCaptureDraftResumeParam } from '@/features/capture-drafts/capture-draft-recovery';
@@ -226,8 +227,8 @@ export function CaptureScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="Loading capture" accessibilityRole="summary" style={styles.centered}>
           <ActivityIndicator color={colors.primary} />
-          <Text style={styles.title}>Loading capture</Text>
-          <Text style={styles.description}>Pplant is opening your local money settings.</Text>
+          <Text style={styles.title}>{translateText('Loading capture')}</Text>
+          <Text style={styles.description}>{translateText('Pplant is opening your local money settings.')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -237,9 +238,9 @@ export function CaptureScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="Capture could not be loaded" accessibilityRole="summary" style={styles.centered}>
-          <Text style={styles.eyebrow}>Manual capture</Text>
-          <Text style={styles.title}>Capture could not open.</Text>
-          <Text style={styles.description}>Your local data is unchanged. Try opening capture again.</Text>
+          <Text style={styles.eyebrow}>{translateText('Manual capture')}</Text>
+          <Text style={styles.title}>{translateText('Capture could not open.')}</Text>
+          <Text style={styles.description}>{translateText('Your local data is unchanged. Try opening capture again.')}</Text>
           <Button label="Retry" onPress={capture.reload} variant="secondary" />
         </View>
       </SafeAreaView>
@@ -250,10 +251,10 @@ export function CaptureScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="Preferences needed" accessibilityRole="summary" style={styles.centered}>
-          <Text style={styles.eyebrow}>Manual capture</Text>
-          <Text style={styles.title}>Save preferences first.</Text>
+          <Text style={styles.eyebrow}>{translateText('Manual capture')}</Text>
+          <Text style={styles.title}>{translateText('Save preferences first.')}</Text>
           <Text style={styles.description}>
-            Money records use your saved currency and locale so amounts stay consistent.
+            {translateText('Money records use your saved currency and locale so amounts stay consistent.')}
           </Text>
           <Button label="Retry after saving preferences" onPress={capture.reload} variant="secondary" />
         </View>
@@ -267,12 +268,14 @@ export function CaptureScreen() {
         <CaptureDraftRecoveryPanel />
 
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>Manual capture</Text>
-          <Text style={styles.title}>{isEditing ? 'Edit money record' : 'Add money record'}</Text>
+          <Text style={styles.eyebrow}>{translateText('Manual capture')}</Text>
+          <Text style={styles.title}>{translateText(isEditing ? 'Edit money record' : 'Add money record')}</Text>
           <Text style={styles.description}>
-            {isEditing
-              ? 'Update the active record. Manual changes become the source of truth.'
-              : 'Save a local expense or income record with the context you know now.'}
+            {translateText(
+              isEditing
+                ? 'Update the active record. Manual changes become the source of truth.'
+                : 'Save a local expense or income record with the context you know now.',
+            )}
           </Text>
         </View>
 
@@ -325,7 +328,7 @@ export function CaptureScreen() {
           />
 
           <View style={styles.optionGroup}>
-            <Text style={styles.label}>Category</Text>
+            <Text style={styles.label}>{translateText('Category')}</Text>
             <ListRow
               title="No category"
               description="Optional for quick capture."
@@ -341,15 +344,15 @@ export function CaptureScreen() {
               />
             ))}
             {state.categories.length === 0 ? (
-              <Text style={styles.helper}>Categories are optional. Add them later in Settings.</Text>
+              <Text style={styles.helper}>{translateText('Categories are optional. Add them later in Settings.')}</Text>
             ) : null}
             {state.fieldErrors.categoryId ? <Text style={styles.error}>{state.fieldErrors.categoryId}</Text> : null}
           </View>
 
           <View style={styles.optionGroup}>
-            <Text style={styles.label}>Topics</Text>
+            <Text style={styles.label}>{translateText('Topics')}</Text>
             {state.topics.length === 0 ? (
-              <Text style={styles.helper}>Topics are optional. Add them later in Settings.</Text>
+              <Text style={styles.helper}>{translateText('Topics are optional. Add them later in Settings.')}</Text>
             ) : null}
             {state.topics.map((topic) => {
               const selected = state.draft.topicIds.includes(topic.id);
@@ -412,8 +415,8 @@ export function CaptureScreen() {
 
         <View style={styles.section}>
           <View style={styles.header}>
-            <Text style={styles.sectionTitle}>Recent money records</Text>
-            <Text style={styles.description}>Tap a saved record to edit or remove it from active records.</Text>
+            <Text style={styles.sectionTitle}>{translateText('Recent money records')}</Text>
+            <Text style={styles.description}>{translateText('Tap a saved record to edit or remove it from active records.')}</Text>
           </View>
 
           {state.recentRecords.length === 0 ? (
@@ -437,16 +440,16 @@ export function CaptureScreen() {
 
         <View style={styles.section}>
           <View style={styles.header}>
-            <Text style={styles.sectionTitle}>Recurring money</Text>
+            <Text style={styles.sectionTitle}>{translateText('Recurring money')}</Text>
             <Text style={styles.description}>
-              Save predictable expenses or income as templates, then materialize only due occurrences.
+              {translateText('Save predictable expenses or income as templates, then materialize only due occurrences.')}
             </Text>
           </View>
 
           {recurringState.status === 'loading' ? (
             <View accessibilityLabel="Loading recurring money" accessibilityRole="summary" style={styles.inlineLoading}>
               <ActivityIndicator color={colors.primary} />
-              <Text style={styles.helper}>Loading recurring money.</Text>
+              <Text style={styles.helper}>{translateText('Loading recurring money.')}</Text>
             </View>
           ) : null}
 
@@ -533,7 +536,7 @@ export function CaptureScreen() {
                 />
 
                 <View style={styles.optionGroup}>
-                  <Text style={styles.label}>Recurring category</Text>
+                  <Text style={styles.label}>{translateText('Recurring category')}</Text>
                   <ListRow
                     title="No category"
                     description="Optional for quick setup."
@@ -554,9 +557,9 @@ export function CaptureScreen() {
                 </View>
 
                 <View style={styles.optionGroup}>
-                  <Text style={styles.label}>Recurring topics</Text>
+                  <Text style={styles.label}>{translateText('Recurring topics')}</Text>
                   {recurringState.topics.length === 0 ? (
-                    <Text style={styles.helper}>Topics are optional. Add them later in Settings.</Text>
+                    <Text style={styles.helper}>{translateText('Topics are optional. Add them later in Settings.')}</Text>
                   ) : null}
                   {recurringState.topics.map((topic) => {
                     const selected = recurringState.draft.topicIds.includes(topic.id);

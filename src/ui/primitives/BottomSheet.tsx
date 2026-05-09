@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { translateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
@@ -16,9 +17,14 @@ type BottomSheetProps = {
 export function BottomSheet({ title, visible, onClose, children }: BottomSheetProps) {
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Close sheet" style={styles.scrim} onPress={onClose} />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={translateText('Close sheet')}
+        style={styles.scrim}
+        onPress={onClose}
+      />
       <View style={styles.sheet}>
-        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.title}>{translateText(title)}</Text>
         {children}
       </View>
     </Modal>

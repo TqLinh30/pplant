@@ -1,6 +1,7 @@
 import type { PressableProps, StyleProp, ViewStyle } from 'react-native';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
+import { translateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
@@ -21,11 +22,12 @@ export function Button({ label, variant = 'primary', disabled, style, ...pressab
       : variant === 'danger'
         ? styles.dangerLabel
         : styles.secondaryLabel;
+  const translatedLabel = translateText(label);
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={pressableProps.accessibilityLabel ?? label}
+      accessibilityLabel={pressableProps.accessibilityLabel ?? translatedLabel}
       disabled={disabled}
       style={({ pressed }) => [
         styles.base,
@@ -35,7 +37,7 @@ export function Button({ label, variant = 'primary', disabled, style, ...pressab
         style,
       ]}
       {...pressableProps}>
-      <Text style={[styles.label, labelStyle]}>{label}</Text>
+      <Text style={[styles.label, labelStyle]}>{translatedLabel}</Text>
     </Pressable>
   );
 }

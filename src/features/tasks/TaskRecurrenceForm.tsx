@@ -7,6 +7,7 @@ import type {
   TaskRecurrenceKind,
   TaskRecurrenceOccurrence,
 } from '@/domain/tasks/types';
+import { translateText } from '@/i18n/strings';
 import { Button } from '@/ui/primitives/Button';
 import { ListRow } from '@/ui/primitives/ListRow';
 import { SegmentedControl } from '@/ui/primitives/SegmentedControl';
@@ -93,7 +94,7 @@ export function TaskRecurrenceForm() {
     return (
       <View accessibilityLabel="Loading recurring tasks" accessibilityRole="summary" style={styles.inlineLoading}>
         <ActivityIndicator color={colors.primary} />
-        <Text style={styles.helper}>Loading recurring tasks and habits.</Text>
+        <Text style={styles.helper}>{translateText('Loading recurring tasks and habits.')}</Text>
       </View>
     );
   }
@@ -135,8 +136,8 @@ export function TaskRecurrenceForm() {
   return (
     <View style={styles.section}>
       <View style={styles.header}>
-        <Text style={styles.sectionTitle}>Recurring tasks and habits</Text>
-        <Text style={styles.description}>Set a simple daily, weekly, or monthly routine with completion by day.</Text>
+        <Text style={styles.sectionTitle}>{translateText('Recurring tasks and habits')}</Text>
+        <Text style={styles.description}>{translateText('Set a simple daily, weekly, or monthly routine with completion by day.')}</Text>
       </View>
 
       {state.status === 'saved' && savedDescription ? (
@@ -207,7 +208,7 @@ export function TaskRecurrenceForm() {
         />
 
         <View style={styles.optionGroup}>
-          <Text style={styles.label}>Recurring category</Text>
+          <Text style={styles.label}>{translateText('Recurring category')}</Text>
           <ListRow
             title="No category"
             description="Optional for quick setup."
@@ -226,9 +227,9 @@ export function TaskRecurrenceForm() {
         </View>
 
         <View style={styles.optionGroup}>
-          <Text style={styles.label}>Recurring topics</Text>
+          <Text style={styles.label}>{translateText('Recurring topics')}</Text>
           {state.topics.length === 0 ? (
-            <Text style={styles.helper}>Topics are optional. Add them later in Settings.</Text>
+            <Text style={styles.helper}>{translateText('Topics are optional. Add them later in Settings.')}</Text>
           ) : null}
           {state.topics.map((topic) => {
             const selected = state.draft.topicIds.includes(topic.id);

@@ -42,6 +42,7 @@ import {
   deleteReceiptDraftImage,
   setReceiptDraftRetentionPolicy,
 } from '@/services/files/receipt-retention.service';
+import { translateText } from '@/i18n/strings';
 import { Button } from '@/ui/primitives/Button';
 import { ListRow } from '@/ui/primitives/ListRow';
 import { StatusBanner } from '@/ui/primitives/StatusBanner';
@@ -90,11 +91,11 @@ function isReviewableJob(job: ReceiptParseJob | null): boolean {
 
 function formatSize(sizeBytes: number | null): string {
   if (sizeBytes === null) {
-    return 'Size unavailable';
+    return translateText('Size unavailable');
   }
 
   if (sizeBytes < 1024) {
-    return `${sizeBytes} bytes`;
+    return translateText(`${sizeBytes} bytes`);
   }
 
   return `${Math.round(sizeBytes / 1024)} KB`;
@@ -106,25 +107,25 @@ function formatRecordAmount(record: MoneyRecord): string {
 
 function formatRetention(payload: ReceiptCaptureDraftPayload): string {
   if (payload.receipt.retentionStatus === 'deleted') {
-    return `Image deleted; expense details remain. ${payload.receipt.deletedAt ?? ''}`.trim();
+    return translateText(`Image deleted; expense details remain. ${payload.receipt.deletedAt ?? ''}`.trim());
   }
 
   switch (payload.receipt.retentionPolicy) {
     case 'delete_after_expense_saved':
-      return 'Delete image after receipt expense is saved';
+      return translateText('Delete image after receipt expense is saved');
     case 'keep_until_saved_or_discarded':
-      return 'Legacy policy: keep until saved or discarded';
+      return translateText('Legacy policy: keep until saved or discarded');
     case 'keep_until_user_deletes':
-      return 'Keep image until you delete it';
+      return translateText('Keep image until you delete it');
     default:
       payload.receipt.retentionPolicy satisfies never;
-      return 'Keep image until you delete it';
+      return translateText('Keep image until you delete it');
   }
 }
 
 function categoryName(reviewData: ReceiptReviewData, categoryId: string | null): string {
   if (!categoryId) {
-    return 'No category';
+    return translateText('No category');
   }
 
   return reviewData.categories.find((category) => category.id === categoryId)?.name ?? categoryId;
@@ -621,17 +622,22 @@ export function ReceiptRouteScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>Receipt draft</Text>
-          <Text style={styles.title}>Review saved receipt</Text>
+          <Text style={styles.eyebrow}>{translateText('Receipt draft')}</Text>
+          <Text style={styles.title}>{translateText('Review saved receipt')}</Text>
           <Text style={styles.description}>
-            This receipt photo is still a draft. Save a final expense only after manual review in later receipt steps.
+            {translateText(
+              'This receipt photo is still a draft. Save a final expense only after manual review in later receipt steps.',
+            )}
           </Text>
         </View>
 
         {viewState.status === 'loading' ? (
-          <View accessibilityLabel="Loading receipt draft" accessibilityRole="summary" style={styles.inlineLoading}>
+          <View
+            accessibilityLabel={translateText('Loading receipt draft')}
+            accessibilityRole="summary"
+            style={styles.inlineLoading}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={styles.helper}>Loading receipt draft.</Text>
+            <Text style={styles.helper}>{translateText('Loading receipt draft.')}</Text>
           </View>
         ) : null}
 
@@ -678,21 +684,28 @@ export function ReceiptRouteScreen() {
               />
             ) : null}
             <View style={styles.metadata}>
-              <Text style={styles.label}>Captured</Text>
+              <Text style={styles.label}>{translateText('Captured')}</Text>
               <Text style={styles.value}>{viewState.payload.receipt.capturedAt}</Text>
-              <Text style={styles.label}>Source</Text>
+              <Text style={styles.label}>{translateText('Source')}</Text>
               <Text style={styles.value}>{viewState.payload.receipt.source}</Text>
-              <Text style={styles.label}>File</Text>
-              <Text style={styles.value}>{viewState.payload.receipt.originalFileName ?? 'Receipt image'}</Text>
-              <Text style={styles.label}>Stored size</Text>
+              <Text style={styles.label}>{translateText('File')}</Text>
+              <Text style={styles.value}>
+                {viewState.payload.receipt.originalFileName ?? translateText('Receipt image')}
+              </Text>
+              <Text style={styles.label}>{translateText('Stored size')}</Text>
               <Text style={styles.value}>{formatSize(viewState.payload.receipt.sizeBytes)}</Text>
-              <Text style={styles.label}>Retention</Text>
+              <Text style={styles.label}>{translateText('Retention')}</Text>
               <Text style={styles.value}>{formatRetention(viewState.payload)}</Text>
             </View>
-            <View style={styles.retentionPanel} accessibilityLabel="Receipt image retention controls" accessibilityRole="summary">
-              <Text style={styles.sectionTitle}>Receipt image retention</Text>
+            <View
+              style={styles.retentionPanel}
+              accessibilityLabel={translateText('Receipt image retention controls')}
+              accessibilityRole="summary">
+              <Text style={styles.sectionTitle}>{translateText('Receipt image retention')}</Text>
               <Text style={styles.helper}>
-                Receipt images stay in app-private storage. Deleting the image keeps the expense record.
+                {translateText(
+                  'Receipt images stay in app-private storage. Deleting the image keeps the expense record.',
+                )}
               </Text>
               {viewState.payload.receipt.retentionStatus === 'retained' ? (
                 <View style={styles.actions}>
@@ -724,28 +737,33 @@ export function ReceiptRouteScreen() {
             </View>
             {proposalRows.length > 0 ? (
               <View style={styles.proposals} accessibilityRole="summary">
-                <Text style={styles.sectionTitle}>Proposed fields</Text>
+                <Text style={styles.sectionTitle}>{translateText('Proposed fields')}</Text>
                 {proposalRows.map((row) => (
                   <View key={row.label} style={styles.proposalRow}>
-                    <Text style={styles.label}>{row.label}</Text>
-                    <Text style={styles.value}>{row.value}</Text>
-                    <Text style={styles.helper}>{row.confidenceLabel}</Text>
+                    <Text style={styles.label}>{translateText(row.label)}</Text>
+                    <Text style={styles.value}>{translateText(row.value)}</Text>
+                    <Text style={styles.helper}>{translateText(row.confidenceLabel)}</Text>
                   </View>
                 ))}
               </View>
             ) : null}
             {recoveryState ? (
-              <View style={styles.recoveryPanel} accessibilityLabel="Receipt recovery actions" accessibilityRole="summary">
-                <Text style={styles.sectionTitle}>{recoveryState.title}</Text>
-                <Text style={styles.helper}>{recoveryState.description}</Text>
-                <Text style={styles.helper}>State: {recoveryState.statusLabel}</Text>
+              <View
+                style={styles.recoveryPanel}
+                accessibilityLabel={translateText('Receipt recovery actions')}
+                accessibilityRole="summary">
+                <Text style={styles.sectionTitle}>{translateText(recoveryState.title)}</Text>
+                <Text style={styles.helper}>{translateText(recoveryState.description)}</Text>
+                <Text style={styles.helper}>
+                  {translateText('State')}: {translateText(recoveryState.statusLabel)}
+                </Text>
                 {recoveryState.recommendedActionId ? (
                   <Text style={styles.helper}>
-                    Next action:{' '}
-                    {
+                    {translateText('Next action')}:{' '}
+                    {translateText(
                       recoveryState.actions.find((action) => action.id === recoveryState.recommendedActionId)
-                        ?.label
-                    }
+                        ?.label ?? '',
+                    )}
                   </Text>
                 ) : null}
                 <View style={styles.actions}>
@@ -757,23 +775,27 @@ export function ReceiptRouteScreen() {
                         disabled={action.disabled}
                         variant={action.variant}
                       />
-                      <Text style={styles.helper}>{action.description}</Text>
+                      <Text style={styles.helper}>{translateText(action.description)}</Text>
                     </View>
                   ))}
                 </View>
               </View>
             ) : null}
             {duplicateWarning && !duplicateWarningDismissed && !savedRecord ? (
-              <View style={styles.duplicatePanel} accessibilityLabel="Possible duplicate receipt" accessibilityRole="summary">
-                <Text style={styles.sectionTitle}>{duplicateWarning.title}</Text>
-                <Text style={styles.helper}>{duplicateWarning.description}</Text>
+              <View
+                style={styles.duplicatePanel}
+                accessibilityLabel={translateText('Possible duplicate receipt')}
+                accessibilityRole="summary">
+                <Text style={styles.sectionTitle}>{translateText(duplicateWarning.title)}</Text>
+                <Text style={styles.helper}>{translateText(duplicateWarning.description)}</Text>
                 {duplicateWarning.parserFlagged ? (
-                  <Text style={styles.helper}>Parser signal: possible duplicate.</Text>
+                  <Text style={styles.helper}>{translateText('Parser signal: possible duplicate.')}</Text>
                 ) : null}
                 {duplicateWarning.matches.map((match) => (
                   <Text key={match.id} style={styles.helper}>
-                    Similar expense: {match.merchantOrSource ?? 'Unnamed'} on {match.localDate},{' '}
-                    {(match.amountMinor / 100).toFixed(2)} {match.currencyCode}. {match.reasonLabels.join(', ')}.
+                    {translateText('Similar expense')}: {match.merchantOrSource ?? translateText('Unnamed')}{' '}
+                    {translateText('on')} {match.localDate}, {(match.amountMinor / 100).toFixed(2)}{' '}
+                    {match.currencyCode}. {match.reasonLabels.map(translateText).join(', ')}.
                   </Text>
                 ))}
                 <View style={styles.actions}>
@@ -784,22 +806,25 @@ export function ReceiptRouteScreen() {
                         onPress={() => handleDuplicateAction(action.id)}
                         variant={action.variant}
                       />
-                      <Text style={styles.helper}>{action.description}</Text>
+                      <Text style={styles.helper}>{translateText(action.description)}</Text>
                     </View>
                   ))}
                 </View>
               </View>
             ) : null}
             {reviewData && reviewDraft && reviewData.parseJob.normalizedResult && !savedRecord ? (
-              <View style={styles.reviewDesk} accessibilityLabel="Receipt Review Desk" accessibilityRole="summary">
-                <Text style={styles.sectionTitle}>Receipt Review Desk</Text>
-                <Text style={styles.helper}>Review proposed fields before saving.</Text>
+              <View
+                style={styles.reviewDesk}
+                accessibilityLabel={translateText('Receipt Review Desk')}
+                accessibilityRole="summary">
+                <Text style={styles.sectionTitle}>{translateText('Receipt Review Desk')}</Text>
+                <Text style={styles.helper}>{translateText('Review proposed fields before saving.')}</Text>
                 <View style={styles.reviewSummary}>
                   {reviewDescriptors.map((descriptor) => (
                     <View key={descriptor.label} style={styles.reviewSummaryRow}>
-                      <Text style={styles.label}>{descriptor.label}</Text>
+                      <Text style={styles.label}>{translateText(descriptor.label)}</Text>
                       <Text style={styles.value}>{descriptor.value}</Text>
-                      <Text style={styles.helper}>{descriptor.sourceLabel}</Text>
+                      <Text style={styles.helper}>{translateText(descriptor.sourceLabel)}</Text>
                     </View>
                   ))}
                 </View>
@@ -835,7 +860,7 @@ export function ReceiptRouteScreen() {
                   errorText={reviewFieldErrors.note}
                 />
                 <View style={styles.optionGroup}>
-                  <Text style={styles.label}>Category</Text>
+                  <Text style={styles.label}>{translateText('Category')}</Text>
                   <ListRow
                     title="No category"
                     meta={reviewDraft.categoryId === null ? 'Selected' : 'Available'}
@@ -850,14 +875,18 @@ export function ReceiptRouteScreen() {
                     />
                   ))}
                   {reviewFieldErrors.categoryId ? (
-                    <Text style={styles.error}>{reviewFieldErrors.categoryId}</Text>
+                    <Text style={styles.error}>{translateText(reviewFieldErrors.categoryId)}</Text>
                   ) : null}
-                  <Text style={styles.helper}>Selected: {categoryName(reviewData, reviewDraft.categoryId)}</Text>
+                  <Text style={styles.helper}>
+                    {translateText('Selected')}: {categoryName(reviewData, reviewDraft.categoryId)}
+                  </Text>
                 </View>
                 <View style={styles.optionGroup}>
-                  <Text style={styles.label}>Topics</Text>
+                  <Text style={styles.label}>{translateText('Topics')}</Text>
                   {reviewData.topics.length === 0 ? (
-                    <Text style={styles.helper}>Topics are optional. Add them later in Settings.</Text>
+                    <Text style={styles.helper}>
+                      {translateText('Topics are optional. Add them later in Settings.')}
+                    </Text>
                   ) : null}
                   {reviewData.topics.map((topic) => (
                     <ListRow
@@ -867,23 +896,26 @@ export function ReceiptRouteScreen() {
                       onPress={() => toggleTopic(topic.id)}
                     />
                   ))}
-                  {reviewFieldErrors.topicIds ? <Text style={styles.error}>{reviewFieldErrors.topicIds}</Text> : null}
+                  {reviewFieldErrors.topicIds ? (
+                    <Text style={styles.error}>{translateText(reviewFieldErrors.topicIds)}</Text>
+                  ) : null}
                 </View>
                 <View style={styles.optionGroup}>
-                  <Text style={styles.label}>Line items</Text>
+                  <Text style={styles.label}>{translateText('Line items')}</Text>
                   <Button
                     label={reviewDraft.ignoreLineItems ? 'Review line items' : 'Ignore line items'}
                     onPress={() => updateReviewDraft({ ignoreLineItems: !reviewDraft.ignoreLineItems })}
                     variant="secondary"
                   />
                   {reviewDraft.ignoreLineItems ? (
-                    <Text style={styles.helper}>Line items ignored; saving total only.</Text>
+                    <Text style={styles.helper}>{translateText('Line items ignored; saving total only.')}</Text>
                   ) : null}
                   {!reviewDraft.ignoreLineItems
                     ? reviewDraft.lineItems.map((lineItem, index) => (
                         <View key={lineItem.id} style={styles.lineItem}>
                           <Text style={styles.helper}>
-                            Line item {index + 1}: {lineItem.ignored ? 'Ignored by you' : 'Review optional'}
+                            {translateText(`Line item ${index + 1}`)}:{' '}
+                            {translateText(lineItem.ignored ? 'Ignored by you' : 'Review optional')}
                           </Text>
                           <TextField
                             label={`Item ${index + 1}`}
@@ -907,7 +939,7 @@ export function ReceiptRouteScreen() {
                       ))
                     : null}
                   {reviewFieldErrors.lineItems ? (
-                    <Text style={styles.error}>{reviewFieldErrors.lineItems}</Text>
+                    <Text style={styles.error}>{translateText(reviewFieldErrors.lineItems)}</Text>
                   ) : null}
                 </View>
                 <Button

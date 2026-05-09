@@ -7,6 +7,7 @@ import type {
   ReminderOwnerKind,
   ReminderScheduleState,
 } from '@/domain/reminders/types';
+import { translateText } from '@/i18n/strings';
 import { Button } from '@/ui/primitives/Button';
 import { ListRow } from '@/ui/primitives/ListRow';
 import { SegmentedControl } from '@/ui/primitives/SegmentedControl';
@@ -233,7 +234,7 @@ export function ReminderForm() {
     return (
       <View accessibilityLabel="Loading reminders" accessibilityRole="summary" style={styles.inlineLoading}>
         <ActivityIndicator color={colors.primary} />
-        <Text style={styles.helper}>Loading reminders.</Text>
+        <Text style={styles.helper}>{translateText('Loading reminders.')}</Text>
       </View>
     );
   }
@@ -263,8 +264,8 @@ export function ReminderForm() {
   return (
     <View style={styles.section}>
       <View style={styles.header}>
-        <Text style={styles.sectionTitle}>Reminders</Text>
-        <Text style={styles.description}>Create one-time or repeating reminders with local notification fallback.</Text>
+        <Text style={styles.sectionTitle}>{translateText('Reminders')}</Text>
+        <Text style={styles.description}>{translateText('Create one-time or repeating reminders with local notification fallback.')}</Text>
       </View>
 
       {state.status === 'saved' && savedDescription ? (
@@ -371,9 +372,9 @@ export function ReminderForm() {
 
         {state.draft.ownerKind === 'task' ? (
           <View style={styles.optionGroup}>
-            <Text style={styles.label}>Task link</Text>
+            <Text style={styles.label}>{translateText('Task link')}</Text>
             {state.recentTasks.length === 0 ? (
-              <Text style={styles.helper}>Save a task first, or switch this reminder to standalone.</Text>
+              <Text style={styles.helper}>{translateText('Save a task first, or switch this reminder to standalone.')}</Text>
             ) : null}
             {state.recentTasks.map((task) => (
               <ListRow
@@ -390,9 +391,9 @@ export function ReminderForm() {
 
         {state.draft.ownerKind === 'task_recurrence' ? (
           <View style={styles.optionGroup}>
-            <Text style={styles.label}>Routine link</Text>
+            <Text style={styles.label}>{translateText('Routine link')}</Text>
             {state.taskRecurrenceRules.length === 0 ? (
-              <Text style={styles.helper}>Save a recurring task or habit first, or switch this reminder to standalone.</Text>
+              <Text style={styles.helper}>{translateText('Save a recurring task or habit first, or switch this reminder to standalone.')}</Text>
             ) : null}
             {state.taskRecurrenceRules.map((rule) => (
               <ListRow

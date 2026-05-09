@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { translateText } from '@/i18n/strings';
 import { Button } from '@/ui/primitives/Button';
 import { StatusBanner } from '@/ui/primitives/StatusBanner';
 import { colors } from '@/ui/tokens/colors';
@@ -33,8 +34,8 @@ export function ReceiptCaptureScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>Receipt capture</Text>
-          <Text style={styles.title}>Save a receipt draft</Text>
+          <Text style={styles.eyebrow}>{translateText('Receipt capture')}</Text>
+          <Text style={styles.title}>{translateText('Save a receipt draft')}</Text>
           <Text style={styles.description}>
             Take a photo or choose one from your library. Pplant saves the image locally as an expense draft.
           </Text>
@@ -48,7 +49,7 @@ export function ReceiptCaptureScreen() {
         {working ? (
           <View accessibilityLabel="Saving receipt draft" accessibilityRole="summary" style={styles.inlineLoading}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={styles.helper}>Opening receipt capture.</Text>
+            <Text style={styles.helper}>{translateText('Opening receipt capture.')}</Text>
           </View>
         ) : null}
 

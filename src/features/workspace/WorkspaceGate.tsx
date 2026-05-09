@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { translateText } from '@/i18n/strings';
 import { Button } from '@/ui/primitives/Button';
 import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
@@ -25,13 +26,13 @@ export function WorkspaceGate({ children, initializer }: WorkspaceGateProps) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View
-          accessibilityLabel="Local workspace could not be opened"
+          accessibilityLabel={translateText('Local workspace could not be opened')}
           accessibilityRole="summary"
           style={styles.container}>
-          <Text style={styles.eyebrow}>Local workspace</Text>
-          <Text style={styles.title}>Pplant could not open local data.</Text>
+          <Text style={styles.eyebrow}>{translateText('Local workspace')}</Text>
+          <Text style={styles.title}>{translateText('Pplant could not open local data.')}</Text>
           <Text style={styles.description}>
-            Your planner stays on this device. Try opening the local workspace again.
+            {translateText('Your planner stays on this device. Try opening the local workspace again.')}
           </Text>
           <Button label="Retry" onPress={retry} variant="secondary" />
         </View>
@@ -41,10 +42,10 @@ export function WorkspaceGate({ children, initializer }: WorkspaceGateProps) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View accessibilityLabel="Opening local workspace" accessibilityRole="summary" style={styles.container}>
+      <View accessibilityLabel={translateText('Opening local workspace')} accessibilityRole="summary" style={styles.container}>
         <ActivityIndicator color={colors.primary} />
-        <Text style={styles.title}>Opening your local workspace</Text>
-        <Text style={styles.description}>No account, cloud sync, or setup is needed.</Text>
+        <Text style={styles.title}>{translateText('Opening your local workspace')}</Text>
+        <Text style={styles.description}>{translateText('No account, cloud sync, or setup is needed.')}</Text>
       </View>
     </SafeAreaView>
   );

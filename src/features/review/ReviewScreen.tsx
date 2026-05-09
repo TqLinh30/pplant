@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatMinorUnitsForInput } from '@/domain/common/money';
 import { filterReflectionRelationshipsForPreferences } from '@/domain/reflections/insight-preferences';
 import { reflectionPeriodFromSummaryPeriod } from '@/domain/reflections/schemas';
+import { translateText } from '@/i18n/strings';
 import type {
   Reflection,
   ReflectionPeriod,
@@ -930,8 +931,8 @@ export function ReviewScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="Loading end-of-day review" accessibilityRole="summary" style={styles.centered}>
           <ActivityIndicator color={colors.primary} />
-          <Text style={styles.title}>Loading Review</Text>
-          <Text style={styles.description}>Pplant is gathering the local activity for today.</Text>
+          <Text style={styles.title}>{translateText('Loading Review')}</Text>
+          <Text style={styles.description}>{translateText('Pplant is gathering the local activity for today.')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -941,9 +942,9 @@ export function ReviewScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="End-of-day review could not be loaded" accessibilityRole="summary" style={styles.centered}>
-          <Text style={styles.eyebrow}>Review</Text>
-          <Text style={styles.title}>Review could not open.</Text>
-          <Text style={styles.description}>Your local data is unchanged. Try loading the review again.</Text>
+          <Text style={styles.eyebrow}>{translateText('Review')}</Text>
+          <Text style={styles.title}>{translateText('Review could not open.')}</Text>
+          <Text style={styles.description}>{translateText('Your local data is unchanged. Try loading the review again.')}</Text>
           <Button label="Retry" onPress={review.reload} variant="secondary" />
         </View>
       </SafeAreaView>
@@ -954,9 +955,9 @@ export function ReviewScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="Preferences needed" accessibilityRole="summary" style={styles.centered}>
-          <Text style={styles.eyebrow}>Review</Text>
-          <Text style={styles.title}>Save preferences first.</Text>
-          <Text style={styles.description}>Review uses your currency, locale, reset day, and wage defaults.</Text>
+          <Text style={styles.eyebrow}>{translateText('Review')}</Text>
+          <Text style={styles.title}>{translateText('Save preferences first.')}</Text>
+          <Text style={styles.description}>{translateText('Review uses your currency, locale, reset day, and wage defaults.')}</Text>
           <Button label="Open Settings" onPress={goToSettings} variant="secondary" />
         </View>
       </SafeAreaView>
@@ -975,8 +976,10 @@ export function ReviewScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>{mode === 'day' ? 'End of day' : 'Review summary'}</Text>
-          <Text style={styles.title}>{mode === 'day' ? summary.localDate : mode === 'week' ? 'This week' : 'This month'}</Text>
+          <Text style={styles.eyebrow}>{translateText(mode === 'day' ? 'End of day' : 'Review summary')}</Text>
+          <Text style={styles.title}>
+            {mode === 'day' ? summary.localDate : translateText(mode === 'week' ? 'This week' : 'This month')}
+          </Text>
           <Text style={styles.description}>
             A neutral look at what is recorded across money, tasks, reminders, budget, savings, and work.
           </Text>

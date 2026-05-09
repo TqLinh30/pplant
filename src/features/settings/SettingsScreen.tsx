@@ -2,6 +2,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { calculateSavingsGoalProgress } from '@/domain/budgets/schemas';
+import { translateText } from '@/i18n/strings';
 import type { SavingsGoal } from '@/domain/budgets/types';
 import type { CategoryTopicItem, CategoryTopicKind } from '@/domain/categories/types';
 import { formatMinorUnitsForInput } from '@/domain/common/money';
@@ -40,10 +41,10 @@ export function SettingsScreen() {
   if (state.status === 'loading') {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View accessibilityLabel="Loading preferences" accessibilityRole="summary" style={styles.centered}>
+        <View accessibilityLabel={translateText('Loading preferences')} accessibilityRole="summary" style={styles.centered}>
           <ActivityIndicator color={colors.primary} />
-          <Text style={styles.title}>Loading preferences</Text>
-          <Text style={styles.description}>Pplant is opening your local settings.</Text>
+          <Text style={styles.title}>{translateText('Loading preferences')}</Text>
+          <Text style={styles.description}>{translateText('Pplant is opening your local settings.')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -53,13 +54,13 @@ export function SettingsScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View
-          accessibilityLabel="Preferences could not be loaded"
+          accessibilityLabel={translateText('Preferences could not be loaded')}
           accessibilityRole="summary"
           style={styles.centered}>
-          <Text style={styles.eyebrow}>Preferences</Text>
-          <Text style={styles.title}>Settings could not open.</Text>
+          <Text style={styles.eyebrow}>{translateText('Preferences')}</Text>
+          <Text style={styles.title}>{translateText('Settings could not open.')}</Text>
           <Text style={styles.description}>
-            {state.loadError?.message ?? 'Your preferences stay on this device. Try loading them again.'}
+            {translateText(state.loadError?.message ?? 'Your preferences stay on this device. Try loading them again.')}
           </Text>
           <Button label="Retry" onPress={reload} variant="secondary" />
         </View>
@@ -236,7 +237,7 @@ export function SettingsScreen() {
   const renderPrivacyArea = (area: PrivacySettingArea) => (
     <ListRow
       key={area.id}
-      accessibilityLabel={`Open ${area.title} privacy details`}
+      accessibilityLabel={translateText(`Open ${area.title} privacy details`)}
       title={area.title}
       description={area.summary}
       meta={area.statusLabel}
@@ -248,10 +249,10 @@ export function SettingsScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>Local workspace controls</Text>
-          <Text style={styles.title}>Preferences</Text>
+          <Text style={styles.eyebrow}>{translateText('Local workspace controls')}</Text>
+          <Text style={styles.title}>{translateText('Preferences')}</Text>
           <Text style={styles.description}>
-            Set the local defaults Pplant uses for money, calendar grouping, and work-time context.
+            {translateText('Set the local defaults Pplant uses for money, calendar grouping, and work-time context.')}
           </Text>
         </View>
 
@@ -334,10 +335,10 @@ export function SettingsScreen() {
 
         <View style={styles.section}>
           <View style={styles.header}>
-            <Text style={styles.eyebrow}>Record organization</Text>
-            <Text style={styles.sectionTitle}>Categories and topics</Text>
+            <Text style={styles.eyebrow}>{translateText('Record organization')}</Text>
+            <Text style={styles.sectionTitle}>{translateText('Categories and topics')}</Text>
             <Text style={styles.description}>
-              Keep reusable labels for future money, work, task, and reflection records.
+              {translateText('Keep reusable labels for future money, work, task, and reflection records.')}
             </Text>
           </View>
 
@@ -413,10 +414,10 @@ export function SettingsScreen() {
 
         <View style={styles.section}>
           <View style={styles.header}>
-            <Text style={styles.eyebrow}>Budget planning</Text>
-            <Text style={styles.sectionTitle}>Budget and savings</Text>
+            <Text style={styles.eyebrow}>{translateText('Budget planning')}</Text>
+            <Text style={styles.sectionTitle}>{translateText('Budget and savings')}</Text>
             <Text style={styles.description}>
-              Set a monthly limit and basic savings goals for later Today and Review summaries.
+              {translateText('Set a monthly limit and basic savings goals for later Today and Review summaries.')}
             </Text>
           </View>
 
@@ -485,7 +486,7 @@ export function SettingsScreen() {
               </View>
 
               <View style={styles.inlineForm}>
-                <Text style={styles.label}>Savings goals</Text>
+                <Text style={styles.label}>{translateText('Savings goals')}</Text>
                 <TextField
                   autoCapitalize="sentences"
                   errorText={budgetPlanning.state.editingGoalId ? undefined : budgetPlanning.state.fieldErrors.name}
@@ -547,10 +548,10 @@ export function SettingsScreen() {
 
         <View style={styles.section}>
           <View style={styles.header}>
-            <Text style={styles.eyebrow}>Privacy</Text>
-            <Text style={styles.sectionTitle}>Privacy controls</Text>
+            <Text style={styles.eyebrow}>{translateText('Privacy')}</Text>
+            <Text style={styles.sectionTitle}>{translateText('Privacy controls')}</Text>
             <Text style={styles.description}>
-              Review how Pplant handles local data, receipt photos, parsing, notifications, and diagnostics.
+              {translateText('Review how Pplant handles local data, receipt photos, parsing, notifications, and diagnostics.')}
             </Text>
           </View>
 
@@ -566,10 +567,10 @@ export function SettingsScreen() {
 
         <View style={styles.section}>
           <View style={styles.header}>
-            <Text style={styles.eyebrow}>Data controls</Text>
-            <Text style={styles.sectionTitle}>Delete local data</Text>
+            <Text style={styles.eyebrow}>{translateText('Data controls')}</Text>
+            <Text style={styles.sectionTitle}>{translateText('Delete local data')}</Text>
             <Text style={styles.description}>
-              Preview the impact before removing local records, drafts, receipt images, diagnostics, or workspace data.
+              {translateText('Preview the impact before removing local records, drafts, receipt images, diagnostics, or workspace data.')}
             </Text>
           </View>
 
@@ -586,7 +587,7 @@ export function SettingsScreen() {
           ) : null}
 
           <View style={styles.inlineForm}>
-            <Text style={styles.label}>Date range</Text>
+            <Text style={styles.label}>{translateText('Date range')}</Text>
             <TextField
               autoCapitalize="none"
               helperText="YYYY-MM-DD"
@@ -679,17 +680,21 @@ export function SettingsScreen() {
         {deletion ? (
           <>
             <Text style={styles.description}>
-              {deletion.usage.totalCount > 0
-                ? `${deletion.itemName} is used by ${deletion.usage.totalCount} saved record${deletion.usage.totalCount === 1 ? '' : 's'}.`
-                : `${deletion.itemName} is not used by saved records yet.`}
+              {translateText(
+                deletion.usage.totalCount > 0
+                  ? `${deletion.itemName} is used by ${deletion.usage.totalCount} saved record${deletion.usage.totalCount === 1 ? '' : 's'}.`
+                  : `${deletion.itemName} is not used by saved records yet.`,
+              )}
             </Text>
             <Text style={styles.description}>
-              Keeping history hides it from new records while preserving past associations. Reassign moves existing usage to another active item before hiding it.
+              {translateText(
+                'Keeping history hides it from new records while preserving past associations. Reassign moves existing usage to another active item before hiding it.',
+              )}
             </Text>
 
             {deletion.usage.totalCount > 0 && replacementOptions.length > 0 ? (
               <View style={styles.reassignList}>
-                <Text style={styles.label}>Reassign target</Text>
+                <Text style={styles.label}>{translateText('Reassign target')}</Text>
                 {replacementOptions.map((item) => (
                   <ListRow
                     key={item.id}
@@ -727,13 +732,13 @@ export function SettingsScreen() {
         onClose={privacySettings.closeDetail}>
         {selectedPrivacyArea ? (
           <>
-            <Text style={styles.description}>{selectedPrivacyArea.currentBehavior}</Text>
+            <Text style={styles.description}>{translateText(selectedPrivacyArea.currentBehavior)}</Text>
 
             <View style={styles.detailGroup}>
-              <Text style={styles.label}>Affected data categories</Text>
+              <Text style={styles.label}>{translateText('Affected data categories')}</Text>
               {selectedPrivacyArea.affectedDataCategories.map((category) => (
                 <Text key={category} style={styles.detailLine}>
-                  - {category}
+                  - {translateText(category)}
                 </Text>
               ))}
             </View>
@@ -776,23 +781,23 @@ export function SettingsScreen() {
               />
             ) : null}
 
-            <Text style={styles.description}>{dataDeletion.impact.description}</Text>
+            <Text style={styles.description}>{translateText(dataDeletion.impact.description)}</Text>
 
             <View style={styles.detailGroup}>
-              <Text style={styles.label}>Affected data</Text>
+              <Text style={styles.label}>{translateText('Affected data')}</Text>
               {dataDeletion.impact.affectedDataCategories.map((category) => (
                 <Text key={category} style={styles.detailLine}>
-                  - {category}
+                  - {translateText(category)}
                 </Text>
               ))}
             </View>
 
             {dataDeletion.result && dataDeletionCounts.length > 0 ? (
               <View style={styles.detailGroup}>
-                <Text style={styles.label}>Updated locally</Text>
+                <Text style={styles.label}>{translateText('Updated locally')}</Text>
                 {dataDeletionCounts.map(([key, count]) => (
                   <Text key={key} style={styles.detailLine}>
-                    - {key}: {count}
+                    - {translateText(key)}: {count}
                   </Text>
                 ))}
               </View>

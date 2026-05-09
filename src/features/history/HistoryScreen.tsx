@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formatMinorUnitsForInput } from '@/domain/common/money';
 import type { MoneyHistorySort, MoneyHistorySummaryMode, MoneyRecord, MoneyRecordKind } from '@/domain/money/types';
+import { translateText } from '@/i18n/strings';
 import { Button } from '@/ui/primitives/Button';
 import { ListRow } from '@/ui/primitives/ListRow';
 import { SegmentedControl } from '@/ui/primitives/SegmentedControl';
@@ -111,8 +112,8 @@ export function HistoryScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="Loading history" accessibilityRole="summary" style={styles.centered}>
           <ActivityIndicator color={colors.primary} />
-          <Text style={styles.title}>Loading history</Text>
-          <Text style={styles.description}>Pplant is opening local money records.</Text>
+          <Text style={styles.title}>{translateText('Loading history')}</Text>
+          <Text style={styles.description}>{translateText('Pplant is opening local money records.')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -122,9 +123,9 @@ export function HistoryScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="History could not be loaded" accessibilityRole="summary" style={styles.centered}>
-          <Text style={styles.eyebrow}>Money history</Text>
-          <Text style={styles.title}>History could not open.</Text>
-          <Text style={styles.description}>Your local records are unchanged. Try loading history again.</Text>
+          <Text style={styles.eyebrow}>{translateText('Money history')}</Text>
+          <Text style={styles.title}>{translateText('History could not open.')}</Text>
+          <Text style={styles.description}>{translateText('Your local records are unchanged. Try loading history again.')}</Text>
           <Button label="Retry" onPress={history.reload} variant="secondary" />
         </View>
       </SafeAreaView>
@@ -135,9 +136,9 @@ export function HistoryScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View accessibilityLabel="Preferences needed" accessibilityRole="summary" style={styles.centered}>
-          <Text style={styles.eyebrow}>Money history</Text>
-          <Text style={styles.title}>Save preferences first.</Text>
-          <Text style={styles.description}>History uses your saved currency and locale for amount filters.</Text>
+          <Text style={styles.eyebrow}>{translateText('Money history')}</Text>
+          <Text style={styles.title}>{translateText('Save preferences first.')}</Text>
+          <Text style={styles.description}>{translateText('History uses your saved currency and locale for amount filters.')}</Text>
           <Button label="Retry after saving preferences" onPress={history.reload} variant="secondary" />
         </View>
       </SafeAreaView>
@@ -148,8 +149,8 @@ export function HistoryScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>Money history</Text>
-          <Text style={styles.title}>Review records</Text>
+          <Text style={styles.eyebrow}>{translateText('Money history')}</Text>
+          <Text style={styles.title}>{translateText('Review records')}</Text>
           <Text style={styles.description}>
             Search, filter, and sort active expenses and income saved on this device.
           </Text>
@@ -167,7 +168,7 @@ export function HistoryScreen() {
         ) : null}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Summary</Text>
+          <Text style={styles.sectionTitle}>{translateText('Summary')}</Text>
           <SegmentedControl
             options={summaryOptions}
             selectedValue={state.summaryMode}
@@ -182,7 +183,7 @@ export function HistoryScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Filters</Text>
+          <Text style={styles.sectionTitle}>{translateText('Filters')}</Text>
           <SegmentedControl options={kindOptions} selectedValue={state.filterDraft.kind} onChange={history.setKind} />
           <TextField
             label="Merchant or source"
@@ -222,7 +223,7 @@ export function HistoryScreen() {
             />
           </View>
 
-          <Text style={styles.label}>Category</Text>
+            <Text style={styles.label}>{translateText('Category')}</Text>
           <ListRow
             title="Any category"
             meta={state.filterDraft.categoryId === null ? 'Selected' : 'Available'}
@@ -237,7 +238,7 @@ export function HistoryScreen() {
             />
           ))}
 
-          <Text style={styles.label}>Topic</Text>
+            <Text style={styles.label}>{translateText('Topic')}</Text>
           <ListRow
             title="Any topic"
             meta={state.filterDraft.topicId === null ? 'Selected' : 'Available'}
@@ -258,7 +259,7 @@ export function HistoryScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Records</Text>
+          <Text style={styles.sectionTitle}>{translateText('Records')}</Text>
           {state.data?.records.length === 0 ? (
             <StatusBanner title="No matching records" description="Adjust filters or save a money record from Capture." />
           ) : null}
