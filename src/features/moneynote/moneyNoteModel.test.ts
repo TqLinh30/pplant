@@ -81,6 +81,8 @@ describe('MoneyNote model helpers', () => {
     expect(formatMoneyNoteAmount(1250, { currencyCode: 'USD', locale: 'en-US' })).toBe('$12.50');
     expect(formatMoneyNoteAmountMagnitude(1250, { currencyCode: 'USD', locale: 'en-US' })).toBe('12.5');
     expect(formatMoneyNoteAmount(29100, { currencyCode: 'TWD', locale: 'zh-TW' })).toBe('NT$291');
+    expect(formatMoneyNoteAmount(1000000, { currencyCode: 'TWD', locale: 'vi-VN' })).toBe('NT$10,000');
+    expect(formatMoneyNoteAmountMagnitude(1000000, { currencyCode: 'TWD', locale: 'vi-VN' })).toBe('10,000');
     expect(currencySuffixForCode('VND')).toBe('đ');
     expect(currencySuffixForCode('TWD')).toBe('NT$');
   });

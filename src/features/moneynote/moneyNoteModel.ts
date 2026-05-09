@@ -237,7 +237,7 @@ export function formatMoneyNoteAmount(
   }
 
   if (currencyCode.toUpperCase() === 'TWD') {
-    return `${sign}NT$${new Intl.NumberFormat(locale, {
+    return `${sign}NT$${new Intl.NumberFormat('en-US', {
       maximumFractionDigits: 0,
     }).format(absolute / 100)}`;
   }
@@ -262,8 +262,9 @@ export function formatMoneyNoteAmountMagnitude(
     currencyCode.toUpperCase() === 'VND' || currencyCode.toUpperCase() === 'JPY'
       ? absolute
       : absolute / 100;
+  const displayLocale = currencyCode.toUpperCase() === 'TWD' ? 'en-US' : locale;
 
-  return new Intl.NumberFormat(locale, {
+  return new Intl.NumberFormat(displayLocale, {
     maximumFractionDigits: Number.isInteger(majorAmount) ? 0 : 2,
   }).format(majorAmount);
 }

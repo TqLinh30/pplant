@@ -15,12 +15,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, G, Polyline } from 'react-native-svg';
 
-import type { AppError } from '@/domain/common/app-error';
+import { createAppError, type AppError } from '@/domain/common/app-error';
 import type { CategoryTopicItem } from '@/domain/categories/types';
 import type { MoneyHistorySummary } from '@/domain/money/calculations';
 import type { MoneyRecord } from '@/domain/money/types';
 import type { UserPreferences } from '@/domain/preferences/types';
-import { isErr } from '@/domain/common/result';
+import { err, isErr, ok, type AppResult } from '@/domain/common/result';
 import {
   createCategoryTopicItem,
   deleteCategoryTopicItem,
@@ -574,6 +574,17 @@ type ReportBreakdownRow = {
   percent: number;
 };
 
+type MoneyNoteAnnualReportMode = 'expense' | 'income' | 'net';
+
+type YearlyMonthReportRow = {
+  amountMinor: number;
+  expenseMinor: number;
+  incomeMinor: number;
+  label: string;
+  month: number;
+  netMinor: number;
+};
+
 type ReportChartSegment = ReportBreakdownRow & {
   connectorPoints: string;
   dashLength: number;
@@ -591,12 +602,13 @@ const morePanelEmptyState: MorePanelDataState = {
   totals: emptyTotals,
 };
 
-function morePanelRange(panelKind: MoneyNoteMorePanelKind | null): { dateFrom?: string; dateTo?: string } {
+function morePanelRange(
+  panelKind: MoneyNoteMorePanelKind | null,
+  year = new Date().getFullYear(),
+): { dateFrom?: string; dateTo?: string } {
   if (panelKind !== 'categoryYear' && panelKind !== 'reportYear') {
     return {};
   }
-
-  const year = new Date().getFullYear();
 
   return {
     dateFrom: `${year}-01-01`,
@@ -673,6 +685,72 @@ function useMoneyNoteMorePanelData(panelKind: MoneyNoteMorePanelKind | null): Mo
       cancelled = true;
     };
   }, [panelKind, reloadToken]);
+
+  return state;
+}
+
+function useMoneyNoteReportData(panelKind: MoneyNoteMorePanelKind, year?: number): MorePanelDataState {
+  const [reloadToken, setReloadToken] = useState(0);
+  const [state, setState] = useState<MorePanelDataState>({
+    ...morePanelEmptyState,
+    status: 'loading',
+  });
+  const focusedOnce = useRef(false);
+  const reload = useCallback(() => {
+    setReloadToken((current) => current + 1);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (focusedOnce.current) {
+        reload();
+        return;
+      }
+
+      focusedOnce.current = true;
+    }, [reload]),
+  );
+
+  useEffect(() => subscribeMoneyRecordsChanged(reload), [reload]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      setState((current) => ({ ...current, error: undefined, status: 'loading' }));
+
+      const result = await loadMoneyNoteReportSnapshot(panelKind, year);
+
+      if (cancelled) {
+        return;
+      }
+
+      if (result.ok) {
+        setState({
+          currencyCode: result.value.preferences.currencyCode,
+          locale: result.value.preferences.locale,
+          preferences: result.value.preferences,
+          records: result.value.records,
+          status: 'ready',
+          totalCount: result.value.totalCount,
+          totals: result.value.totals,
+        });
+        return;
+      }
+
+      setState({
+        ...morePanelEmptyState,
+        error: result.error,
+        status: 'failed',
+      });
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [panelKind, reloadToken, year]);
 
   return state;
 }
@@ -769,6 +847,94 @@ function formatReportPercent(value: number, language: AppLanguage): string {
     maximumFractionDigits: 1,
     minimumFractionDigits: value < 10 && value % 1 !== 0 ? 1 : 0,
   }).format(value)} %`;
+}
+
+function formatReportMagnitude(
+  amountMinor: number,
+  { currencyCode, locale }: { currencyCode: string; locale: string },
+): string {
+  const sign = amountMinor < 0 ? '-' : '';
+
+  return `${sign}${formatMoneyNoteAmountMagnitude(amountMinor, { currencyCode, locale })}`;
+}
+
+function annualReportModeLabel(mode: MoneyNoteAnnualReportMode, copy: typeof moneyNoteCopy.vi): string {
+  if (mode === 'expense') {
+    return copy.expense;
+  }
+
+  if (mode === 'income') {
+    return copy.income;
+  }
+
+  return copy.net;
+}
+
+function annualReportModeAmount(totals: MoneyNoteTotals, mode: MoneyNoteAnnualReportMode): number {
+  if (mode === 'expense') {
+    return totals.expenseMinor;
+  }
+
+  if (mode === 'income') {
+    return totals.incomeMinor;
+  }
+
+  return totals.netMinor;
+}
+
+function annualReportModeColor(mode: MoneyNoteAnnualReportMode): string {
+  if (mode === 'expense') {
+    return expenseColor;
+  }
+
+  if (mode === 'income') {
+    return incomeColor;
+  }
+
+  return skyBlue;
+}
+
+function buildYearlyMonthReportRows(records: MoneyRecord[], mode: MoneyNoteAnnualReportMode): YearlyMonthReportRow[] {
+  const rows = Array.from({ length: 12 }, (_, index) => ({
+    amountMinor: 0,
+    expenseMinor: 0,
+    incomeMinor: 0,
+    label: `T${index + 1}`,
+    month: index + 1,
+    netMinor: 0,
+  }));
+
+  records.forEach((record) => {
+    if (record.deletedAt !== null) {
+      return;
+    }
+
+    const monthIndex = Number(record.localDate.slice(5, 7)) - 1;
+
+    if (Number.isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) {
+      return;
+    }
+
+    const row = rows[monthIndex];
+
+    if (record.kind === 'expense') {
+      row.expenseMinor += record.amountMinor;
+    } else {
+      row.incomeMinor += record.amountMinor;
+    }
+
+    row.netMinor = row.incomeMinor - row.expenseMinor;
+  });
+
+  rows.forEach((row) => {
+    row.amountMinor = annualReportModeAmount(row, mode);
+  });
+
+  return rows;
+}
+
+function shiftYear(year: number, years: number): number {
+  return year + years;
 }
 
 function clampNumber(value: number, min: number, max: number): number {
@@ -901,12 +1067,17 @@ async function writeMoneyNoteDocument(
   return uri;
 }
 
-async function loadMoneyNoteExportSnapshot(panelKind: MoneyNoteMorePanelKind): Promise<{
+type MoneyNoteReportSnapshot = {
   preferences: UserPreferences;
   records: MoneyRecord[];
   totalCount: number;
   totals: MoneyNoteTotals;
-}> {
+};
+
+async function loadMoneyNoteReportSnapshot(
+  panelKind: MoneyNoteMorePanelKind,
+  year?: number,
+): Promise<AppResult<MoneyNoteReportSnapshot>> {
   const records: MoneyRecord[] = [];
   let offset = 0;
   let preferences: UserPreferences | null = null;
@@ -914,7 +1085,7 @@ async function loadMoneyNoteExportSnapshot(panelKind: MoneyNoteMorePanelKind): P
 
   for (let page = 0; page < 100; page += 1) {
     const result = await loadMoneyHistory({
-      ...morePanelRange(panelKind),
+      ...morePanelRange(panelKind, year),
       limit: 50,
       offset,
       sort: 'date_desc',
@@ -922,7 +1093,7 @@ async function loadMoneyNoteExportSnapshot(panelKind: MoneyNoteMorePanelKind): P
     });
 
     if (!result.ok) {
-      throw new Error(result.error.message);
+      return result;
     }
 
     preferences = result.value.preferences;
@@ -937,15 +1108,25 @@ async function loadMoneyNoteExportSnapshot(panelKind: MoneyNoteMorePanelKind): P
   }
 
   if (!preferences) {
-    throw new Error('Preferences are not available.');
+    return err(createAppError('unavailable', 'Preferences are not available.', 'settings'));
   }
 
-  return {
+  return ok({
     preferences,
     records,
     totalCount,
     totals: calculateMoneyNoteTotals(records),
-  };
+  });
+}
+
+async function loadMoneyNoteExportSnapshot(panelKind: MoneyNoteMorePanelKind): Promise<MoneyNoteReportSnapshot> {
+  const snapshot = await loadMoneyNoteReportSnapshot(panelKind);
+
+  if (!snapshot.ok) {
+    throw new Error(snapshot.error.message);
+  }
+
+  return snapshot.value;
 }
 
 function ScreenHeader({
@@ -1713,6 +1894,377 @@ export function MoneyNoteReportScreen() {
   );
 }
 
+function ReportDetailHeader({
+  right,
+  title,
+}: {
+  right?: React.ReactNode;
+  title: string;
+}) {
+  const router = useRouter();
+
+  return (
+    <View style={styles.reportDetailHeader}>
+      <IconButton label="<" onPress={() => router.back()} />
+      <Text numberOfLines={1} style={styles.reportDetailHeaderTitle}>
+        {title}
+      </Text>
+      <View style={styles.reportDetailHeaderRight}>{right}</View>
+    </View>
+  );
+}
+
+function YearSwitcher({
+  label,
+  onChange,
+  year,
+}: {
+  label: string;
+  onChange: (year: number) => void;
+  year: number;
+}) {
+  return (
+    <View style={styles.monthSwitcher}>
+      <IconButton label="<" onPress={() => onChange(shiftYear(year, -1))} />
+      <View style={styles.monthPill}>
+        <Text numberOfLines={1} style={styles.monthPillText}>
+          {label}
+        </Text>
+        <MaterialCommunityIcons
+          color={skyBlue}
+          name="calendar-month-outline"
+          size={22}
+          style={styles.monthPillCalendarIcon}
+        />
+      </View>
+      <IconButton label=">" onPress={() => onChange(shiftYear(year, 1))} />
+    </View>
+  );
+}
+
+function AnnualReportModeTabs({
+  active,
+  copy,
+  onChange,
+}: {
+  active: MoneyNoteAnnualReportMode;
+  copy: typeof moneyNoteCopy.vi;
+  onChange: (mode: MoneyNoteAnnualReportMode) => void;
+}) {
+  const modes: MoneyNoteAnnualReportMode[] = ['expense', 'income', 'net'];
+
+  return (
+    <View style={styles.reportModeTabs}>
+      {modes.map((mode) => {
+        const selected = active === mode;
+
+        return (
+          <Pressable
+            accessibilityRole="tab"
+            key={mode}
+            onPress={() => onChange(mode)}
+            style={[styles.reportModeTab, selected ? styles.reportModeTabActive : null]}>
+            <Text style={[styles.reportModeTabText, selected ? styles.reportModeTabTextActive : null]}>
+              {annualReportModeLabel(mode, copy)}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function YearlyBarChart({
+  color,
+  currencyCode,
+  locale,
+  rows,
+}: {
+  color: string;
+  currencyCode: string;
+  locale: string;
+  rows: YearlyMonthReportRow[];
+}) {
+  const maxMinor = Math.max(...rows.map((row) => Math.abs(row.amountMinor)), 0);
+  const scaleMax = maxMinor > 0 ? maxMinor : 100;
+  const gridValues = [4, 3, 2, 1, 0].map((step) => Math.round((scaleMax * step) / 4));
+
+  return (
+    <View style={styles.yearChart}>
+      <View style={styles.yearChartPlot}>
+        {gridValues.map((value) => (
+          <View key={value} style={styles.yearChartGridRow}>
+            <Text numberOfLines={1} style={styles.yearChartGridLabel}>
+              {formatMoneyNoteAmount(value, { currencyCode, locale })}
+            </Text>
+            <View style={styles.yearChartGridLine} />
+          </View>
+        ))}
+        <View style={styles.yearBarsLayer}>
+          {rows.map((row) => {
+            const amount = Math.abs(row.amountMinor);
+            const percent = amount === 0 ? 0 : Math.max(2, (amount / scaleMax) * 100);
+
+            return (
+              <View key={row.month} style={styles.yearBarSlot}>
+                <View
+                  style={[
+                    styles.yearBar,
+                    {
+                      backgroundColor: color,
+                      height: `${percent}%`,
+                    },
+                  ]}
+                />
+              </View>
+            );
+          })}
+        </View>
+      </View>
+      <View style={styles.yearMonthAxis}>
+        {rows.map((row) => (
+          <Text key={row.month} style={styles.yearMonthLabel}>
+            {row.label}
+          </Text>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function ReportLoadingState({
+  copy,
+  data,
+  language,
+}: {
+  copy: typeof moneyNoteCopy.vi;
+  data: MorePanelDataState;
+  language: AppLanguage;
+}) {
+  if (data.status === 'loading') {
+    return <ActivityIndicator color={skyBlue} style={styles.loadingIndicator} />;
+  }
+
+  if (data.status === 'failed') {
+    return (
+      <Text style={styles.warningText}>
+        {data.error?.message ?? (language === 'en' ? 'Could not load report.' : 'Không thể tải báo cáo.')}
+      </Text>
+    );
+  }
+
+  if (data.status !== 'ready') {
+    return <Text style={styles.mutedText}>{copy.noData}</Text>;
+  }
+
+  return null;
+}
+
+function AllTimeTotalsTable({
+  copy,
+  currencyCode,
+  language,
+  locale,
+  totals,
+}: {
+  copy: typeof moneyNoteCopy.vi;
+  currencyCode: string;
+  language: AppLanguage;
+  locale: string;
+  totals: MoneyNoteTotals;
+}) {
+  const currencySuffix = currencySuffixForCode(currencyCode);
+  const rows = [
+    { amountMinor: totals.incomeMinor, label: copy.income },
+    { amountMinor: totals.expenseMinor, label: copy.expense },
+    { amountMinor: totals.netMinor, label: copy.net },
+    { divider: true, key: 'divider' },
+    { amountMinor: 0, label: language === 'en' ? 'Initial balance' : 'Số dư ban đầu' },
+    { amountMinor: totals.netMinor, label: copy.net },
+  ];
+
+  return (
+    <View style={styles.allTimeTable}>
+      {rows.map((row, index) =>
+        'divider' in row ? (
+          <View key={row.key} style={styles.allTimeTableDivider} />
+        ) : (
+          <View key={`${row.label}-${index}`} style={styles.allTimeTableRow}>
+            <Text numberOfLines={1} style={styles.allTimeTableLabel}>
+              {row.label}
+            </Text>
+            <Text style={styles.allTimeTableAmount}>
+              {formatReportMagnitude(row.amountMinor, { currencyCode, locale })}
+            </Text>
+            <Text style={styles.allTimeTableCurrency}>{currencySuffix}</Text>
+          </View>
+        ),
+      )}
+    </View>
+  );
+}
+
+export function MoneyNoteAllTimeReportScreen() {
+  const { copy, language } = useMoneyNoteCopy();
+  const data = useMoneyNoteReportData('reportAllTime');
+
+  return (
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.reportDetailContent}>
+        <ReportDetailHeader title={copy.reportAllTime} />
+        {data.status === 'ready' ? (
+          <AllTimeTotalsTable
+            copy={copy}
+            currencyCode={data.currencyCode}
+            language={language}
+            locale={data.locale}
+            totals={data.totals}
+          />
+        ) : (
+          <ReportLoadingState copy={copy} data={data} language={language} />
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+export function MoneyNoteYearReportScreen() {
+  const { copy, language } = useMoneyNoteCopy();
+  const [year, setYear] = useState(() => new Date().getFullYear());
+  const [activeMode, setActiveMode] = useState<MoneyNoteAnnualReportMode>('expense');
+  const data = useMoneyNoteReportData('reportYear', year);
+  const monthRows = useMemo(
+    () => buildYearlyMonthReportRows(data.records, activeMode),
+    [activeMode, data.records],
+  );
+  const totalMinor = annualReportModeAmount(data.totals, activeMode);
+  const amountStyle =
+    activeMode === 'net'
+      ? totalMinor < 0
+        ? styles.expenseAmount
+        : styles.incomeAmount
+      : activeMode === 'expense'
+        ? styles.expenseAmount
+        : styles.incomeAmount;
+  const yearLabel = `${year}(01/01 - 31/12)`;
+
+  return (
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.reportDetailContent}>
+        <ReportDetailHeader
+          right={<MaterialCommunityIcons color={ink} name="calendar-month-outline" size={28} />}
+          title={copy.reportYear}
+        />
+        <YearSwitcher label={yearLabel} onChange={setYear} year={year} />
+        <AnnualReportModeTabs active={activeMode} copy={copy} onChange={setActiveMode} />
+        {data.status === 'ready' ? (
+          <>
+            <YearlyBarChart
+              color={annualReportModeColor(activeMode)}
+              currencyCode={data.currencyCode}
+              locale={data.locale}
+              rows={monthRows}
+            />
+            <View style={styles.yearTotalRow}>
+              <Text style={styles.yearTotalLabel}>{copy.net}</Text>
+              <Text style={[styles.yearTotalAmount, amountStyle]}>
+                {formatMoneyNoteAmount(totalMinor, { currencyCode: data.currencyCode, locale: data.locale })}
+              </Text>
+            </View>
+            <View style={styles.yearMonthList}>
+              {monthRows.map((row) => (
+                <View key={row.month} style={styles.yearMonthRow}>
+                  <Text style={styles.yearMonthRowLabel}>
+                    {language === 'en' ? `Month ${row.month}` : `Tháng ${row.month}`}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.yearMonthRowAmount,
+                      activeMode === 'net'
+                        ? row.amountMinor < 0
+                          ? styles.expenseAmount
+                          : styles.incomeAmount
+                        : null,
+                    ]}>
+                    {formatMoneyNoteAmount(row.amountMinor, {
+                      currencyCode: data.currencyCode,
+                      locale: data.locale,
+                    })}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : (
+          <ReportLoadingState copy={copy} data={data} language={language} />
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function MoneyNoteCategoryReportDetailScreen({
+  panelKind,
+  title,
+}: {
+  panelKind: 'categoryAllTime' | 'categoryYear';
+  title: string;
+}) {
+  const { copy, language } = useMoneyNoteCopy();
+  const [year, setYear] = useState(() => new Date().getFullYear());
+  const [activeKind, setActiveKind] = useState<'expense' | 'income'>('expense');
+  const data = useMoneyNoteReportData(panelKind, panelKind === 'categoryYear' ? year : undefined);
+  const breakdownRows = useMemo(
+    () => buildReportBreakdownRows(data.records, activeKind, language),
+    [activeKind, data.records, language],
+  );
+
+  return (
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.reportDetailContent}>
+        <ReportDetailHeader
+          right={
+            panelKind === 'categoryYear' ? (
+              <MaterialCommunityIcons color={ink} name="calendar-month-outline" size={28} />
+            ) : undefined
+          }
+          title={title}
+        />
+        {panelKind === 'categoryYear' ? <YearSwitcher label={`${year}`} onChange={setYear} year={year} /> : null}
+        <KindTabs active={activeKind} copy={copy} onChange={setActiveKind} />
+        <View style={styles.reportBody}>
+          {data.status === 'ready' ? (
+            <>
+              <ReportDonutChart copy={copy} language={language} rows={breakdownRows} />
+              <ReportBreakdownList
+                currencyCode={data.currencyCode}
+                language={language}
+                locale={data.locale}
+                rows={breakdownRows}
+              />
+            </>
+          ) : (
+            <ReportLoadingState copy={copy} data={data} language={language} />
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+export function MoneyNoteCategoryYearReportScreen() {
+  const { copy } = useMoneyNoteCopy();
+
+  return <MoneyNoteCategoryReportDetailScreen panelKind="categoryYear" title={copy.categoryYearReport} />;
+}
+
+export function MoneyNoteCategoryAllTimeReportScreen() {
+  const { language } = useMoneyNoteCopy();
+  const title = language === 'en' ? 'All time' : 'Toàn thời gian';
+
+  return <MoneyNoteCategoryReportDetailScreen panelKind="categoryAllTime" title={title} />;
+}
+
 function MoreRow({
   icon,
   onPress,
@@ -2018,14 +2570,14 @@ export function MoneyNoteMoreScreen() {
         <MoreDivider />
         <MoreRow icon="cog-outline" onPress={() => router.push('/preferences')} title={copy.basicSettings} />
         <MoreDivider />
-        <MoreRow icon="chart-box-outline" onPress={() => togglePanel('reportYear')} title={copy.reportYear} />
-        {renderActivePanel('reportYear')}
-        <MoreRow icon="chart-pie" onPress={() => togglePanel('categoryYear')} title={copy.categoryYearReport} />
-        {renderActivePanel('categoryYear')}
-        <MoreRow icon="chart-box-outline" onPress={() => togglePanel('reportAllTime')} title={copy.reportAllTime} />
-        {renderActivePanel('reportAllTime')}
-        <MoreRow icon="chart-pie" onPress={() => togglePanel('categoryAllTime')} title={copy.categoryAllTimeReport} />
-        {renderActivePanel('categoryAllTime')}
+        <MoreRow icon="chart-box-outline" onPress={() => router.push('/report-year')} title={copy.reportYear} />
+        <MoreRow icon="chart-pie" onPress={() => router.push('/report-category-year')} title={copy.categoryYearReport} />
+        <MoreRow icon="chart-box-outline" onPress={() => router.push('/report-all-time')} title={copy.reportAllTime} />
+        <MoreRow
+          icon="chart-pie"
+          onPress={() => router.push('/report-category-all-time')}
+          title={copy.categoryAllTimeReport}
+        />
         <MoreDivider />
         <MoreRow icon="download-outline" onPress={() => togglePanel('export')} title={copy.exportData} />
         {renderActivePanel('export')}
@@ -2595,6 +3147,44 @@ export function MoneyNoteCategoryScreen() {
 }
 
 const styles = StyleSheet.create({
+  allTimeTable: {
+    backgroundColor: '#FFFFFF',
+    borderTopColor: line,
+    borderTopWidth: 1,
+  },
+  allTimeTableAmount: {
+    ...moneyType.titleSmall,
+    color: ink,
+    minWidth: 112,
+    textAlign: 'right',
+  },
+  allTimeTableCurrency: {
+    ...moneyType.titleSmall,
+    color: ink,
+    minWidth: 54,
+    textAlign: 'right',
+  },
+  allTimeTableDivider: {
+    backgroundColor: panel,
+    borderBottomColor: line,
+    borderBottomWidth: 1,
+    borderTopColor: line,
+    borderTopWidth: 1,
+    height: 52,
+  },
+  allTimeTableLabel: {
+    ...moneyType.titleSmall,
+    color: ink,
+    flex: 1,
+  },
+  allTimeTableRow: {
+    alignItems: 'center',
+    borderBottomColor: line,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    minHeight: 74,
+    paddingHorizontal: 24,
+  },
   addCategoryInput: {
     ...moneyType.body,
     backgroundColor: '#FFFFFF',
@@ -3326,10 +3916,60 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 10,
   },
+  reportDetailContent: {
+    backgroundColor: '#FFFFFF',
+    paddingBottom: 28,
+  },
+  reportDetailHeader: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderBottomColor: line,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 64,
+    paddingHorizontal: 18,
+  },
+  reportDetailHeaderRight: {
+    alignItems: 'flex-end',
+    minWidth: 40,
+  },
+  reportDetailHeaderTitle: {
+    ...moneyType.title,
+    color: ink,
+    flex: 1,
+  },
   reportHalf: {
     alignItems: 'center',
     flex: 1,
     paddingVertical: 22,
+  },
+  reportModeTab: {
+    alignItems: 'center',
+    borderColor: skyBlue,
+    borderRightWidth: 1,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 52,
+  },
+  reportModeTabActive: {
+    backgroundColor: skyBlue,
+  },
+  reportModeTabText: {
+    ...moneyType.labelSmall,
+    color: skyBlue,
+  },
+  reportModeTabTextActive: {
+    color: '#FFFFFF',
+  },
+  reportModeTabs: {
+    borderColor: skyBlue,
+    borderRadius: 6,
+    borderWidth: 1,
+    flexDirection: 'row',
+    marginHorizontal: 22,
+    marginTop: 14,
+    overflow: 'hidden',
   },
   reportNet: {
     ...moneyType.title,
@@ -3343,6 +3983,103 @@ const styles = StyleSheet.create({
     backgroundColor: '#CFCFCF',
     height: 74,
     width: 1,
+  },
+  yearBar: {
+    borderRadius: 2,
+    minHeight: 0,
+    width: 16,
+  },
+  yearBarSlot: {
+    alignItems: 'center',
+    flex: 1,
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
+  yearBarsLayer: {
+    alignItems: 'flex-end',
+    bottom: 12,
+    flexDirection: 'row',
+    left: 76,
+    position: 'absolute',
+    right: 14,
+    top: 8,
+  },
+  yearChart: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 6,
+    paddingTop: 22,
+  },
+  yearChartGridLabel: {
+    ...moneyType.caption,
+    color: '#666666',
+    width: 70,
+  },
+  yearChartGridLine: {
+    backgroundColor: '#D2D8D8',
+    flex: 1,
+    height: 1,
+  },
+  yearChartGridRow: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+  },
+  yearChartPlot: {
+    height: 270,
+    position: 'relative',
+  },
+  yearMonthAxis: {
+    flexDirection: 'row',
+    marginLeft: 76,
+    marginRight: 14,
+    paddingBottom: 18,
+    paddingTop: 8,
+  },
+  yearMonthLabel: {
+    ...moneyType.caption,
+    color: '#666666',
+    flex: 1,
+    textAlign: 'center',
+  },
+  yearMonthList: {
+    backgroundColor: '#FFFFFF',
+    borderTopColor: line,
+    borderTopWidth: 1,
+  },
+  yearMonthRow: {
+    alignItems: 'center',
+    borderBottomColor: line,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    minHeight: 68,
+    paddingHorizontal: 22,
+  },
+  yearMonthRowAmount: {
+    ...moneyType.label,
+    color: ink,
+  },
+  yearMonthRowLabel: {
+    ...moneyType.label,
+    color: ink,
+    flex: 1,
+  },
+  yearTotalAmount: {
+    ...moneyType.label,
+    color: ink,
+  },
+  yearTotalLabel: {
+    ...moneyType.label,
+    color: ink,
+    flex: 1,
+  },
+  yearTotalRow: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderTopColor: line,
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    minHeight: 68,
+    paddingHorizontal: 22,
   },
   safeArea: {
     backgroundColor: '#FFFFFF',

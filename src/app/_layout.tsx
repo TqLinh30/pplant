@@ -73,6 +73,10 @@ export default function RootLayout() {
             <Stack.Screen name="reminder/[reminderId]" />
             <Stack.Screen name="task/[taskId]" />
             <Stack.Screen name="money/[moneyRecordId]" />
+            <Stack.Screen name="report-all-time" />
+            <Stack.Screen name="report-category-all-time" />
+            <Stack.Screen name="report-category-year" />
+            <Stack.Screen name="report-year" />
             <Stack.Screen name="+not-found" />
           </Stack>
         </WorkspaceGate>
