@@ -6,7 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Circle, G } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { moodDefinitionFor, journalMoodCatalog } from '@/domain/journal/mood-catalog';
+import { journalMoodCatalog } from '@/domain/journal/mood-catalog';
 import type { JournalEntry, JournalMoodId } from '@/domain/journal/types';
 import { useAppLanguage } from '@/i18n/strings';
 import {
@@ -20,6 +20,7 @@ import {
 } from '@/features/moneynote/moneyNoteModel';
 
 import { useJournalOverview } from './useJournalOverview';
+import { MoodFaceIcon } from './MoodFaceIcon';
 
 const skyBlue = '#5CC4BA';
 const lightBlue = '#DDF3F0';
@@ -83,19 +84,18 @@ function goToCapture() {
 
 function HeaderMoreButton() {
   return (
-    <Pressable accessibilityLabel="Mở Khác" accessibilityRole="button" onPress={goToMore} style={styles.headerIconButton}>
+    <Pressable
+      accessibilityLabel="Mở Khác"
+      accessibilityRole="button"
+      onPress={goToMore}
+      style={styles.headerIconButton}
+    >
       <MaterialCommunityIcons color={ink} name="dots-horizontal" size={26} />
     </Pressable>
   );
 }
 
-function ScreenHeader({
-  subtitle,
-  title,
-}: {
-  subtitle?: string;
-  title: string;
-}) {
+function ScreenHeader({ subtitle, title }: { subtitle?: string; title: string }) {
   return (
     <View style={styles.header}>
       <View style={styles.headerText}>
@@ -114,21 +114,7 @@ function ScreenHeader({
 }
 
 function MoodSticker({ moodId, size = 42 }: { moodId: JournalMoodId; size?: number }) {
-  const mood = moodDefinitionFor(moodId);
-
-  return (
-    <View
-      style={[
-        styles.moodSticker,
-        {
-          backgroundColor: mood.softColor,
-          height: size,
-          width: size,
-        },
-      ]}>
-      <MaterialCommunityIcons color={mood.color} name={mood.icon as never} size={Math.round(size * 0.55)} />
-    </View>
-  );
+  return <MoodFaceIcon moodId={moodId} size={size} />;
 }
 
 function DatePill({
@@ -171,23 +157,26 @@ function JournalTimeline({ entries }: { entries: JournalEntry[] }) {
 
   return (
     <View style={styles.timeline}>
-      {entries.map((entry, index) => (
-        <View key={entry.id} style={styles.timelineRow}>
-          <View style={styles.timeColumn}>
-            <Text style={styles.timeText}>{entry.localTime}</Text>
-            <View style={styles.timelineDot} />
-            {index < entries.length - 1 ? <View style={styles.timelineLine} /> : null}
+      {entries.map((entry, index) => {
+        const note = entry.note?.trim() || 'Khoảnh khắc trong ngày';
+
+        return (
+          <View key={entry.id} style={styles.timelineRow}>
+            <View style={styles.timeColumn}>
+              <Text style={styles.timeText}>{entry.localTime}</Text>
+              <View style={styles.timelineDot} />
+              {index < entries.length - 1 ? <View style={styles.timelineLine} /> : null}
+            </View>
+            <MoodSticker moodId={entry.moodId} />
+            <View style={styles.entryText}>
+              <Text numberOfLines={2} style={styles.entryNote}>
+                {note}
+              </Text>
+            </View>
+            <Image source={{ uri: entry.photoUri }} style={styles.thumbnail} transition={160} />
           </View>
-          <MoodSticker moodId={entry.moodId} />
-          <View style={styles.entryText}>
-            <Text numberOfLines={2} style={styles.entryNote}>
-              {entry.note ?? moodDefinitionFor(entry.moodId).labelVi}
-            </Text>
-            <Text style={styles.entryMood}>{moodDefinitionFor(entry.moodId).labelVi}</Text>
-          </View>
-          <Image source={{ uri: entry.photoUri }} style={styles.thumbnail} transition={160} />
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 }
@@ -201,13 +190,21 @@ function MonthSwitcher({
 }) {
   return (
     <View style={styles.monthSwitcher}>
-      <Pressable accessibilityRole="button" onPress={() => onChange(shiftMonth(monthDate, -1))} style={styles.stepButton}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => onChange(shiftMonth(monthDate, -1))}
+        style={styles.stepButton}
+      >
         <MaterialCommunityIcons color={ink} name="chevron-left" size={24} />
       </Pressable>
       <View style={styles.monthPill}>
         <Text style={styles.monthText}>{monthLabel(monthDate)}</Text>
       </View>
-      <Pressable accessibilityRole="button" onPress={() => onChange(shiftMonth(monthDate, 1))} style={styles.stepButton}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => onChange(shiftMonth(monthDate, 1))}
+        style={styles.stepButton}
+      >
         <MaterialCommunityIcons color={ink} name="chevron-right" size={24} />
       </Pressable>
     </View>
@@ -237,7 +234,14 @@ function MoodDonut({
   return (
     <View style={styles.donutWrap}>
       <Svg height={size} width={size} viewBox={`0 0 ${size} ${size}`}>
-        <Circle cx={center} cy={center} fill="none" r={radius} stroke="#E9EFEF" strokeWidth={strokeWidth} />
+        <Circle
+          cx={center}
+          cy={center}
+          fill="none"
+          r={radius}
+          stroke="#E9EFEF"
+          strokeWidth={strokeWidth}
+        />
         <G origin={`${center}, ${center}`} rotation="-90">
           {rows.map((row) => {
             const dashLength = Math.max(0.1, (row.percent / 100) * circumference);
@@ -278,15 +282,18 @@ function MoodStats({
     <View style={styles.statsPanel}>
       <MoodDonut rows={rows} />
       <View style={styles.legend}>
-        {(rows.length > 0 ? rows : journalMoodCatalog.slice(0, 4).map((mood) => ({
-          color: mood.color,
-          count: 0,
-          label: mood.labelVi,
-          moodId: mood.id,
-          percent: 0,
-        }))).map((row) => (
+        {(rows.length > 0
+          ? rows
+          : journalMoodCatalog.slice(0, 4).map((mood) => ({
+              color: mood.color,
+              count: 0,
+              label: mood.labelVi,
+              moodId: mood.id,
+              percent: 0,
+            }))
+        ).map((row) => (
           <View key={row.moodId} style={styles.legendRow}>
-            <View style={[styles.legendDot, { backgroundColor: row.color }]} />
+            <MoodFaceIcon moodId={row.moodId} size={24} />
             <Text numberOfLines={1} style={styles.legendLabel}>
               {row.label}
             </Text>
@@ -304,7 +311,7 @@ function MoodCalendar({
   selectedLocalDate,
   onSelect,
 }: {
-  dayMoods: { color: string; localDate: string }[];
+  dayMoods: { color: string; localDate: string; moodId: JournalMoodId }[];
   monthDate: Date;
   onSelect: (localDate: string) => void;
   selectedLocalDate: string;
@@ -334,11 +341,18 @@ function MoodCalendar({
             style={[
               styles.calendarDay,
               selectedLocalDate === day.localDate ? styles.calendarDaySelected : null,
-            ]}>
+            ]}
+          >
             <Text style={[styles.calendarDayText, !day.inCurrentMonth ? styles.dayMuted : null]}>
               {day.dayOfMonth}
             </Text>
-            {mood ? <View style={[styles.calendarMoodDot, { backgroundColor: mood.color }]} /> : null}
+            {mood ? (
+              <View style={styles.calendarMoodFace}>
+                <MoodFaceIcon moodId={mood.moodId} size={20} />
+              </View>
+            ) : (
+              <View style={styles.calendarMoodSpacer} />
+            )}
           </Pressable>
         );
       })}
@@ -354,6 +368,7 @@ export function JournalScreen() {
   const selectedLocalDate = formatLocalDate(selectedDate);
   const data = overview.state.data;
   const statsRows = data?.monthSummary.moodBreakdown ?? [];
+  const showCaptureHero = overview.state.status !== 'loading' && (data?.entries.length ?? 0) === 0;
 
   const selectCalendarDate = (localDate: string) => {
     setSelectedDate(parseLocalDate(localDate));
@@ -367,16 +382,20 @@ export function JournalScreen() {
           title={language === 'en' ? 'Journal' : 'Nhật ký'}
         />
 
-        <View style={styles.heroPanel}>
-          <View style={styles.heroCopy}>
-            <Text style={styles.heroTitle}>Chào buổi sáng!</Text>
-            <Text style={styles.heroText}>Hôm nay là một ngày tuyệt vời để ghi lại khoảnh khắc đáng nhớ.</Text>
+        {showCaptureHero ? (
+          <View style={styles.heroPanel}>
+            <View style={styles.heroCopy}>
+              <Text style={styles.heroTitle}>Chào buổi sáng!</Text>
+              <Text style={styles.heroText}>
+                Hôm nay là một ngày tuyệt vời để ghi lại khoảnh khắc đáng nhớ.
+              </Text>
+            </View>
+            <Pressable accessibilityRole="button" onPress={goToCapture} style={styles.heroButton}>
+              <MaterialCommunityIcons color="#FFFFFF" name="camera-plus-outline" size={20} />
+              <Text style={styles.heroButtonText}>Chụp ảnh</Text>
+            </Pressable>
           </View>
-          <Pressable accessibilityRole="button" onPress={goToCapture} style={styles.heroButton}>
-            <MaterialCommunityIcons color="#FFFFFF" name="camera-plus-outline" size={20} />
-            <Text style={styles.heroButtonText}>Chụp ảnh</Text>
-          </Pressable>
-        </View>
+        ) : null}
 
         <DatePill
           onNext={() => setSelectedDate(parseLocalDate(shiftLocalDate(selectedLocalDate, 1)))}
@@ -397,7 +416,11 @@ export function JournalScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Nhật ký trong ngày</Text>
-            <Pressable accessibilityRole="button" onPress={goToCapture} style={styles.inlineCapture}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={goToCapture}
+              style={styles.inlineCapture}
+            >
               <MaterialCommunityIcons color={skyBlue} name="camera-outline" size={18} />
               <Text style={styles.inlineCaptureText}>Thêm</Text>
             </Pressable>
@@ -440,11 +463,14 @@ const styles = StyleSheet.create({
     ...journalType.caption,
     color: ink,
   },
-  calendarMoodDot: {
-    borderRadius: 4,
-    height: 7,
-    marginTop: 3,
-    width: 7,
+  calendarMoodFace: {
+    height: 22,
+    marginTop: 2,
+    width: 22,
+  },
+  calendarMoodSpacer: {
+    height: 22,
+    marginTop: 2,
   },
   content: {
     backgroundColor: panel,
@@ -519,13 +545,10 @@ const styles = StyleSheet.create({
     ...journalType.label,
     color: ink,
   },
-  entryMood: {
-    ...journalType.caption,
-    color: muted,
-  },
   entryNote: {
     ...journalType.label,
     color: ink,
+    paddingTop: 4,
   },
   entryText: {
     flex: 1,
@@ -608,11 +631,6 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 10,
   },
-  legendDot: {
-    borderRadius: 6,
-    height: 12,
-    width: 12,
-  },
   legendLabel: {
     ...journalType.label,
     color: ink,
@@ -641,11 +659,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     overflow: 'hidden',
     padding: 8,
-  },
-  moodSticker: {
-    alignItems: 'center',
-    borderRadius: 999,
-    justifyContent: 'center',
   },
   monthPill: {
     alignItems: 'center',

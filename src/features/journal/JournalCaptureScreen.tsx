@@ -1,17 +1,27 @@
 import { router } from 'expo-router';
-import { useEffect } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Keyboard,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  ToastAndroid,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { journalMoodCatalog } from '@/domain/journal/mood-catalog';
 import type { JournalMoodId } from '@/domain/journal/types';
 
-import {
-  journalCaptureErrorNotice,
-  journalCaptureNoticeForOutcome,
-} from './journal-capture';
+import { journalCaptureErrorNotice, journalCaptureNoticeForOutcome } from './journal-capture';
+import { MoodFaceIcon } from './MoodFaceIcon';
 import { useJournalCapture } from './useJournalCapture';
 
 const skyBlue = '#5CC4BA';
@@ -60,14 +70,15 @@ const captureType = {
   },
 } as const;
 
-function goToJournal() {
-  router.replace('/(tabs)/journal');
-}
-
 function Header() {
   return (
     <View style={styles.header}>
-      <Pressable accessibilityLabel="Quay lại" accessibilityRole="button" onPress={() => router.back()} style={styles.iconButton}>
+      <Pressable
+        accessibilityLabel="Quay lại"
+        accessibilityRole="button"
+        onPress={() => router.back()}
+        style={styles.iconButton}
+      >
         <MaterialCommunityIcons color={ink} name="chevron-left" size={28} />
       </Pressable>
       <View style={styles.headerText}>
@@ -97,9 +108,13 @@ function MoodOption({
         styles.moodOption,
         selected ? styles.moodOptionSelected : null,
         { backgroundColor: mood.softColor },
-      ]}>
-      <MaterialCommunityIcons color={mood.color} name={mood.icon as never} size={28} />
-      <Text numberOfLines={1} style={[styles.moodLabel, selected ? styles.moodLabelSelected : null]}>
+      ]}
+    >
+      <MoodFaceIcon moodId={moodId} size={34} />
+      <Text
+        numberOfLines={1}
+        style={[styles.moodLabel, selected ? styles.moodLabelSelected : null]}
+      >
         {mood.labelVi}
       </Text>
     </Pressable>
@@ -124,11 +139,58 @@ function Notice({
 }
 
 export function JournalCaptureScreen() {
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [noteFocused, setNoteFocused] = useState(false);
+  const savedHandledRef = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
   const capture = useJournalCapture();
   const { state } = capture;
   const working = state.status === 'working' || state.status === 'saving';
   const notice = state.outcome ? journalCaptureNoticeForOutcome(state.outcome) : null;
   const errorNotice = state.actionError ? journalCaptureErrorNotice(state.actionError) : null;
+  const maxKeyboardOffset = windowHeight * 0.38;
+  const keyboardOffset =
+    keyboardVisible || noteFocused
+      ? Math.min(keyboardHeight || maxKeyboardOffset, maxKeyboardOffset)
+      : 0;
+  const actionBottomPadding = keyboardVisible ? 10 : Math.max(insets.bottom, 16);
+  const actionBarBottom = keyboardOffset > 0 ? keyboardOffset + 8 : 0;
+  const scrollBottomPadding = 104 + actionBottomPadding + keyboardOffset;
+  const canSave = !working && Boolean(state.photo && state.moodId);
+  const scrollNoteIntoView = () => {
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 120);
+  };
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', (event) => {
+      const measuredKeyboardHeight = Math.max(0, windowHeight - event.endCoordinates.screenY);
+
+      setKeyboardVisible(true);
+      setKeyboardHeight(
+        measuredKeyboardHeight > 0
+          ? measuredKeyboardHeight
+          : Math.min(event.endCoordinates.height, windowHeight * 0.44),
+      );
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 50);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+      setKeyboardHeight(0);
+      setNoteFocused(false);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [windowHeight]);
 
   useEffect(() => {
     if (state.status !== 'idle') {
@@ -138,101 +200,157 @@ export function JournalCaptureScreen() {
     void capture.takePhoto();
   }, [capture, state.status]);
 
+  useEffect(() => {
+    if (state.status !== 'saved' || savedHandledRef.current) {
+      return;
+    }
+
+    savedHandledRef.current = true;
+    if (Platform.OS === 'android') {
+      ToastAndroid.show('Đã lưu nhật ký', ToastAndroid.SHORT);
+    }
+    router.replace('/(tabs)/journal');
+  }, [state.status]);
+
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Header />
+      <View style={styles.keyboardRoot}>
+        <ScrollView
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={[styles.content, { paddingBottom: scrollBottomPadding }]}
+          keyboardShouldPersistTaps="handled"
+          ref={scrollRef}
+          style={styles.scroll}
+        >
+          <Header />
 
-        {working ? (
-          <View accessibilityLabel="Đang xử lý ảnh nhật ký" accessibilityRole="summary" style={styles.inlineLoading}>
-            <ActivityIndicator color={skyBlue} />
-            <Text style={styles.helper}>{state.status === 'saving' ? 'Đang lưu nhật ký.' : 'Đang mở camera.'}</Text>
-          </View>
-        ) : null}
+          {working ? (
+            <View
+              accessibilityLabel="Đang xử lý ảnh nhật ký"
+              accessibilityRole="summary"
+              style={styles.inlineLoading}
+            >
+              <ActivityIndicator color={skyBlue} />
+              <Text style={styles.helper}>
+                {state.status === 'saving' ? 'Đang lưu nhật ký.' : 'Đang mở camera.'}
+              </Text>
+            </View>
+          ) : null}
 
-        {notice ? <Notice {...notice} /> : null}
-        {errorNotice ? <Notice {...errorNotice} /> : null}
+          {notice ? <Notice {...notice} /> : null}
+          {errorNotice ? <Notice {...errorNotice} /> : null}
 
-        {state.photo ? (
-          <View style={styles.previewPanel}>
-            <Image source={{ uri: state.photo.photoUri }} style={styles.previewImage} transition={180} />
-            <Pressable accessibilityRole="button" disabled={working} onPress={capture.takePhoto} style={styles.retakeButton}>
-              <MaterialCommunityIcons color={skyBlue} name="camera-retake-outline" size={18} />
-              <Text style={styles.retakeText}>Chụp lại</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <View style={styles.photoMissing}>
-            <MaterialCommunityIcons color={skyBlue} name="camera-plus-outline" size={40} />
-            <Text style={styles.photoMissingTitle}>Cần một tấm ảnh</Text>
-            <Text style={styles.helper}>Nhật ký v1 lưu mỗi mục bằng một ảnh chụp mới.</Text>
-            <Pressable accessibilityRole="button" disabled={working} onPress={capture.takePhoto} style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Chụp ảnh</Text>
-            </Pressable>
-          </View>
-        )}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Bạn đang cảm thấy gì?</Text>
-          <View style={styles.moodGrid}>
-            {journalMoodCatalog.map((mood) => (
-              <MoodOption
-                key={mood.id}
-                moodId={mood.id}
-                onSelect={capture.setMood}
-                selected={state.moodId === mood.id}
+          {state.photo ? (
+            <View style={styles.previewPanel}>
+              <Image
+                source={{ uri: state.photo.photoUri }}
+                style={styles.previewImage}
+                transition={180}
               />
-            ))}
+              <Pressable
+                accessibilityRole="button"
+                disabled={working}
+                onPress={capture.takePhoto}
+                style={styles.retakeButton}
+              >
+                <MaterialCommunityIcons color={skyBlue} name="camera-retake-outline" size={18} />
+                <Text style={styles.retakeText}>Chụp lại</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.photoMissing}>
+              <MaterialCommunityIcons color={skyBlue} name="camera-plus-outline" size={40} />
+              <Text style={styles.photoMissingTitle}>Cần một tấm ảnh</Text>
+              <Text style={styles.helper}>Nhật ký v1 lưu mỗi mục bằng một ảnh chụp mới.</Text>
+              <Pressable
+                accessibilityRole="button"
+                disabled={working}
+                onPress={capture.takePhoto}
+                style={styles.primaryButton}
+              >
+                <Text style={styles.primaryButtonText}>Chụp ảnh</Text>
+              </Pressable>
+            </View>
+          )}
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Bạn đang cảm thấy gì?</Text>
+            <View style={styles.moodGrid}>
+              {journalMoodCatalog.map((mood) => (
+                <MoodOption
+                  key={mood.id}
+                  moodId={mood.id}
+                  onSelect={capture.setMood}
+                  selected={state.moodId === mood.id}
+                />
+              ))}
+            </View>
           </View>
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ghi chú</Text>
-          <TextInput
-            multiline
-            onChangeText={capture.setNote}
-            placeholder="Viết ngắn gọn điều đang xảy ra..."
-            placeholderTextColor="#A8A8A8"
-            style={styles.noteInput}
-            value={state.note}
-          />
-        </View>
-
-        {state.status === 'saved' ? (
-          <Notice
-            description="Khoảnh khắc đã nằm trong timeline Nhật ký."
-            title="Đã lưu nhật ký"
-            tone="neutral"
-          />
-        ) : null}
-
-        <View style={styles.actions}>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Ghi chú</Text>
+            <TextInput
+              multiline
+              onChangeText={capture.setNote}
+              onBlur={() => setNoteFocused(false)}
+              onFocus={() => {
+                setNoteFocused(true);
+                scrollNoteIntoView();
+              }}
+              onPressIn={() => {
+                setNoteFocused(true);
+                scrollNoteIntoView();
+              }}
+              placeholder="Viết ngắn gọn điều đang xảy ra..."
+              placeholderTextColor="#A8A8A8"
+              style={styles.noteInput}
+              value={state.note}
+            />
+          </View>
+        </ScrollView>
+        <View
+          style={[
+            styles.actions,
+            {
+              bottom: actionBarBottom,
+              paddingBottom: actionBottomPadding,
+            },
+          ]}
+        >
+          {state.actionError ? (
+            <Text style={styles.warningText}>{state.actionError.message}</Text>
+          ) : null}
           <Pressable
             accessibilityRole="button"
-            disabled={working || !state.photo}
+            disabled={!canSave}
             onPress={capture.save}
-            style={[styles.primaryButton, working || !state.photo ? styles.disabledButton : null]}>
-            <Text style={styles.primaryButtonText}>{state.status === 'saving' ? 'Đang lưu' : 'Lưu nhật ký'}</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" onPress={goToJournal} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Xem nhật ký</Text>
+            style={[styles.primaryButton, !canSave ? styles.disabledButton : null]}
+          >
+            <Text style={styles.primaryButtonText}>
+              {state.status === 'saving' ? 'Đang lưu' : 'Lưu nhật ký'}
+            </Text>
           </Pressable>
         </View>
-
-        {state.actionError ? <Text style={styles.warningText}>{state.actionError.message}</Text> : null}
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   actions: {
+    backgroundColor: panel,
+    borderTopColor: line,
+    borderTopWidth: StyleSheet.hairlineWidth,
     gap: 10,
+    left: 0,
+    paddingTop: 12,
+    position: 'absolute',
+    right: 0,
   },
   content: {
     backgroundColor: panel,
     gap: 16,
-    paddingBottom: 34,
+    paddingBottom: 18,
   },
   disabledButton: {
     opacity: 0.55,
@@ -273,6 +391,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     padding: 16,
+  },
+  keyboardRoot: {
+    flex: 1,
   },
   moodGrid: {
     flexDirection: 'row',
@@ -384,20 +505,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     flex: 1,
   },
-  secondaryButton: {
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    backgroundColor: '#FFFFFF',
-    borderColor: line,
-    borderRadius: 12,
-    borderWidth: 1,
-    minHeight: 48,
-    justifyContent: 'center',
-    marginHorizontal: 22,
-  },
-  secondaryButtonText: {
-    ...captureType.button,
-    color: ink,
+  scroll: {
+    flex: 1,
   },
   section: {
     backgroundColor: '#FFFFFF',

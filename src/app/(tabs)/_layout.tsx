@@ -8,13 +8,7 @@ import { typography } from '@/ui/tokens/typography';
 
 type MoneyNoteTabIconName = 'calendar' | 'entry' | 'journal' | 'more' | 'report';
 
-function MoneyNoteTabIcon({
-  color,
-  name,
-}: {
-  color: string;
-  name: MoneyNoteTabIconName;
-}) {
+function MoneyNoteTabIcon({ color, name }: { color: string; name: MoneyNoteTabIconName }) {
   if (name === 'entry') {
     return <MaterialCommunityIcons color={color} name="pencil-plus-outline" size={30} />;
   }
@@ -50,6 +44,22 @@ function MoneyNoteTabIcon({
       <View style={[tabIconStyles.moreDot, { backgroundColor: color }]} />
       <View style={[tabIconStyles.moreDot, { backgroundColor: color }]} />
     </View>
+  );
+}
+
+function FloatingCameraTabButton() {
+  return (
+    <Pressable
+      accessibilityLabel="Chụp ảnh nhật ký"
+      accessibilityRole="button"
+      hitSlop={10}
+      onPress={() => router.push('/journal/new')}
+      style={tabIconStyles.captureButton}
+    >
+      <View style={tabIconStyles.captureButtonInner}>
+        <MaterialCommunityIcons color="#FFFFFF" name="camera-plus" size={32} />
+      </View>
+    </Pressable>
   );
 }
 
@@ -98,7 +108,8 @@ export default function TabLayout() {
           paddingBottom: bottomPadding,
           paddingTop: 2,
         },
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
@@ -116,15 +127,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="journal-action"
         options={{
-          tabBarButton: () => (
-            <Pressable
-              accessibilityLabel="Chụp ảnh nhật ký"
-              accessibilityRole="button"
-              onPress={() => router.push('/journal/new')}
-              style={tabIconStyles.captureButton}>
-              <MaterialCommunityIcons color="#FFFFFF" name="camera-plus-outline" size={30} />
-            </Pressable>
-          ),
+          tabBarButton: () => <FloatingCameraTabButton />,
           tabBarLabel: () => null,
           title: '',
         }}
@@ -181,22 +184,30 @@ const tabIconStyles = StyleSheet.create({
   },
   captureButton: {
     alignItems: 'center',
-    backgroundColor: '#5CC4BA',
-    borderColor: '#FFFFFF',
-    borderRadius: 28,
-    borderWidth: 4,
-    elevation: 6,
-    height: 58,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E6F2F1',
+    borderRadius: 38,
+    borderWidth: 2,
+    elevation: 9,
+    height: 74,
     justifyContent: 'center',
-    marginTop: -22,
+    marginTop: -34,
     shadowColor: '#253030',
     shadowOffset: {
-      height: 4,
+      height: 8,
       width: 0,
     },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    width: 58,
+    shadowOpacity: 0.22,
+    shadowRadius: 13,
+    width: 74,
+  },
+  captureButtonInner: {
+    alignItems: 'center',
+    backgroundColor: '#5CC4BA',
+    borderRadius: 31,
+    height: 62,
+    justifyContent: 'center',
+    width: 62,
   },
   moreDot: {
     borderRadius: 4,
