@@ -11,6 +11,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +19,8 @@ import Svg, { Circle, G, Polyline } from 'react-native-svg';
 
 import { createAppError, type AppError } from '@/domain/common/app-error';
 import type { CategoryTopicItem } from '@/domain/categories/types';
+import { moodDefinitionFor } from '@/domain/journal/mood-catalog';
+import type { JournalEntry, JournalMoodId } from '@/domain/journal/types';
 import type { MoneyHistorySummary } from '@/domain/money/calculations';
 import type { MoneyRecord } from '@/domain/money/types';
 import type { UserPreferences } from '@/domain/preferences/types';
@@ -40,6 +43,8 @@ import {
   useAppBackground,
   type AppBackgroundId,
 } from '@/features/settings/app-background';
+import { MoodFaceIcon } from '@/features/journal/MoodFaceIcon';
+import { useJournalOverview } from '@/features/journal/useJournalOverview';
 import { AppBackgroundFrame } from '@/features/settings/AppBackgroundFrame';
 import { usePreferenceSettings } from '@/features/settings/usePreferenceSettings';
 
@@ -67,6 +72,7 @@ import {
   type MoneyNoteCategoryTemplate,
   type MoneyNoteTotals,
 } from './moneyNoteModel';
+import { MoneyNoteSummaryIcon } from './MoneyNoteSummaryIcons';
 
 const skyBlue = '#5CC4BA';
 const lightBlue = '#DDF3F0';
@@ -1537,6 +1543,302 @@ function InlineDatePicker({
   );
 }
 
+type CalendarDetailTab = 'journal' | 'spending';
+
+function CalendarPageHeader({ title }: { title: string }) {
+  return (
+    <View style={styles.calendarPageHeader}>
+      <View>
+        <Text numberOfLines={1} style={styles.calendarPageTitle}>
+          {title}
+        </Text>
+        <View style={styles.calendarTitleAccent} />
+      </View>
+      <MoreHeaderButton />
+    </View>
+  );
+}
+
+function CalendarMonthSwitcher({
+  monthDate,
+  onChange,
+}: {
+  monthDate: Date;
+  onChange: (date: Date) => void;
+}) {
+  return (
+    <View style={styles.calendarMonthSwitcher}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => onChange(shiftMonth(monthDate, -1))}
+        style={styles.calendarStepButton}
+      >
+        <MaterialCommunityIcons color="#18325C" name="chevron-left" size={30} />
+      </Pressable>
+      <View style={styles.calendarMonthPill}>
+        <Text style={styles.calendarMonthText}>{monthLabel(monthDate)}</Text>
+        <MaterialCommunityIcons color="#20C8C4" name="calendar-month-outline" size={26} style={styles.calendarMonthIcon} />
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => onChange(shiftMonth(monthDate, 1))}
+        style={styles.calendarStepButton}
+      >
+        <MaterialCommunityIcons color="#18325C" name="chevron-right" size={30} />
+      </Pressable>
+    </View>
+  );
+}
+
+function CalendarDetailTabs({
+  active,
+  onChange,
+}: {
+  active: CalendarDetailTab;
+  onChange: (tab: CalendarDetailTab) => void;
+}) {
+  return (
+    <View style={styles.calendarDetailTabs}>
+      <Pressable
+        accessibilityRole="tab"
+        onPress={() => onChange('spending')}
+        style={[styles.calendarDetailTab, active === 'spending' ? styles.calendarDetailTabActive : null]}
+      >
+        <MaterialCommunityIcons color={active === 'spending' ? '#14BBB7' : '#9AA4B5'} name="wallet-outline" size={24} />
+        <Text style={[styles.calendarDetailTabText, active === 'spending' ? styles.calendarDetailTabTextActive : null]}>
+          Chi tiêu
+        </Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="tab"
+        onPress={() => onChange('journal')}
+        style={[styles.calendarDetailTab, active === 'journal' ? styles.calendarDetailTabActive : null]}
+      >
+        <MaterialCommunityIcons color={active === 'journal' ? '#14BBB7' : '#18325C'} name="book-open-variant-outline" size={24} />
+        <Text style={[styles.calendarDetailTabText, active === 'journal' ? styles.calendarDetailTabTextActive : null]}>
+          Nhật ký
+        </Text>
+        {active === 'journal' ? (
+          <View style={styles.calendarJournalHeart}>
+            <MaterialCommunityIcons color="#FF4F77" name="heart" size={20} />
+          </View>
+        ) : null}
+      </Pressable>
+    </View>
+  );
+}
+
+function CalendarSummaryMetricCard({
+  amount,
+  icon,
+  label,
+  tone,
+}: {
+  amount: string;
+  icon: 'expense' | 'income' | 'total';
+  label: string;
+  tone: 'expense' | 'income' | 'total';
+}) {
+  const amountStyle =
+    tone === 'expense' ? styles.calendarMetricAmountExpense : tone === 'income' ? styles.calendarMetricAmountIncome : styles.calendarMetricAmountTotal;
+  const cardStyle =
+    tone === 'expense' ? styles.calendarMetricCardExpense : tone === 'income' ? styles.calendarMetricCardIncome : styles.calendarMetricCardTotal;
+
+  return (
+    <View style={[styles.calendarMetricCard, cardStyle]}>
+      <MoneyNoteSummaryIcon name={icon} size={34} />
+      <View style={styles.calendarMetricText}>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72} style={[styles.calendarMetricLabel, amountStyle]}>
+          {label}
+        </Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72} style={[styles.calendarMetricAmount, amountStyle]}>
+          {amount}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function CalendarRecordTable({
+  copy,
+  currencyCode,
+  language,
+  locale,
+  onRecordPress,
+  records,
+  selectedLocalDate,
+  selectedTotals,
+}: {
+  copy: typeof moneyNoteCopy.vi;
+  currencyCode: string;
+  language: AppLanguage;
+  locale: string;
+  onRecordPress: (record: MoneyRecord) => void;
+  records: MoneyRecord[];
+  selectedLocalDate: string;
+  selectedTotals: MoneyNoteTotals;
+}) {
+  const selectedNetStyle = selectedTotals.netMinor < 0 ? styles.expenseAmount : styles.incomeAmount;
+
+  return (
+    <View style={styles.calendarRecordTable}>
+      <View style={styles.calendarRecordTableDateRow}>
+        <MaterialCommunityIcons color="#18325C" name="calendar-month" size={18} />
+        <Text style={styles.calendarRecordDateText}>{formatMoneyNoteShortDate(selectedLocalDate)}</Text>
+      </View>
+      <View style={styles.calendarRecordTableInner}>
+        <View style={styles.calendarRecordTableHeader}>
+          <Text style={styles.calendarRecordTableHeaderText}>{formatMoneyNoteShortDate(selectedLocalDate)}</Text>
+          <Text style={[styles.calendarRecordTableHeaderAmount, selectedNetStyle]}>
+            {formatMoneyNoteAmount(selectedTotals.netMinor, { currencyCode, locale })}
+          </Text>
+        </View>
+        {records.length === 0 ? (
+          <Text style={styles.calendarEmptyText}>{copy.noData}</Text>
+        ) : null}
+        {records.map((record) => {
+          const template = templateForRecord(record);
+          const fallback = record.kind === 'expense' ? copy.expense : copy.income;
+
+          return (
+            <Pressable
+              accessibilityRole="button"
+              key={record.id}
+              onPress={() => onRecordPress(record)}
+              style={styles.calendarRecordTableRow}
+            >
+              {template ? (
+                <CategoryIcon color={template.color} icon={template.icon} />
+              ) : (
+                <MaterialCommunityIcons color={record.kind === 'expense' ? expenseColor : incomeColor} name="cash" size={30} />
+              )}
+              <Text numberOfLines={1} style={styles.calendarRecordTableTitle}>
+                {recordDisplayLabel(record, language, fallback)}
+              </Text>
+              <Text style={[styles.calendarRecordTableAmount, record.kind === 'expense' ? styles.expenseAmount : styles.incomeAmount]}>
+                {formatMoneyNoteAmount(record.amountMinor, {
+                  currencyCode: record.currencyCode,
+                  locale,
+                })}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function CalendarSpendingPanel({
+  copy,
+  currencyCode,
+  language,
+  locale,
+  onRecordPress,
+  records,
+  selectedLocalDate,
+  selectedTotals,
+}: {
+  copy: typeof moneyNoteCopy.vi;
+  currencyCode: string;
+  language: AppLanguage;
+  locale: string;
+  onRecordPress: (record: MoneyRecord) => void;
+  records: MoneyRecord[];
+  selectedLocalDate: string;
+  selectedTotals: MoneyNoteTotals;
+}) {
+  const formatAmount = (amountMinor: number) => formatMoneyNoteAmount(amountMinor, { currencyCode, locale });
+
+  return (
+    <View style={styles.calendarDetailBody}>
+      <View style={styles.calendarMetricRow}>
+        <CalendarSummaryMetricCard amount={formatAmount(selectedTotals.incomeMinor)} icon="income" label={copy.income} tone="income" />
+        <CalendarSummaryMetricCard amount={formatAmount(selectedTotals.expenseMinor)} icon="expense" label={copy.expense} tone="expense" />
+        <CalendarSummaryMetricCard amount={formatAmount(selectedTotals.netMinor)} icon="total" label={copy.net} tone="total" />
+      </View>
+      <CalendarRecordTable
+        copy={copy}
+        currencyCode={currencyCode}
+        language={language}
+        locale={locale}
+        onRecordPress={onRecordPress}
+        records={records}
+        selectedLocalDate={selectedLocalDate}
+        selectedTotals={selectedTotals}
+      />
+    </View>
+  );
+}
+
+function CalendarMoodPill({ moodId }: { moodId: JournalMoodId }) {
+  const mood = moodDefinitionFor(moodId);
+
+  return (
+    <View style={[styles.calendarMoodPill, { backgroundColor: mood.softColor }]}>
+      <MoodFaceIcon moodId={moodId} size={24} />
+      <Text style={[styles.calendarMoodPillText, { color: mood.color }]}>{mood.labelVi}</Text>
+    </View>
+  );
+}
+
+function CalendarJournalRow({
+  entry,
+  isLast,
+}: {
+  entry: JournalEntry;
+  isLast: boolean;
+}) {
+  const note = entry.note?.trim() || 'Khoảnh khắc trong ngày';
+
+  return (
+    <View style={styles.calendarJournalRow}>
+      <View style={styles.calendarJournalTimeColumn}>
+        <Text style={styles.calendarJournalTimeText}>{entry.localTime}</Text>
+        <View style={styles.calendarJournalDot} />
+        {isLast ? null : <View style={styles.calendarJournalLine} />}
+      </View>
+      <MoodFaceIcon moodId={entry.moodId} size={50} />
+      <View style={styles.calendarJournalNoteWrap}>
+        <Text numberOfLines={2} style={styles.calendarJournalNote}>
+          {note}
+        </Text>
+      </View>
+      <Image source={{ uri: entry.photoUri }} style={styles.calendarJournalThumb} transition={140} />
+    </View>
+  );
+}
+
+function CalendarJournalPanel({
+  entries,
+  selectedLocalDate,
+}: {
+  entries: JournalEntry[];
+  selectedLocalDate: string;
+}) {
+  const moodId = entries[0]?.moodId;
+
+  return (
+    <View style={styles.calendarDetailBody}>
+      <View style={styles.calendarJournalCard}>
+        <View style={styles.calendarJournalCardHeader}>
+          {moodId ? <CalendarMoodPill moodId={moodId} /> : <View />}
+          <View style={styles.calendarJournalDateBadge}>
+            <MaterialCommunityIcons color="#18325C" name="calendar-month" size={18} />
+            <Text style={styles.calendarRecordDateText}>{formatMoneyNoteShortDate(selectedLocalDate)}</Text>
+          </View>
+        </View>
+        {entries.length === 0 ? (
+          <Text style={styles.calendarEmptyText}>Chưa có nhật ký trong ngày</Text>
+        ) : null}
+        {entries.map((entry, index) => (
+          <CalendarJournalRow entry={entry} isLast={index === entries.length - 1} key={entry.id} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function SummaryStrip({
   copy,
   currencyCode,
@@ -1577,9 +1879,18 @@ export function MoneyNoteCalendarScreen() {
   const appBackground = useAppBackground();
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [selectedLocalDate, setSelectedLocalDate] = useState(() => formatLocalDate(new Date()));
+  const [detailTab, setDetailTab] = useState<CalendarDetailTab>('spending');
   const monthData = useMoneyNoteMonthData(monthDate);
   const days = useMemo(() => buildMoneyNoteCalendarMonth(monthDate), [monthDate]);
   const weekdayLabels = ['T.2', 'T.3', 'T.4', 'T.5', 'T.6', 'T.7', 'CN'];
+  const selectedJournalDate = useMemo(() => parseLocalDate(selectedLocalDate), [selectedLocalDate]);
+  const journalOverview = useJournalOverview(selectedJournalDate, monthDate);
+  const journalEntries = journalOverview.state.data?.entries ?? [];
+  const journalMoodByDate = useMemo(() => {
+    const dayMoods = journalOverview.state.data?.monthSummary.dayMoods ?? [];
+
+    return new Map<string, (typeof dayMoods)[number]>(dayMoods.map((item) => [String(item.localDate), item]));
+  }, [journalOverview.state.data]);
   const dailyTotals = useMemo(() => {
     if (monthData.summaries.length === 0) {
       return calculateMoneyNoteDailyTotals(monthData.records);
@@ -1599,7 +1910,6 @@ export function MoneyNoteCalendarScreen() {
     () => monthData.records.filter((record) => record.localDate === selectedLocalDate),
     [monthData.records, selectedLocalDate],
   );
-  const selectedNetStyle = selectedTotals.netMinor < 0 ? styles.expenseAmount : styles.incomeAmount;
   const contentBackgroundColor = appBackground.photoUri ? 'transparent' : appBackground.colors.appBackground;
 
   useEffect(() => {
@@ -1624,11 +1934,12 @@ export function MoneyNoteCalendarScreen() {
         <ScrollView
           contentContainerStyle={[
             styles.plainContent,
+            styles.calendarContent,
             { backgroundColor: contentBackgroundColor },
           ]}
         >
-        <ScreenHeader right={<MoreHeaderButton />} title={copy.calendar} />
-        <MonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
+        <CalendarPageHeader title={copy.calendar} />
+        <CalendarMonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
         <View style={styles.calendarGrid}>
           {weekdayLabels.map((label) => (
             <View key={label} style={styles.weekdayCell}>
@@ -1642,6 +1953,7 @@ export function MoneyNoteCalendarScreen() {
             const dayNet = dayTotals?.netMinor ?? 0;
             const hasAmount = dayNet !== 0;
             const isSelected = selectedLocalDate === day.localDate;
+            const mood = journalMoodByDate.get(day.localDate);
 
             return (
             <Pressable
@@ -1653,15 +1965,18 @@ export function MoneyNoteCalendarScreen() {
                 day.isToday && day.inCurrentMonth ? styles.dayCellToday : null,
                 isSelected ? styles.dayCellSelected : null,
               ]}>
-              <Text
-                style={[
-                  styles.dayText,
-                  !day.inCurrentMonth ? styles.dayTextMuted : null,
-                  day.dayOfWeek === 6 && day.inCurrentMonth ? styles.saturdayText : null,
-                  day.dayOfWeek === 0 && day.inCurrentMonth ? styles.sundayText : null,
-                ]}>
-                {day.dayOfMonth}
-              </Text>
+              <View style={styles.calendarDayHeader}>
+                <Text
+                  style={[
+                    styles.dayText,
+                    !day.inCurrentMonth ? styles.dayTextMuted : null,
+                    day.dayOfWeek === 6 && day.inCurrentMonth ? styles.saturdayText : null,
+                    day.dayOfWeek === 0 && day.inCurrentMonth ? styles.sundayText : null,
+                  ]}>
+                  {day.dayOfMonth}
+                </Text>
+                {mood ? <MoodFaceIcon moodId={mood.moodId} size={24} /> : null}
+              </View>
               {hasAmount ? (
                 <Text
                   numberOfLines={1}
@@ -1686,52 +2001,22 @@ export function MoneyNoteCalendarScreen() {
             {monthData.error?.message ?? (language === 'en' ? 'Could not load data.' : 'Không thể tải dữ liệu.')}
           </Text>
         ) : null}
-        <SummaryStrip
-          copy={copy}
-          currencyCode={monthData.currencyCode}
-          locale={monthData.locale}
-          totals={monthData.totals}
-        />
-        <View style={styles.dayRecordSection}>
-          <View style={styles.selectedDayHeader}>
-            <Text style={styles.selectedDayHeaderText}>{formatMoneyNoteShortDate(selectedLocalDate)}</Text>
-            <Text style={[styles.selectedDayHeaderAmount, selectedNetStyle]}>
-              {formatMoneyNoteAmount(selectedTotals.netMinor, {
-                currencyCode: monthData.currencyCode,
-                locale: monthData.locale,
-              })}
-            </Text>
-          </View>
-          {selectedRecords.length === 0 ? (
-            <Text style={styles.calendarEmptyText}>{copy.noData}</Text>
-          ) : null}
-          {selectedRecords.map((record) => {
-            const template = templateForRecord(record);
-            const fallback = record.kind === 'expense' ? copy.expense : copy.income;
-
-            return (
-              <Pressable
-                accessibilityRole="button"
-                key={record.id}
-                onPress={() => router.push(`/money/${record.id}`)}
-                style={styles.calendarRecordRow}>
-                {template ? (
-                  <CategoryIcon color={template.color} icon={template.icon} />
-                ) : (
-                  <MaterialCommunityIcons color={skyBlue} name="cash" size={30} />
-                )}
-                <Text numberOfLines={1} style={styles.calendarRecordTitle}>
-                  {recordDisplayLabel(record, language, fallback)}
-                </Text>
-                <Text style={[styles.calendarRecordAmount, record.kind === 'expense' ? styles.expenseAmount : styles.incomeAmount]}>
-                  {formatMoneyNoteAmount(record.amountMinor, {
-                    currencyCode: record.currencyCode,
-                    locale: monthData.locale,
-                  })}
-                </Text>
-              </Pressable>
-            );
-          })}
+        <View style={styles.calendarDetailPanel}>
+          <CalendarDetailTabs active={detailTab} onChange={setDetailTab} />
+          {detailTab === 'spending' ? (
+            <CalendarSpendingPanel
+              copy={copy}
+              currencyCode={monthData.currencyCode}
+              language={language}
+              locale={monthData.locale}
+              onRecordPress={(record) => router.push(`/money/${record.id}`)}
+              records={selectedRecords}
+              selectedLocalDate={selectedLocalDate}
+              selectedTotals={selectedTotals}
+            />
+          ) : (
+            <CalendarJournalPanel entries={journalEntries} selectedLocalDate={selectedLocalDate} />
+          )}
         </View>
         </ScrollView>
       </AppBackgroundFrame>
@@ -3432,12 +3717,371 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 14,
   },
+  calendarContent: {
+    paddingBottom: 122,
+  },
+  calendarDayHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  calendarDetailBody: {
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+  },
+  calendarDetailPanel: {
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    borderColor: '#DFF1F2',
+    borderRadius: 28,
+    borderWidth: 1,
+    elevation: 5,
+    marginHorizontal: 10,
+    marginTop: 12,
+    paddingBottom: 14,
+    paddingTop: 8,
+    shadowColor: '#8FCFD0',
+    shadowOffset: {
+      height: 8,
+      width: 0,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+  },
+  calendarDetailTab: {
+    alignItems: 'center',
+    borderRadius: 22,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    minHeight: 40,
+    position: 'relative',
+  },
+  calendarDetailTabActive: {
+    backgroundColor: '#DDF5F1',
+  },
+  calendarDetailTabText: {
+    ...moneyType.label,
+    color: '#18325C',
+  },
+  calendarDetailTabTextActive: {
+    color: '#18325C',
+  },
+  calendarDetailTabs: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    borderColor: '#DDE7EE',
+    borderRadius: 24,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 4,
+    maxWidth: 330,
+    minHeight: 46,
+    padding: 3,
+    width: '82%',
+  },
   calendarGrid: {
-    backgroundColor: '#FFFFFF',
-    borderTopColor: line,
-    borderTopWidth: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.97)',
+    borderColor: '#E2EEF2',
+    borderRadius: 28,
+    borderWidth: 1,
+    elevation: 4,
     flexDirection: 'row',
     flexWrap: 'wrap',
+    marginHorizontal: 10,
+    marginTop: 8,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    shadowColor: '#9CDCDD',
+    shadowOffset: {
+      height: 7,
+      width: 0,
+    },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+  },
+  calendarJournalCard: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E4EEF2',
+    borderRadius: 22,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  calendarJournalCardHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  calendarJournalDateBadge: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  calendarJournalDot: {
+    backgroundColor: '#4B92EE',
+    borderColor: '#FFFFFF',
+    borderRadius: 6,
+    borderWidth: 2,
+    height: 12,
+    position: 'absolute',
+    right: 1,
+    top: 30,
+    width: 12,
+  },
+  calendarJournalHeart: {
+    position: 'absolute',
+    right: 12,
+    top: -10,
+    transform: [{ rotate: '-12deg' }],
+  },
+  calendarJournalLine: {
+    backgroundColor: '#B9DBFF',
+    bottom: -16,
+    position: 'absolute',
+    right: 6,
+    top: 42,
+    width: 1,
+  },
+  calendarJournalNote: {
+    ...moneyType.labelSmall,
+    color: '#18325C',
+  },
+  calendarJournalNoteWrap: {
+    borderBottomColor: '#E8EEF4',
+    borderBottomWidth: 1,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 58,
+    paddingHorizontal: 8,
+  },
+  calendarJournalRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    minHeight: 72,
+  },
+  calendarJournalThumb: {
+    backgroundColor: '#DDE7E7',
+    borderRadius: 10,
+    height: 54,
+    width: 82,
+  },
+  calendarJournalTimeColumn: {
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    position: 'relative',
+    width: 56,
+  },
+  calendarJournalTimeText: {
+    ...moneyType.caption,
+    color: '#2F80ED',
+    fontFamily: 'Montserrat_700Bold',
+    fontWeight: '700',
+  },
+  calendarMetricAmount: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 19,
+    marginTop: 2,
+  },
+  calendarMetricAmountExpense: {
+    color: expenseColor,
+  },
+  calendarMetricAmountIncome: {
+    color: '#13B5AF',
+  },
+  calendarMetricAmountTotal: {
+    color: '#2F80ED',
+  },
+  calendarMetricCard: {
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 4,
+    minHeight: 62,
+    paddingHorizontal: 5,
+    paddingVertical: 7,
+  },
+  calendarMetricCardExpense: {
+    backgroundColor: '#FFF6F7',
+    borderColor: '#FFC8D2',
+  },
+  calendarMetricCardIncome: {
+    backgroundColor: '#EFFCF9',
+    borderColor: '#9DE5DD',
+  },
+  calendarMetricCardTotal: {
+    backgroundColor: '#F3F8FF',
+    borderColor: '#B8D6FF',
+  },
+  calendarMetricLabel: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 16,
+  },
+  calendarMetricRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  calendarMetricText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  calendarMonthIcon: {
+    position: 'absolute',
+    right: 22,
+  },
+  calendarMonthPill: {
+    alignItems: 'center',
+    backgroundColor: '#E5F7F5',
+    borderColor: '#D8EEF0',
+    borderRadius: 24,
+    borderWidth: 1,
+    elevation: 2,
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    minHeight: 50,
+    paddingHorizontal: 44,
+    shadowColor: '#99D9DA',
+    shadowOffset: {
+      height: 5,
+      width: 0,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+  },
+  calendarMonthSwitcher: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 24,
+    paddingHorizontal: 24,
+    paddingTop: 0,
+  },
+  calendarMonthText: {
+    ...moneyType.titleSmall,
+    color: '#18325C',
+  },
+  calendarMoodPill: {
+    alignItems: 'center',
+    borderRadius: 18,
+    flexDirection: 'row',
+    gap: 6,
+    minHeight: 36,
+    paddingHorizontal: 12,
+  },
+  calendarMoodPillText: {
+    ...moneyType.labelSmall,
+  },
+  calendarPageHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 58,
+    paddingHorizontal: 22,
+    paddingTop: 2,
+  },
+  calendarPageTitle: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 36,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 44,
+    color: '#18325C',
+  },
+  calendarRecordDateText: {
+    ...moneyType.labelSmall,
+    color: '#18325C',
+  },
+  calendarRecordTable: {
+    gap: 10,
+  },
+  calendarRecordTableAmount: {
+    ...moneyType.label,
+    marginLeft: 8,
+  },
+  calendarRecordTableDateRow: {
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    flexDirection: 'row',
+    gap: 6,
+    marginRight: 12,
+  },
+  calendarRecordTableHeader: {
+    alignItems: 'center',
+    backgroundColor: '#EFF8F7',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    flexDirection: 'row',
+    minHeight: 52,
+    paddingHorizontal: 18,
+  },
+  calendarRecordTableHeaderAmount: {
+    ...moneyType.label,
+    marginLeft: 10,
+  },
+  calendarRecordTableHeaderText: {
+    ...moneyType.label,
+    color: ink,
+    flex: 1,
+  },
+  calendarRecordTableInner: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E4EEF2',
+    borderRadius: 18,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  calendarRecordTableRow: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderTopColor: '#EEF3F6',
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    gap: 14,
+    minHeight: 62,
+    paddingHorizontal: 18,
+  },
+  calendarRecordTableTitle: {
+    ...moneyType.labelSmall,
+    color: ink,
+    flex: 1,
+  },
+  calendarStepButton: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#EBF2F3',
+    borderRadius: 24,
+    borderWidth: 1,
+    elevation: 2,
+    height: 48,
+    justifyContent: 'center',
+    shadowColor: '#8BA7B0',
+    shadowOffset: {
+      height: 5,
+      width: 0,
+    },
+    shadowOpacity: 0.14,
+    shadowRadius: 9,
+    width: 48,
+  },
+  calendarTitleAccent: {
+    backgroundColor: '#55D3CF',
+    borderRadius: 4,
+    height: 7,
+    marginTop: 8,
+    width: 31,
   },
   categoryEditText: {
     ...moneyType.labelSmall,
@@ -3575,35 +4219,40 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     alignItems: 'flex-start',
-    aspectRatio: 1.35,
-    borderColor: line,
+    aspectRatio: 1.12,
+    borderColor: '#E8F0F3',
     borderRightWidth: 1,
     borderTopWidth: 1,
-    justifyContent: 'flex-start',
-    padding: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: 6,
+    paddingVertical: 8,
     width: `${100 / 7}%`,
   },
   dayAmountText: {
     ...moneyType.caption,
-    alignSelf: 'flex-end',
-    marginTop: 'auto',
+    alignSelf: 'center',
+    fontFamily: 'Montserrat_600SemiBold',
+    fontWeight: '600',
+    marginTop: 3,
   },
   dayCellSelected: {
-    backgroundColor: lightBlue,
+    backgroundColor: '#D8F6F4',
+    borderColor: '#B2E7E4',
+    borderRadius: 16,
   },
   dayCellToday: {
-    backgroundColor: '#EAF7FC',
+    backgroundColor: '#F0FBFB',
   },
   dayRecordSection: {
     backgroundColor: '#FFFFFF',
     paddingBottom: 18,
   },
   dayText: {
-    ...moneyType.body,
-    color: '#555555',
+    ...moneyType.titleSmall,
+    color: '#18325C',
   },
   dayTextMuted: {
-    color: '#B7B7B7',
+    color: '#AAB3C2',
   },
   dragHandle: {
     ...moneyType.titleSmall,
@@ -3687,12 +4336,21 @@ const styles = StyleSheet.create({
   },
   moreHeaderButton: {
     alignItems: 'center',
-    borderColor: line,
-    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#EEF3F5',
+    borderRadius: 25,
     borderWidth: 1,
-    height: 38,
+    elevation: 4,
+    height: 50,
     justifyContent: 'center',
-    width: 38,
+    shadowColor: '#8BA7B0',
+    shadowOffset: {
+      height: 6,
+      width: 0,
+    },
+    shadowOpacity: 0.18,
+    shadowRadius: 11,
+    width: 50,
   },
   headerTitle: {
     ...moneyType.title,
@@ -4462,15 +5120,13 @@ const styles = StyleSheet.create({
   },
   weekdayCell: {
     alignItems: 'center',
-    backgroundColor: panel,
-    borderColor: line,
-    borderRightWidth: 1,
+    backgroundColor: 'transparent',
     justifyContent: 'center',
-    minHeight: 36,
+    minHeight: 34,
     width: `${100 / 7}%`,
   },
   weekdayText: {
-    ...moneyType.labelSmall,
-    color: ink,
+    ...moneyType.label,
+    color: '#18325C',
   },
 });

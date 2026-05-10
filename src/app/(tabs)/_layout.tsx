@@ -58,7 +58,7 @@ function FloatingCameraTabButton() {
       style={tabIconStyles.captureButton}
     >
       <View style={tabIconStyles.captureButtonInner}>
-        <MaterialCommunityIcons color="#FFFFFF" name="camera-plus" size={32} />
+        <MaterialCommunityIcons color="#FFFFFF" name="plus" size={38} />
       </View>
     </Pressable>
   );
