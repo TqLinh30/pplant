@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -1877,6 +1878,7 @@ export function MoneyNoteCalendarScreen() {
   const router = useRouter();
   const { copy, language } = useMoneyNoteCopy();
   const appBackground = useAppBackground();
+  const { width: viewportWidth } = useWindowDimensions();
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [selectedLocalDate, setSelectedLocalDate] = useState(() => formatLocalDate(new Date()));
   const [detailTab, setDetailTab] = useState<CalendarDetailTab>('spending');
@@ -1911,6 +1913,10 @@ export function MoneyNoteCalendarScreen() {
     [monthData.records, selectedLocalDate],
   );
   const contentBackgroundColor = appBackground.photoUri ? 'transparent' : appBackground.colors.appBackground;
+  const calendarDayCellSize = useMemo(
+    () => Math.floor((viewportWidth - 42) / 7),
+    [viewportWidth],
+  );
 
   useEffect(() => {
     const bounds = getMonthBounds(monthDate);
@@ -1962,34 +1968,38 @@ export function MoneyNoteCalendarScreen() {
               onPress={() => selectDay(day.localDate, day.inCurrentMonth)}
               style={[
                 styles.dayCell,
+                { height: calendarDayCellSize, width: calendarDayCellSize },
                 day.isToday && day.inCurrentMonth ? styles.dayCellToday : null,
-                isSelected ? styles.dayCellSelected : null,
               ]}>
-              <View style={styles.calendarDayHeader}>
-                <Text
-                  style={[
-                    styles.dayText,
-                    !day.inCurrentMonth ? styles.dayTextMuted : null,
-                    day.dayOfWeek === 6 && day.inCurrentMonth ? styles.saturdayText : null,
-                    day.dayOfWeek === 0 && day.inCurrentMonth ? styles.sundayText : null,
-                  ]}>
-                  {day.dayOfMonth}
-                </Text>
-                {mood ? <MoodFaceIcon moodId={mood.moodId} size={24} /> : null}
+              <View style={[styles.calendarDayTile, isSelected ? styles.dayCellSelected : null]}>
+                <View style={styles.calendarDayHeader}>
+                  <Text
+                    style={[
+                      styles.dayText,
+                      !day.inCurrentMonth ? styles.dayTextMuted : null,
+                      day.dayOfWeek === 6 && day.inCurrentMonth ? styles.saturdayText : null,
+                      day.dayOfWeek === 0 && day.inCurrentMonth ? styles.sundayText : null,
+                    ]}>
+                    {day.dayOfMonth}
+                  </Text>
+                  {mood ? <MoodFaceIcon moodId={mood.moodId} size={16} /> : null}
+                </View>
+                {hasAmount ? (
+                  <Text
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.72}
+                    numberOfLines={1}
+                    style={[
+                      styles.dayAmountText,
+                      dayNet < 0 ? styles.expenseAmount : styles.incomeAmount,
+                    ]}>
+                    {formatMoneyNoteAmountMagnitude(dayNet, {
+                      currencyCode: monthData.currencyCode,
+                      locale: monthData.locale,
+                    })}
+                  </Text>
+                ) : null}
               </View>
-              {hasAmount ? (
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.dayAmountText,
-                    dayNet < 0 ? styles.expenseAmount : styles.incomeAmount,
-                  ]}>
-                  {formatMoneyNoteAmountMagnitude(dayNet, {
-                    currencyCode: monthData.currencyCode,
-                    locale: monthData.locale,
-                  })}
-                </Text>
-              ) : null}
             </Pressable>
             );
           })}
@@ -3726,6 +3736,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
   },
+  calendarDayTile: {
+    aspectRatio: 1,
+    borderRadius: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 3,
+    paddingVertical: 2,
+    width: '100%',
+  },
   calendarDetailBody: {
     gap: 8,
     paddingHorizontal: 14,
@@ -4218,27 +4236,29 @@ const styles = StyleSheet.create({
     color: expenseColor,
   },
   dayCell: {
-    alignItems: 'flex-start',
-    aspectRatio: 1.12,
+    alignItems: 'center',
     borderColor: '#E8F0F3',
     borderRightWidth: 1,
     borderTopWidth: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: 6,
-    paddingVertical: 8,
-    width: `${100 / 7}%`,
+    justifyContent: 'center',
+    padding: 4,
   },
   dayAmountText: {
-    ...moneyType.caption,
     alignSelf: 'center',
     fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 10,
     fontWeight: '600',
-    marginTop: 3,
+    letterSpacing: 0,
+    lineHeight: 12,
+    marginTop: 1,
+    textAlign: 'center',
+    width: '100%',
   },
   dayCellSelected: {
     backgroundColor: '#D8F6F4',
     borderColor: '#B2E7E4',
-    borderRadius: 16,
+    borderWidth: 1,
+    borderRadius: 12,
   },
   dayCellToday: {
     backgroundColor: '#F0FBFB',
@@ -4248,7 +4268,11 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
   },
   dayText: {
-    ...moneyType.titleSmall,
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 18,
     color: '#18325C',
   },
   dayTextMuted: {
