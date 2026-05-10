@@ -38,7 +38,7 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Pplant uses the camera only when you choose to capture a receipt for a local draft.",
+          "cameraPermission": "Pplant uses the camera only when you choose to capture a receipt draft or a local journal photo.",
           "photosPermission": "Pplant lets you choose a receipt photo only when you save it as a local draft."
         }
       ],

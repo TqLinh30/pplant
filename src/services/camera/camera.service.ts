@@ -4,22 +4,30 @@ import { createAppError } from '@/domain/common/app-error';
 import { err, ok, type AppResult } from '@/domain/common/result';
 
 export type ReceiptPhotoSource = 'camera' | 'library';
+export type CameraPhotoSource = ReceiptPhotoSource;
 
 export type ReceiptPhotoAsset = {
   fileName: string | null;
   mimeType: string | null;
   uri: string;
 };
+export type CameraPhotoAsset = ReceiptPhotoAsset;
 
 export type ReceiptPhotoSelectionOutcome =
   | { reason: 'camera_permission'; status: 'permission_denied' }
   | { reason: 'library_permission'; status: 'permission_denied' }
   | { source: ReceiptPhotoSource; status: 'canceled' }
   | { asset: ReceiptPhotoAsset; source: ReceiptPhotoSource; status: 'selected' };
+export type CameraPhotoSelectionOutcome = ReceiptPhotoSelectionOutcome;
 
 export type ReceiptCameraPort = {
   captureReceiptPhoto(): Promise<AppResult<ReceiptPhotoSelectionOutcome>>;
   chooseReceiptPhoto(): Promise<AppResult<ReceiptPhotoSelectionOutcome>>;
+};
+
+export type PhotoCameraPort = {
+  capturePhoto(): Promise<AppResult<CameraPhotoSelectionOutcome>>;
+  choosePhoto(): Promise<AppResult<CameraPhotoSelectionOutcome>>;
 };
 
 function normalizeAsset(asset: ImagePicker.ImagePickerAsset): ReceiptPhotoAsset {
@@ -59,8 +67,8 @@ function firstAsset(
   };
 }
 
-export const expoReceiptCamera: ReceiptCameraPort = {
-  async captureReceiptPhoto() {
+export const expoPhotoCamera: PhotoCameraPort = {
+  async capturePhoto() {
     try {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
 
@@ -72,11 +80,11 @@ export const expoReceiptCamera: ReceiptCameraPort = {
 
       return ok(firstAsset(result, 'camera'));
     } catch (cause) {
-      return err(createAppError('unavailable', 'Receipt camera could not open.', 'manual_entry', cause));
+      return err(createAppError('unavailable', 'Camera could not open.', 'manual_entry', cause));
     }
   },
 
-  async chooseReceiptPhoto() {
+  async choosePhoto() {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync(false);
 
@@ -88,9 +96,14 @@ export const expoReceiptCamera: ReceiptCameraPort = {
 
       return ok(firstAsset(result, 'library'));
     } catch (cause) {
-      return err(createAppError('unavailable', 'Receipt photo picker could not open.', 'manual_entry', cause));
+      return err(createAppError('unavailable', 'Photo picker could not open.', 'manual_entry', cause));
     }
   },
+};
+
+export const expoReceiptCamera: ReceiptCameraPort = {
+  captureReceiptPhoto: expoPhotoCamera.capturePhoto,
+  chooseReceiptPhoto: expoPhotoCamera.choosePhoto,
 };
 
 export async function captureReceiptImage(): Promise<AppResult<ReceiptPhotoAsset>> {

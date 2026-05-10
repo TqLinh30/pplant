@@ -371,11 +371,30 @@ export const reflectionInsightPreferences = sqliteTable('reflection_insight_pref
   deletedAt: text('deleted_at'),
 });
 
+export const journalEntries = sqliteTable('journal_entries', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull(),
+  localDate: text('local_date').notNull(),
+  localTime: text('local_time').notNull(),
+  capturedAt: text('captured_at').notNull(),
+  moodId: text('mood_id').notNull(),
+  note: text('note'),
+  photoUri: text('photo_uri').notNull(),
+  contentType: text('content_type'),
+  originalFileName: text('original_file_name'),
+  sizeBytes: integer('size_bytes'),
+  storageScope: text('storage_scope').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+});
+
 export const schema = {
   budgets,
   captureDrafts,
   categories,
   diagnosticEvents,
+  journalEntries,
   moneyRecords,
   moneyRecordTopics,
   recurrenceExceptions,

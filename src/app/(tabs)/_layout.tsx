@@ -1,12 +1,12 @@
-import { Tabs } from 'expo-router';
+import { Tabs, router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppLanguage } from '@/i18n/strings';
 import { typography } from '@/ui/tokens/typography';
 
-type MoneyNoteTabIconName = 'calendar' | 'entry' | 'more' | 'report';
+type MoneyNoteTabIconName = 'calendar' | 'entry' | 'journal' | 'more' | 'report';
 
 function MoneyNoteTabIcon({
   color,
@@ -40,6 +40,10 @@ function MoneyNoteTabIcon({
     );
   }
 
+  if (name === 'journal') {
+    return <MaterialCommunityIcons color={color} name="book-heart-outline" size={28} />;
+  }
+
   return (
     <View style={tabIconStyles.moreDots}>
       <View style={[tabIconStyles.moreDot, { backgroundColor: color }]} />
@@ -57,6 +61,7 @@ export default function TabLayout() {
       ? {
           calendar: 'Calendar',
           entry: 'Entry',
+          journal: 'Journal',
           more: 'More',
           report: 'Report',
         }
@@ -69,6 +74,7 @@ export default function TabLayout() {
 
   const bottomPadding = Math.max(insets.bottom, 6);
   const tabBarHeight = 58 + bottomPadding;
+  const journalTitle = appLanguage === 'en' ? 'Journal' : 'Nhật ký';
 
   return (
     <Tabs
@@ -108,16 +114,40 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="journal-action"
+        options={{
+          tabBarButton: () => (
+            <Pressable
+              accessibilityLabel="Chụp ảnh nhật ký"
+              accessibilityRole="button"
+              onPress={() => router.push('/journal/new')}
+              style={tabIconStyles.captureButton}>
+              <MaterialCommunityIcons color="#FFFFFF" name="camera-plus-outline" size={30} />
+            </Pressable>
+          ),
+          tabBarLabel: () => null,
+          title: '',
+        }}
+      />
+      <Tabs.Screen
         name="history"
         options={{
           tabBarIcon: ({ color }) => <MoneyNoteTabIcon color={color} name="report" />,
           title: titles.report,
         }}
       />
+      <Tabs.Screen
+        name="journal"
+        options={{
+          tabBarIcon: ({ color }) => <MoneyNoteTabIcon color={color} name="journal" />,
+          title: journalTitle,
+        }}
+      />
       <Tabs.Screen name="review" options={{ href: null }} />
       <Tabs.Screen
         name="settings"
         options={{
+          href: null,
           tabBarIcon: ({ color }) => <MoneyNoteTabIcon color={color} name="more" />,
           title: titles.more,
         }}
@@ -148,6 +178,25 @@ const tabIconStyles = StyleSheet.create({
   calendarTop: {
     height: 5,
     width: '100%',
+  },
+  captureButton: {
+    alignItems: 'center',
+    backgroundColor: '#5CC4BA',
+    borderColor: '#FFFFFF',
+    borderRadius: 28,
+    borderWidth: 4,
+    elevation: 6,
+    height: 58,
+    justifyContent: 'center',
+    marginTop: -22,
+    shadowColor: '#253030',
+    shadowOffset: {
+      height: 4,
+      width: 0,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    width: 58,
   },
   moreDot: {
     borderRadius: 4,

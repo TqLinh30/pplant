@@ -35,6 +35,7 @@ export const captureDraftsMigrationId = '013_create_capture_drafts';
 export const receiptParseJobsMigrationId = '014_create_receipt_parse_jobs';
 export const reflectionsMigrationId = '015_create_reflections';
 export const reflectionInsightPreferencesMigrationId = '016_create_reflection_insight_preferences';
+export const journalEntriesMigrationId = '017_create_journal_entries';
 
 const createMigrationTrackingTableSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -596,6 +597,32 @@ CREATE INDEX IF NOT EXISTS idx_reflection_insight_preferences_workspace_cleanup
   ON reflection_insight_preferences (workspace_id, deleted_at, updated_at);
 `;
 
+const journalEntriesMigrationSql = `
+CREATE TABLE IF NOT EXISTS journal_entries (
+  id TEXT PRIMARY KEY NOT NULL,
+  workspace_id TEXT NOT NULL,
+  local_date TEXT NOT NULL,
+  local_time TEXT NOT NULL,
+  captured_at TEXT NOT NULL,
+  mood_id TEXT NOT NULL,
+  note TEXT,
+  photo_uri TEXT NOT NULL,
+  content_type TEXT,
+  original_file_name TEXT,
+  size_bytes INTEGER,
+  storage_scope TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_journal_entries_workspace_date_time
+  ON journal_entries (workspace_id, deleted_at, local_date, local_time, captured_at);
+
+CREATE INDEX IF NOT EXISTS idx_journal_entries_workspace_month
+  ON journal_entries (workspace_id, deleted_at, local_date, mood_id);
+`;
+
 const migrations = [
   {
     id: workspaceMigrationId,
@@ -660,6 +687,10 @@ const migrations = [
   {
     id: reflectionInsightPreferencesMigrationId,
     sql: reflectionInsightPreferencesMigrationSql,
+  },
+  {
+    id: journalEntriesMigrationId,
+    sql: journalEntriesMigrationSql,
   },
 ] as const;
 

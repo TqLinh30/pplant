@@ -70,6 +70,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="receipt/[receiptDraftId]" />
+            <Stack.Screen name="journal/new" />
             <Stack.Screen name="reminder/[reminderId]" />
             <Stack.Screen name="task/[taskId]" />
             <Stack.Screen name="money/[moneyRecordId]" />

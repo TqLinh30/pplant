@@ -6,6 +6,7 @@ export { createBudgetPlanningRepository, type BudgetPlanningRepository } from '.
 export { createCaptureDraftRepository, type CaptureDraftRepository } from './capture-drafts.repository';
 export { createCategoryTopicRepository, type CategoryTopicRepository } from './category-topic.repository';
 export { createDiagnosticsRepository, type DiagnosticsRepository } from './diagnostics.repository';
+export { createJournalEntryRepository, type JournalEntryRepository } from './journal-entries.repository';
 export { createMoneyRecordRepository, type MoneyRecordRepository } from './money-records.repository';
 export { createPreferencesRepository, type PreferencesRepository } from './preferences.repository';
 export { createRecurrenceRuleRepository, type RecurrenceRuleRepository } from './recurrence-rules.repository';

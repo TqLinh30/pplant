@@ -2,6 +2,7 @@ import {
   budgetPlanningMigrationId,
   captureDraftsMigrationId,
   categoryTopicMigrationId,
+  journalEntriesMigrationId,
   migrateDatabase,
   moneyRecordCorrectionsMigrationId,
   moneyRecordsMigrationId,
@@ -65,7 +66,7 @@ describe('local database migrations', () => {
     expect(firstRun).toEqual({
       ok: true,
       value: {
-        applied: 16,
+        applied: 17,
         appliedMigrations: [
           workspaceMigrationId,
           preferencesMigrationId,
@@ -83,6 +84,7 @@ describe('local database migrations', () => {
           receiptParseJobsMigrationId,
           reflectionsMigrationId,
           reflectionInsightPreferencesMigrationId,
+          journalEntriesMigrationId,
         ],
       },
     });
@@ -109,6 +111,7 @@ describe('local database migrations', () => {
     expect(client.appliedMigrations.has(receiptParseJobsMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(reflectionsMigrationId)).toBe(true);
     expect(client.appliedMigrations.has(reflectionInsightPreferencesMigrationId)).toBe(true);
+    expect(client.appliedMigrations.has(journalEntriesMigrationId)).toBe(true);
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS workspaces');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS user_preferences');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS categories');
@@ -140,6 +143,7 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS receipt_parse_jobs');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS reflections');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS reflection_insight_preferences');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS journal_entries');
     expect(client.executedSql.join('\n')).toContain('idx_categories_workspace_active_order');
     expect(client.executedSql.join('\n')).toContain('idx_topics_workspace_active_order');
     expect(client.executedSql.join('\n')).toContain('idx_savings_goals_workspace_active_target_date');
@@ -171,6 +175,8 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('idx_reflection_insight_preferences_active_scope');
     expect(client.executedSql.join('\n')).toContain('idx_reflection_insight_preferences_workspace_active');
     expect(client.executedSql.join('\n')).toContain('idx_reflection_insight_preferences_workspace_cleanup');
+    expect(client.executedSql.join('\n')).toContain('idx_journal_entries_workspace_date_time');
+    expect(client.executedSql.join('\n')).toContain('idx_journal_entries_workspace_month');
     expect(client.executedSql.join('\n')).not.toContain('DROP TABLE');
     expect(client.executedSql.join('\n')).not.toContain('ALTER TABLE recurrence_rules');
     expect(client.executedSql.join('\n')).not.toContain('ALTER TABLE task_recurrence_rules');
@@ -185,7 +191,7 @@ describe('local database migrations', () => {
     expect(result).toEqual({
       ok: true,
       value: {
-        applied: 15,
+        applied: 16,
         appliedMigrations: [
           preferencesMigrationId,
           categoryTopicMigrationId,
@@ -202,6 +208,7 @@ describe('local database migrations', () => {
           receiptParseJobsMigrationId,
           reflectionsMigrationId,
           reflectionInsightPreferencesMigrationId,
+          journalEntriesMigrationId,
         ],
       },
     });
@@ -220,6 +227,7 @@ describe('local database migrations', () => {
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS receipt_parse_jobs');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS reflections');
     expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS reflection_insight_preferences');
+    expect(client.executedSql.join('\n')).toContain('CREATE TABLE IF NOT EXISTS journal_entries');
   });
 
   it('keeps money correction provenance additive through later migrations', async () => {

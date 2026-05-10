@@ -1146,6 +1146,20 @@ function ScreenHeader({
   );
 }
 
+function MoreHeaderButton() {
+  const router = useRouter();
+
+  return (
+    <Pressable
+      accessibilityLabel={moneyNoteCopy[useAppLanguage()].more}
+      accessibilityRole="button"
+      onPress={() => router.push('/(tabs)/settings')}
+      style={styles.moreHeaderButton}>
+      <MaterialCommunityIcons color={ink} name="dots-horizontal" size={26} />
+    </Pressable>
+  );
+}
+
 function IconButton({
   label,
   onPress,
@@ -1318,7 +1332,7 @@ export function MoneyNoteEntryScreen() {
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.entryContent} keyboardShouldPersistTaps="handled">
-        <ScreenHeader title={copy.appTitle} />
+        <ScreenHeader right={<MoreHeaderButton />} title={copy.appTitle} />
         <KindTabs active={state.draft.kind} copy={copy} onChange={changeKind} />
 
         <View style={styles.formPanel}>
@@ -1567,7 +1581,7 @@ export function MoneyNoteCalendarScreen() {
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.plainContent}>
-        <ScreenHeader title={copy.calendar} />
+        <ScreenHeader right={<MoreHeaderButton />} title={copy.calendar} />
         <MonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
         <View style={styles.calendarGrid}>
           {weekdayLabels.map((label) => (
@@ -1861,7 +1875,7 @@ export function MoneyNoteReportScreen() {
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.plainContent}>
-        <ScreenHeader title={copy.report} />
+        <ScreenHeader right={<MoreHeaderButton />} title={copy.report} />
         <MonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
         <ReportSummaryCard
           copy={copy}
@@ -3464,6 +3478,15 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     marginLeft: 12,
+  },
+  moreHeaderButton: {
+    alignItems: 'center',
+    borderColor: line,
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
   },
   headerTitle: {
     ...moneyType.title,
