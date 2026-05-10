@@ -73,6 +73,7 @@ import {
   type MoneyNoteCategoryTemplate,
   type MoneyNoteTotals,
 } from './moneyNoteModel';
+import { MoneyNoteCategoryIcon } from './MoneyNoteCategoryIcons';
 import { MoneyNoteSummaryIcon } from './MoneyNoteSummaryIcons';
 
 const skyBlue = '#5CC4BA';
@@ -1232,10 +1233,8 @@ function KindTabs({
   );
 }
 
-function CategoryIcon({ color, icon }: { color: string; icon: string }) {
-  return (
-    <MaterialCommunityIcons color={color} name={icon as never} size={28} />
-  );
+function CategoryIcon({ icon, size = 44 }: { color?: string; icon: string; size?: number }) {
+  return <MoneyNoteCategoryIcon icon={icon} size={size} />;
 }
 
 function CategoryGrid({
@@ -1624,6 +1623,44 @@ function CalendarDetailTabs({
             <MaterialCommunityIcons color="#FF4F77" name="heart" size={20} />
           </View>
         ) : null}
+      </Pressable>
+    </View>
+  );
+}
+
+function ReportPageHeader({ title }: { title: string }) {
+  return (
+    <View style={styles.reportPageHeader}>
+      <Text numberOfLines={1} style={styles.reportPageTitle}>
+        {title}
+      </Text>
+      <MoreHeaderButton />
+    </View>
+  );
+}
+
+function ReportKindTabs({
+  active,
+  copy,
+  onChange,
+}: {
+  active: 'expense' | 'income';
+  copy: typeof moneyNoteCopy.vi;
+  onChange: (kind: 'expense' | 'income') => void;
+}) {
+  return (
+    <View style={styles.reportKindTabs}>
+      <Pressable accessibilityRole="tab" onPress={() => onChange('expense')} style={styles.reportKindTab}>
+        <Text style={[styles.reportKindTabText, active === 'expense' ? styles.reportKindTabTextActive : null]}>
+          {copy.expense}
+        </Text>
+        <View style={[styles.reportKindTabLine, active === 'expense' ? styles.reportKindTabLineActive : null]} />
+      </Pressable>
+      <Pressable accessibilityRole="tab" onPress={() => onChange('income')} style={styles.reportKindTab}>
+        <Text style={[styles.reportKindTabText, active === 'income' ? styles.reportKindTabTextActive : null]}>
+          {copy.income}
+        </Text>
+        <View style={[styles.reportKindTabLine, active === 'income' ? styles.reportKindTabLineActive : null]} />
       </Pressable>
     </View>
   );
@@ -2052,18 +2089,20 @@ function ReportSummaryCard({
     <View style={styles.reportCard}>
       <View style={styles.reportTopRow}>
         <View style={styles.reportHalf}>
-          <Text style={styles.summaryLabel}>{copy.expense}</Text>
+          <Text style={styles.reportSummaryLabel}>{copy.expense}</Text>
           <Text style={[styles.reportAmount, styles.expenseAmount]}>-{formatAmount(totals.expenseMinor)}</Text>
         </View>
         <View style={styles.reportVerticalLine} />
         <View style={styles.reportHalf}>
-          <Text style={styles.summaryLabel}>{copy.income}</Text>
+          <Text style={styles.reportSummaryLabel}>{copy.income}</Text>
           <Text style={[styles.reportAmount, styles.incomeAmount]}>+{formatAmount(totals.incomeMinor)}</Text>
         </View>
       </View>
       <View style={styles.reportBottomRow}>
-        <Text style={styles.summaryLabel}>{copy.net}</Text>
+        <MaterialCommunityIcons color="#BCEDE8" name="star-four-points" size={22} />
+        <Text style={styles.reportSummaryLabel}>{copy.net}</Text>
         <Text style={[styles.reportNet, netAmountStyle]}>{formatAmount(totals.netMinor)}</Text>
+        <MaterialCommunityIcons color="#BCEDE8" name="star-four-points" size={22} />
       </View>
     </View>
   );
@@ -2087,12 +2126,49 @@ function ReportChartCallout({
       ]}>
       <View>
         <Text style={styles.reportChartCalloutPercent}>{formatReportPercent(segment.percent, language)}</Text>
-        <Text numberOfLines={1} style={styles.reportChartCalloutLabel}>
-          {segment.label}
-        </Text>
+        <View style={styles.reportChartCalloutLabelRow}>
+          <CategoryIcon icon={segment.icon} size={24} />
+          <Text numberOfLines={1} style={styles.reportChartCalloutLabel}>
+            {segment.label}
+          </Text>
+        </View>
       </View>
     </View>
   );
+}
+
+const reportDonutPalette = ['#EA5AAA', '#FF566C', '#FFA51D', '#A97735', '#4ED6C8', '#7EA7FF'];
+
+const reportCalloutSlots = [
+  { side: 'right', top: 122 },
+  { side: 'left', top: 86 },
+  { side: 'right', top: 18 },
+  { side: 'left', top: 18 },
+] as const;
+
+function arrangeReportCallouts(segments: ReportChartSegment[], chartWidth: number): ReportChartSegment[] {
+  return [...segments]
+    .sort((left, right) => right.amountMinor - left.amountMinor)
+    .slice(0, reportCalloutSlots.length)
+    .map((segment, index) => {
+      const slot = reportCalloutSlots[index];
+      const labelWidth = 96;
+      const labelLeft = slot.side === 'right' ? chartWidth - labelWidth - 8 : 8;
+      const endX = slot.side === 'right' ? labelLeft - 8 : labelLeft + labelWidth - 8;
+      const endY = slot.top + 19;
+      const [startPoint] = segment.connectorPoints.split(' ');
+      const [startXText, startYText] = startPoint.split(',');
+      const startX = Number(startXText);
+      const startY = Number(startYText);
+      const bendX = slot.side === 'right' ? Math.min(endX - 8, startX + 30) : Math.max(endX + 8, startX - 30);
+
+      return {
+        ...segment,
+        connectorPoints: `${startX},${startY} ${bendX},${endY} ${endX},${endY}`,
+        labelLeft,
+        labelTop: slot.top,
+      };
+    });
 }
 
 function ReportDonutChart({
@@ -2104,13 +2180,14 @@ function ReportDonutChart({
   language: AppLanguage;
   rows: ReportBreakdownRow[];
 }) {
-  const chartHeight = 230;
-  const chartWidth = 340;
+  const chartHeight = 204;
+  const chartWidth = 344;
   const centerX = chartWidth / 2;
   const centerY = chartHeight / 2;
-  const radius = 52;
-  const strokeWidth = 26;
+  const radius = 50;
+  const strokeWidth = 28;
   const circumference = 2 * Math.PI * radius;
+  const chartRows = [...rows].sort((left, right) => right.amountMinor - left.amountMinor);
   const segments = buildReportChartSegments({
     centerX,
     centerY,
@@ -2118,12 +2195,14 @@ function ReportDonutChart({
     chartWidth,
     circumference,
     radius,
-    rows,
+    rows: chartRows,
     strokeWidth,
-  });
-  const calloutSegments = [...segments]
-    .sort((left, right) => right.amountMinor - left.amountMinor)
-    .slice(0, 2);
+  }).map((segment, index) => ({
+    ...segment,
+    color: reportDonutPalette[index % reportDonutPalette.length],
+  }));
+  const calloutSegments = arrangeReportCallouts(segments, chartWidth);
+  const centerSegment = chartRows[0];
 
   return (
     <View style={styles.reportChartPanel}>
@@ -2162,7 +2241,9 @@ function ReportDonutChart({
             />
           ))}
         </Svg>
-        <View style={styles.reportChartHole} />
+        <View style={styles.reportChartHole}>
+          {centerSegment ? <CategoryIcon icon={centerSegment.icon} size={54} /> : null}
+        </View>
         {calloutSegments.map((segment) => (
           <ReportChartCallout key={`callout-${segment.key}`} language={language} segment={segment} />
         ))}
@@ -2185,11 +2266,25 @@ function ReportBreakdownList({
   locale: string;
   rows: ReportBreakdownRow[];
 }) {
+  if (rows.length === 0) {
+    return (
+      <View style={styles.reportBreakdownList}>
+        <Text style={styles.reportEmptyListText}>{moneyNoteCopy[language].noData}</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.reportBreakdownList}>
-      {rows.map((row) => (
-        <View key={row.key} style={styles.reportBreakdownRow}>
-          <CategoryIcon color={row.color} icon={row.icon} />
+      {rows.slice(0, 6).map((row, index) => (
+        <View
+          key={row.key}
+          style={[
+            styles.reportBreakdownRow,
+            index === Math.min(rows.length, 6) - 1 ? styles.reportBreakdownRowLast : null,
+          ]}
+        >
+          <CategoryIcon icon={row.icon} size={42} />
           <Text numberOfLines={1} style={styles.reportBreakdownTitle}>
             {row.label}
           </Text>
@@ -2221,19 +2316,19 @@ export function MoneyNoteReportScreen() {
       <AppBackgroundFrame>
         <ScrollView
           contentContainerStyle={[
-            styles.plainContent,
+            styles.reportContent,
             { backgroundColor: contentBackgroundColor },
           ]}
         >
-        <ScreenHeader right={<MoreHeaderButton />} title={copy.report} />
-        <MonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
+        <ReportPageHeader title={copy.report} />
+        <CalendarMonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
         <ReportSummaryCard
           copy={copy}
           currencyCode={monthData.currencyCode}
           locale={monthData.locale}
           totals={monthData.totals}
         />
-        <KindTabs active={activeKind} copy={copy} onChange={setActiveKind} />
+        <ReportKindTabs active={activeKind} copy={copy} onChange={setActiveKind} />
         <View style={styles.reportBody}>
           {monthData.status === 'loading' ? <ActivityIndicator color={skyBlue} /> : null}
           {monthData.status === 'failed' ? (
@@ -4797,79 +4892,143 @@ const styles = StyleSheet.create({
     color: ink,
     flex: 1,
   },
+  reportContent: {
+    paddingBottom: 112,
+    paddingTop: 0,
+  },
   reportAmount: {
-    ...moneyType.titleSmall,
+    color: ink,
+    fontFamily: 'Montserrat_800ExtraBold',
+    fontSize: 23,
+    fontWeight: '800',
+    letterSpacing: 0,
+    lineHeight: 29,
     marginTop: 8,
   },
   reportBody: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     minHeight: 360,
+    paddingBottom: 8,
   },
   reportBreakdownAmount: {
-    ...moneyType.label,
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 20,
     color: ink,
     marginLeft: 8,
+    minWidth: 78,
+    textAlign: 'right',
   },
   reportBreakdownList: {
-    backgroundColor: '#FFFFFF',
-    borderTopColor: line,
-    borderTopWidth: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    borderColor: '#EDF4F5',
+    borderRadius: 20,
+    borderWidth: 1,
+    elevation: 4,
+    marginHorizontal: 18,
+    marginTop: 16,
+    overflow: 'hidden',
+    shadowColor: '#95B4BD',
+    shadowOffset: {
+      height: 8,
+      width: 0,
+    },
+    shadowOpacity: 0.13,
+    shadowRadius: 18,
   },
   reportBreakdownPercent: {
-    ...moneyType.caption,
-    color: '#666666',
-    marginLeft: 14,
-    minWidth: 52,
+    fontFamily: 'Montserrat_500Medium',
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 19,
+    color: '#5B606B',
+    marginLeft: 10,
+    minWidth: 42,
     textAlign: 'right',
   },
   reportBreakdownRow: {
     alignItems: 'center',
-    borderBottomColor: line,
+    borderBottomColor: '#EEF3F6',
     borderBottomWidth: 1,
     flexDirection: 'row',
-    gap: 12,
-    minHeight: 68,
-    paddingHorizontal: 18,
+    gap: 8,
+    minHeight: 60,
+    paddingHorizontal: 16,
+  },
+  reportBreakdownRowLast: {
+    borderBottomWidth: 0,
   },
   reportBreakdownTitle: {
-    ...moneyType.label,
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 20,
     color: ink,
     flex: 1,
   },
   reportBottomRow: {
     alignItems: 'center',
-    borderTopColor: line,
+    borderTopColor: '#E8EFF1',
     borderTopWidth: 1,
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'center',
-    minHeight: 74,
+    minHeight: 54,
   },
   reportCard: {
-    backgroundColor: '#FFFFFF',
-    borderColor: line,
-    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    borderColor: '#EDF4F5',
+    borderRadius: 22,
     borderWidth: 1,
-    margin: 18,
+    elevation: 5,
+    marginHorizontal: 18,
+    marginTop: 14,
+    overflow: 'hidden',
+    shadowColor: '#95B4BD',
+    shadowOffset: {
+      height: 10,
+      width: 0,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
   },
   reportChartCallout: {
-    width: 84,
     position: 'absolute',
+    width: 96,
   },
   reportChartCalloutLabel: {
-    ...moneyType.label,
-    color: '#555555',
+    color: ink,
+    flex: 1,
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 18,
+  },
+  reportChartCalloutLabelRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 2,
+    marginTop: 2,
   },
   reportChartCalloutPercent: {
-    ...moneyType.body,
-    color: '#555555',
+    color: '#575C66',
+    fontFamily: 'Montserrat_500Medium',
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 19,
   },
   reportChartCanvas: {
     alignItems: 'center',
     alignSelf: 'center',
-    height: 230,
+    height: 204,
     justifyContent: 'center',
-    maxWidth: 340,
+    maxWidth: 344,
     width: '100%',
   },
   reportChartEmptyText: {
@@ -4878,11 +5037,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   reportChartHole: {
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderColor: '#E9EFEF',
     borderRadius: 39,
     borderWidth: 5,
     height: 78,
+    justifyContent: 'center',
     left: '50%',
     marginLeft: -39,
     marginTop: -39,
@@ -4891,9 +5052,29 @@ const styles = StyleSheet.create({
     width: 78,
   },
   reportChartPanel: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    borderColor: '#EDF4F5',
+    borderRadius: 20,
+    borderWidth: 1,
+    elevation: 4,
+    marginHorizontal: 18,
+    minHeight: 218,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    shadowColor: '#95B4BD',
+    shadowOffset: {
+      height: 8,
+      width: 0,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+  },
+  reportEmptyListText: {
+    ...moneyType.body,
+    color: muted,
+    paddingHorizontal: 18,
+    paddingVertical: 22,
+    textAlign: 'center',
   },
   reportDetailContent: {
     backgroundColor: '#FFFFFF',
@@ -4921,7 +5102,41 @@ const styles = StyleSheet.create({
   reportHalf: {
     alignItems: 'center',
     flex: 1,
-    paddingVertical: 22,
+    justifyContent: 'center',
+    paddingVertical: 14,
+  },
+  reportKindTab: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  reportKindTabLine: {
+    backgroundColor: 'transparent',
+    borderRadius: 3,
+    height: 4,
+    marginTop: 9,
+    width: '92%',
+  },
+  reportKindTabLineActive: {
+    backgroundColor: '#12C7C2',
+  },
+  reportKindTabs: {
+    backgroundColor: 'transparent',
+    flexDirection: 'row',
+    height: 50,
+    marginHorizontal: 28,
+    marginTop: 12,
+  },
+  reportKindTabText: {
+    color: '#A7A3B3',
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 23,
+  },
+  reportKindTabTextActive: {
+    color: '#12C7C2',
   },
   reportModeTab: {
     alignItems: 'center',
@@ -4951,16 +5166,46 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   reportNet: {
-    ...moneyType.title,
+    color: incomeColor,
+    fontFamily: 'Montserrat_800ExtraBold',
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: 0,
+    lineHeight: 32,
+  },
+  reportPageHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 58,
+    paddingHorizontal: 22,
+    paddingTop: 2,
+  },
+  reportPageTitle: {
+    color: '#0F2445',
+    flex: 1,
+    fontFamily: 'Montserrat_800ExtraBold',
+    fontSize: 38,
+    fontWeight: '800',
+    letterSpacing: 0,
+    lineHeight: 46,
+  },
+  reportSummaryLabel: {
     color: ink,
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 22,
   },
   reportTopRow: {
     flexDirection: 'row',
+    minHeight: 86,
   },
   reportVerticalLine: {
     alignSelf: 'center',
-    backgroundColor: '#CFCFCF',
-    height: 74,
+    backgroundColor: '#E8EFF1',
+    height: 62,
     width: 1,
   },
   yearBar: {

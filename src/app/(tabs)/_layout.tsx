@@ -58,7 +58,8 @@ function FloatingCameraTabButton() {
       style={tabIconStyles.captureButton}
     >
       <View style={tabIconStyles.captureButtonInner}>
-        <MaterialCommunityIcons color="#FFFFFF" name="plus" size={38} />
+        <MaterialCommunityIcons color="#FFFFFF" name="camera" size={31} style={tabIconStyles.captureCamera} />
+        <MaterialCommunityIcons color="#FFFFFF" name="plus" size={23} style={tabIconStyles.capturePlus} />
       </View>
     </Pressable>
   );
@@ -213,6 +214,15 @@ const tabIconStyles = StyleSheet.create({
     height: 62,
     justifyContent: 'center',
     width: 62,
+  },
+  captureCamera: {
+    marginLeft: 6,
+    marginTop: 18,
+  },
+  capturePlus: {
+    left: 14,
+    position: 'absolute',
+    top: 5,
   },
   moreDot: {
     borderRadius: 4,
