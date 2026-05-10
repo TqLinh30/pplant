@@ -24,7 +24,7 @@ function sanitizeId(value: string): string {
 
 function WalletIcon({ prefix, size }: { prefix: string; size: number }) {
   return (
-    <Svg height={size} viewBox="0 0 1024 1024" width={size}>
+    <Svg height={size} viewBox="120 115 840 780" width={size}>
       <Defs>
         <LinearGradient id={`${prefix}-wallet-body`} x1="0.09" x2="0.92" y1="0.06" y2="0.94">
           <Stop offset="0" stopColor="#E9FFF8" />
@@ -82,57 +82,72 @@ function WalletIcon({ prefix, size }: { prefix: string; size: number }) {
 
 function PiggyIcon({ prefix, size }: { prefix: string; size: number }) {
   return (
-    <Svg height={size} viewBox="0 0 1024 1024" width={size}>
+    <Svg height={size} viewBox="130 110 820 790" width={size}>
       <Defs>
-        <RadialGradient cx="34%" cy="24%" id={`${prefix}-pig-body`} r="82%">
-          <Stop offset="0" stopColor="#FFEAF0" />
-          <Stop offset="0.52" stopColor="#FF9DB2" />
-          <Stop offset="1" stopColor="#FF5278" />
+        <RadialGradient cx="36%" cy="24%" id={`${prefix}-pig-body`} r="78%">
+          <Stop offset="0" stopColor="#FFF0F4" />
+          <Stop offset="0.4" stopColor="#FFB7C6" />
+          <Stop offset="0.78" stopColor="#FF829A" />
+          <Stop offset="1" stopColor="#FF4D76" />
         </RadialGradient>
-        <RadialGradient cx="34%" cy="28%" id={`${prefix}-pig-snout`} r="76%">
+        <RadialGradient cx="38%" cy="24%" id={`${prefix}-pig-snout`} r="74%">
           <Stop offset="0" stopColor="#FFD2DA" />
-          <Stop offset="1" stopColor="#FF5A78" />
+          <Stop offset="0.58" stopColor="#FF8396" />
+          <Stop offset="1" stopColor="#F14469" />
         </RadialGradient>
+        <LinearGradient id={`${prefix}-pig-ear`} x1="0.15" x2="0.82" y1="0.04" y2="0.96">
+          <Stop offset="0" stopColor="#FFD4DC" />
+          <Stop offset="0.62" stopColor="#FF91A5" />
+          <Stop offset="1" stopColor="#F64D72" />
+        </LinearGradient>
+        <LinearGradient id={`${prefix}-pig-leg`} x1="0" x2="0" y1="0" y2="1">
+          <Stop offset="0" stopColor="#FF8CA1" />
+          <Stop offset="1" stopColor="#F83B6B" />
+        </LinearGradient>
         <LinearGradient id={`${prefix}-coin`} x1="0.18" x2="0.86" y1="0.1" y2="0.9">
           <Stop offset="0" stopColor="#FFE782" />
           <Stop offset="0.5" stopColor="#FFC733" />
           <Stop offset="1" stopColor="#F29900" />
         </LinearGradient>
       </Defs>
-      <Ellipse cx="520" cy="812" fill="#FFA2B2" opacity="0.22" rx="280" ry="40" />
-      <Path d="M333 258 C300 180 366 120 436 170 C406 196 378 230 354 272 Z" fill="#FF9AAC" />
-      <Path d="M365 236 C351 196 383 168 420 190 C401 204 384 222 369 246 Z" fill="#FF5E7D" opacity="0.72" />
-      <Path d="M561 174 C533 112 592 82 638 122 C616 144 600 177 593 214 Z" fill="#FF9AAC" />
-      <Path d="M594 164 C580 134 608 119 630 136 C619 149 611 167 608 185 Z" fill="#FF5E7D" opacity="0.72" />
+      <Ellipse cx="520" cy="824" fill="#FF8EA1" opacity="0.2" rx="284" ry="42" />
       <Path
-        d="M714 464 C817 461 899 513 893 598 C889 661 825 681 788 641"
+        d="M732 474 C834 458 900 512 886 586 C875 643 821 658 792 621 C839 628 843 556 800 558"
         fill="none"
         stroke="#FF4E73"
         strokeLinecap="round"
-        strokeWidth="28"
+        strokeWidth="30"
       />
-      <Path d="M800 583 C858 552 865 650 806 622" fill="none" stroke="#FFFFFF" strokeLinecap="round" strokeWidth="16" />
-      <Ellipse cx="514" cy="530" fill={`url(#${prefix}-pig-body)`} rx="318" ry="266" />
-      <Rect fill="#E24768" height="28" rx="14" width="190" x="421" y="280" />
-      <Circle cx="546" cy="218" fill={`url(#${prefix}-coin)`} r="78" />
-      <Circle cx="546" cy="218" fill="none" opacity="0.5" r="55" stroke="#E88A00" strokeWidth="12" />
-      <Path d="M547 176 L563 207 L598 213 L572 238 L578 273 L547 257 L516 273 L522 238 L496 213 L531 207 Z" fill="#FFF5B8" />
-      <Ellipse cx="319" cy="540" fill={`url(#${prefix}-pig-snout)`} rx="82" ry="74" />
-      <Ellipse cx="286" cy="540" fill="#C5164B" opacity="0.82" rx="15" ry="34" />
-      <Ellipse cx="348" cy="540" fill="#C5164B" opacity="0.82" rx="15" ry="34" />
-      <Circle cx="434" cy="444" fill="#161D46" r="30" />
-      <Circle cx="424" cy="432" fill="#FFFFFF" r="10" />
-      <Ellipse cx="472" cy="530" fill="#FF7F98" opacity="0.62" rx="52" ry="38" />
-      <Path d="M366 604 C392 642 434 636 451 598" fill="none" stroke="#5A1B2A" strokeLinecap="round" strokeWidth="20" />
-      <Path d="M394 730 C389 807 501 810 486 729" fill="#FF4E73" />
-      <Path d="M635 723 C642 800 751 792 728 711" fill="#FF4E73" />
+      <Path d="M332 270 C300 170 372 123 456 184 C421 205 390 238 365 286 Z" fill={`url(#${prefix}-pig-ear)`} />
+      <Path d="M360 250 C350 203 384 178 425 201 C402 216 383 240 370 270 Z" fill="#F84D70" opacity="0.72" />
+      <Path d="M510 285 C505 205 572 158 644 213 C610 237 591 280 589 340 Z" fill={`url(#${prefix}-pig-ear)`} />
+      <Path d="M542 284 C545 238 580 209 617 227 C598 249 588 281 587 319 Z" fill="#F84D70" opacity="0.7" />
+      <Path d="M358 704 C350 785 454 807 472 710 Z" fill={`url(#${prefix}-pig-leg)`} />
+      <Path d="M614 704 C602 790 715 805 724 710 Z" fill={`url(#${prefix}-pig-leg)`} />
+      <Path
+        d="M230 536 C230 382 362 292 540 292 C718 292 830 391 842 540 C856 699 734 782 540 782 H386 C286 782 230 676 230 536 Z"
+        fill={`url(#${prefix}-pig-body)`}
+      />
+      <Path d="M430 302 C482 280 604 280 671 312" fill="none" opacity="0.28" stroke="#FFFFFF" strokeLinecap="round" strokeWidth="32" />
+      <Path d="M428 314 C492 292 636 293 732 349" fill="none" opacity="0.16" stroke="#FFFFFF" strokeLinecap="round" strokeWidth="36" />
+      <Rect fill="#D83F61" height="30" rx="15" width="184" x="428" y="284" />
+      <Circle cx="536" cy="226" fill={`url(#${prefix}-coin)`} r="78" />
+      <Circle cx="536" cy="226" fill="none" opacity="0.45" r="56" stroke="#E88900" strokeWidth="12" />
+      <Path d="M536 180 L554 209 L589 215 L563 239 L569 274 L536 258 L505 274 L511 239 L485 215 L520 209 Z" fill="#FFF4B2" />
+      <Ellipse cx="296" cy="526" fill={`url(#${prefix}-pig-snout)`} rx="78" ry="72" />
+      <Ellipse cx="265" cy="526" fill="#B91648" opacity="0.8" rx="14" ry="32" />
+      <Ellipse cx="325" cy="526" fill="#B91648" opacity="0.8" rx="14" ry="32" />
+      <Circle cx="425" cy="444" fill="#121842" r="31" />
+      <Circle cx="416" cy="432" fill="#FFFFFF" r="10" />
+      <Ellipse cx="480" cy="538" fill="#FF7895" opacity="0.56" rx="48" ry="36" />
+      <Path d="M360 606 C387 638 428 630 445 594" fill="none" stroke="#621B2B" strokeLinecap="round" strokeWidth="20" />
     </Svg>
   );
 }
 
 function CalculatorIcon({ prefix, size }: { prefix: string; size: number }) {
   return (
-    <Svg height={size} viewBox="0 0 1024 1024" width={size}>
+    <Svg height={size} viewBox="180 120 660 790" width={size}>
       <Defs>
         <LinearGradient id={`${prefix}-calc-shell`} x1="0.06" x2="0.92" y1="0.04" y2="0.96">
           <Stop offset="0" stopColor="#A8C8FF" />
