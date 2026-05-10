@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { translateText } from '@/i18n/strings';
+import { useAppBackground } from '@/features/settings/app-background';
 import { Button } from '@/ui/primitives/Button';
 import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
@@ -17,6 +18,8 @@ type WorkspaceGateProps = {
 
 export function WorkspaceGate({ children, initializer }: WorkspaceGateProps) {
   const { retry, state } = useWorkspaceInitialization(initializer);
+  const appBackground = useAppBackground();
+  const safeAreaStyle = [styles.safeArea, { backgroundColor: appBackground.colors.appBackground }];
 
   if (state.status === 'ready') {
     return <>{children}</>;
@@ -24,7 +27,7 @@ export function WorkspaceGate({ children, initializer }: WorkspaceGateProps) {
 
   if (state.status === 'failed') {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={safeAreaStyle}>
         <View
           accessibilityLabel={translateText('Local workspace could not be opened')}
           accessibilityRole="summary"
@@ -41,7 +44,7 @@ export function WorkspaceGate({ children, initializer }: WorkspaceGateProps) {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={safeAreaStyle}>
       <View accessibilityLabel={translateText('Opening local workspace')} accessibilityRole="summary" style={styles.container}>
         <ActivityIndicator color={colors.primary} />
         <Text style={styles.title}>{translateText('Opening your local workspace')}</Text>

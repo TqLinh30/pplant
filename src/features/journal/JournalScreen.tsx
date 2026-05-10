@@ -1,13 +1,15 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ComponentProps } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Circle, G } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { journalMoodCatalog } from '@/domain/journal/mood-catalog';
+import { journalMoodCatalog, moodDefinitionFor } from '@/domain/journal/mood-catalog';
 import type { JournalEntry, JournalMoodId } from '@/domain/journal/types';
+import { useAppBackground } from '@/features/settings/app-background';
+import { AppBackgroundFrame } from '@/features/settings/AppBackgroundFrame';
 import { useAppLanguage } from '@/i18n/strings';
 import {
   buildMoneyNoteCalendarMonth,
@@ -27,7 +29,6 @@ const lightBlue = '#DDF3F0';
 const ink = '#253030';
 const muted = '#718282';
 const line = '#DDE7E7';
-const panel = '#F2F7F7';
 
 const journalType = {
   body: {
@@ -144,6 +145,35 @@ function DatePill({
   );
 }
 
+function SectionTitleRow({
+  icon,
+  meta,
+  title,
+}: {
+  icon: ComponentProps<typeof MaterialCommunityIcons>['name'];
+  meta?: string;
+  title: string;
+}) {
+  return (
+    <View style={styles.sectionTitleRow}>
+      <MaterialCommunityIcons color={skyBlue} name={icon} size={24} />
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {meta ? <Text style={styles.sectionMeta}>{meta}</Text> : null}
+    </View>
+  );
+}
+
+function DayMoodPill({ moodId }: { moodId: JournalMoodId }) {
+  const mood = moodDefinitionFor(moodId);
+
+  return (
+    <View style={[styles.dayMoodPill, { backgroundColor: mood.softColor }]}>
+      <MoodFaceIcon moodId={moodId} size={20} />
+      <Text style={[styles.dayMoodPillText, { color: mood.color }]}>{mood.labelVi}</Text>
+    </View>
+  );
+}
+
 function JournalTimeline({ entries }: { entries: JournalEntry[] }) {
   if (entries.length === 0) {
     return (
@@ -157,6 +187,7 @@ function JournalTimeline({ entries }: { entries: JournalEntry[] }) {
 
   return (
     <View style={styles.timeline}>
+      <DayMoodPill moodId={entries[0].moodId} />
       {entries.map((entry, index) => {
         const note = entry.note?.trim() || 'Khoảnh khắc trong ngày';
 
@@ -362,6 +393,7 @@ function MoodCalendar({
 
 export function JournalScreen() {
   const language = useAppLanguage();
+  const appBackground = useAppBackground();
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [monthDate, setMonthDate] = useState(() => new Date());
   const overview = useJournalOverview(selectedDate, monthDate);
@@ -369,14 +401,21 @@ export function JournalScreen() {
   const data = overview.state.data;
   const statsRows = data?.monthSummary.moodBreakdown ?? [];
   const showCaptureHero = overview.state.status !== 'loading' && (data?.entries.length ?? 0) === 0;
+  const contentBackgroundColor = appBackground.photoUri ? 'transparent' : appBackground.colors.appBackground;
 
   const selectCalendarDate = (localDate: string) => {
     setSelectedDate(parseLocalDate(localDate));
   };
 
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}>
+      <AppBackgroundFrame>
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            { backgroundColor: contentBackgroundColor },
+          ]}
+        >
         <ScreenHeader
           subtitle={language === 'en' ? 'Photo mood diary' : 'Ghi lại ngày bằng ảnh và cảm xúc'}
           title={language === 'en' ? 'Journal' : 'Nhật ký'}
@@ -413,36 +452,28 @@ export function JournalScreen() {
           </Text>
         ) : null}
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Nhật ký trong ngày</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={goToCapture}
-              style={styles.inlineCapture}
-            >
-              <MaterialCommunityIcons color={skyBlue} name="camera-outline" size={18} />
-              <Text style={styles.inlineCaptureText}>Thêm</Text>
-            </Pressable>
+        <View style={styles.sectionGroup}>
+          <SectionTitleRow icon="book-open-variant-outline" title="Nhật ký trong ngày" />
+          <View style={styles.sectionCard}>
+            <JournalTimeline entries={data?.entries ?? []} />
           </View>
-          <JournalTimeline entries={data?.entries ?? []} />
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Thống kê cảm xúc</Text>
-            <Text style={styles.sectionMeta}>{monthLabel(monthDate)}</Text>
+        <View style={styles.sectionGroup}>
+          <SectionTitleRow icon="chart-box-outline" meta={monthLabel(monthDate)} title="Thống kê" />
+          <View style={styles.sectionCard}>
+            <MonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
+            <MoodStats rows={statsRows} />
+            <MoodCalendar
+              dayMoods={data?.monthSummary.dayMoods ?? []}
+              monthDate={monthDate}
+              onSelect={selectCalendarDate}
+              selectedLocalDate={selectedLocalDate}
+            />
           </View>
-          <MonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
-          <MoodStats rows={statsRows} />
-          <MoodCalendar
-            dayMoods={data?.monthSummary.dayMoods ?? []}
-            monthDate={monthDate}
-            onSelect={selectCalendarDate}
-            selectedLocalDate={selectedLocalDate}
-          />
         </View>
-      </ScrollView>
+        </ScrollView>
+      </AppBackgroundFrame>
     </SafeAreaView>
   );
 }
@@ -473,7 +504,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   content: {
-    backgroundColor: panel,
     gap: 16,
     paddingBottom: 108,
   },
@@ -502,6 +532,19 @@ const styles = StyleSheet.create({
   },
   dayMuted: {
     color: '#B7B7B7',
+  },
+  dayMoodPill: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: 16,
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 12,
+    minHeight: 34,
+    paddingHorizontal: 12,
+  },
+  dayMoodPillText: {
+    ...journalType.label,
   },
   donutCenter: {
     alignItems: 'center',
@@ -617,16 +660,6 @@ const styles = StyleSheet.create({
     ...journalType.title,
     color: '#1D6F99',
   },
-  inlineCapture: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 5,
-    minHeight: 36,
-  },
-  inlineCaptureText: {
-    ...journalType.label,
-    color: skyBlue,
-  },
   legend: {
     flex: 1,
     gap: 10,
@@ -678,20 +711,28 @@ const styles = StyleSheet.create({
     color: ink,
   },
   safeArea: {
-    backgroundColor: '#FFFFFF',
     flex: 1,
   },
-  section: {
+  sectionCard: {
     backgroundColor: '#FFFFFF',
+    borderColor: '#E5F1F1',
+    borderRadius: 18,
+    borderWidth: 1,
     gap: 12,
+    overflow: 'hidden',
     paddingHorizontal: 16,
     paddingVertical: 16,
   },
-  sectionHeader: {
+  sectionGroup: {
+    gap: 10,
+    paddingHorizontal: 12,
+  },
+  sectionTitleRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 12,
-    justifyContent: 'space-between',
+    gap: 10,
+    minHeight: 38,
+    paddingHorizontal: 4,
   },
   sectionMeta: {
     ...journalType.caption,

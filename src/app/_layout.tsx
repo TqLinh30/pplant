@@ -8,25 +8,14 @@ import {
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, TextInput } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { WorkspaceGate } from '@/features/workspace/WorkspaceGate';
 import { loadStoredAppLanguage } from '@/i18n/language-storage';
+import { loadStoredAppBackground, useAppBackground } from '@/features/settings/app-background';
 import { colors } from '@/ui/tokens/colors';
-
-const pplantTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: colors.appBackground,
-    border: colors.hairline,
-    card: colors.canvas,
-    primary: colors.primary,
-    text: colors.ink,
-  },
-};
 
 type FontScalingDefaults = {
   defaultProps?: {
@@ -54,9 +43,25 @@ export default function RootLayout() {
     Montserrat_700Bold,
     Montserrat_800ExtraBold,
   });
+  const appBackground = useAppBackground();
+  const pplantTheme = useMemo(
+    () => ({
+      ...DefaultTheme,
+      colors: {
+        ...DefaultTheme.colors,
+        background: appBackground.colors.appBackground,
+        border: colors.hairline,
+        card: colors.canvas,
+        primary: colors.primary,
+        text: colors.ink,
+      },
+    }),
+    [appBackground.colors.appBackground],
+  );
 
   useEffect(() => {
     void loadStoredAppLanguage();
+    void loadStoredAppBackground();
   }, []);
 
   if (!fontsLoaded) {

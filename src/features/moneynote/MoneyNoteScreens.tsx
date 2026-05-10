@@ -11,6 +11,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, G, Polyline } from 'react-native-svg';
@@ -32,6 +33,14 @@ import { saveStoredAppLanguage } from '@/i18n/language-storage';
 import { appLanguageOptions, useAppLanguage, type AppLanguage } from '@/i18n/strings';
 import { useManualMoneyCapture } from '@/features/capture/useManualMoneyCapture';
 import { subscribeMoneyRecordsChanged } from '@/features/money/money-record-change-events';
+import {
+  appBackgroundOptions,
+  saveStoredAppBackground,
+  saveStoredAppBackgroundPhoto,
+  useAppBackground,
+  type AppBackgroundId,
+} from '@/features/settings/app-background';
+import { AppBackgroundFrame } from '@/features/settings/AppBackgroundFrame';
 import { usePreferenceSettings } from '@/features/settings/usePreferenceSettings';
 
 import {
@@ -116,6 +125,13 @@ const moneyNoteCopy = {
     saving: 'Đang lưu...',
     settingsSaved: 'Đã lưu cài đặt.',
     premium: 'Dịch vụ Premium (Không có quảng cáo, v.v.)',
+    background: 'Thay đổi background',
+    backgroundChoosePhoto: 'Chọn ảnh trong máy',
+    backgroundDefault: 'Dùng nền mặc định',
+    backgroundFailed: 'Không thể đổi background.',
+    backgroundFromPhoto: 'Ảnh của bạn',
+    backgroundPermissionDenied: 'Hãy cho phép truy cập ảnh để chọn background.',
+    backgroundSaved: 'Đã đổi background.',
     theme: 'Thay đổi màu chủ đề',
     themeValue: 'Mint teal',
   },
@@ -166,6 +182,13 @@ const moneyNoteCopy = {
     saving: 'Saving...',
     settingsSaved: 'Settings saved.',
     premium: 'Premium service (No ads, etc.)',
+    background: 'Change background',
+    backgroundChoosePhoto: 'Choose photo',
+    backgroundDefault: 'Use default background',
+    backgroundFailed: 'Could not change background.',
+    backgroundFromPhoto: 'Your photo',
+    backgroundPermissionDenied: 'Allow photo access to choose a background.',
+    backgroundSaved: 'Background changed.',
     theme: 'Theme color',
     themeValue: 'Mint teal',
   },
@@ -213,6 +236,11 @@ function languageDisplayName(language: AppLanguage, displayLanguage: AppLanguage
   }
 
   return language === 'vi' ? 'Tiếng Việt' : 'English';
+}
+
+function backgroundDisplayName(backgroundId: AppBackgroundId, language: AppLanguage): string {
+  const option = appBackgroundOptions.find((item) => item.id === backgroundId) ?? appBackgroundOptions[0];
+  return language === 'en' ? option.labelEn : option.labelVi;
 }
 
 function categoryDisplayLabel(template: MoneyNoteCategoryTemplate, language: AppLanguage): string {
@@ -1255,6 +1283,7 @@ function MoneyNoteRow({
 export function MoneyNoteEntryScreen() {
   const router = useRouter();
   const { copy, language } = useMoneyNoteCopy();
+  const appBackground = useAppBackground();
   const capture = useManualMoneyCapture();
   const { reload, state, selectCategory, setKind, updateField } = capture;
   const baseTemplates = state.draft.kind === 'expense' ? expenseCategoryTemplates : incomeCategoryTemplates;
@@ -1272,6 +1301,7 @@ export function MoneyNoteEntryScreen() {
   const currencyCode = state.preferences?.currencyCode ?? moneyNoteDefaultPreferences.currencyCode;
   const currencySuffix = currencySuffixForCode(currencyCode);
   const currencyUsesPrefix = currencyCode.toUpperCase() !== 'VND';
+  const contentBackgroundColor = appBackground.photoUri ? 'transparent' : appBackground.colors.appBackground;
 
   useEnsureMoneyNoteDefaults(state.status, state.categories, reload);
   useFocusEffect(
@@ -1330,8 +1360,15 @@ export function MoneyNoteEntryScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.entryContent} keyboardShouldPersistTaps="handled">
+    <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}>
+      <AppBackgroundFrame>
+        <ScrollView
+          contentContainerStyle={[
+            styles.entryContent,
+            { backgroundColor: contentBackgroundColor },
+          ]}
+          keyboardShouldPersistTaps="handled"
+        >
         <ScreenHeader right={<MoreHeaderButton />} title={copy.appTitle} />
         <KindTabs active={state.draft.kind} copy={copy} onChange={changeKind} />
 
@@ -1421,7 +1458,8 @@ export function MoneyNoteEntryScreen() {
                   : 'Nhập khoản Tiền thu'}
           </Text>
         </Pressable>
-      </ScrollView>
+        </ScrollView>
+      </AppBackgroundFrame>
     </SafeAreaView>
   );
 }
@@ -1536,6 +1574,7 @@ function SummaryStrip({
 export function MoneyNoteCalendarScreen() {
   const router = useRouter();
   const { copy, language } = useMoneyNoteCopy();
+  const appBackground = useAppBackground();
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [selectedLocalDate, setSelectedLocalDate] = useState(() => formatLocalDate(new Date()));
   const monthData = useMoneyNoteMonthData(monthDate);
@@ -1561,6 +1600,7 @@ export function MoneyNoteCalendarScreen() {
     [monthData.records, selectedLocalDate],
   );
   const selectedNetStyle = selectedTotals.netMinor < 0 ? styles.expenseAmount : styles.incomeAmount;
+  const contentBackgroundColor = appBackground.photoUri ? 'transparent' : appBackground.colors.appBackground;
 
   useEffect(() => {
     const bounds = getMonthBounds(monthDate);
@@ -1579,8 +1619,14 @@ export function MoneyNoteCalendarScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.plainContent}>
+    <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}>
+      <AppBackgroundFrame>
+        <ScrollView
+          contentContainerStyle={[
+            styles.plainContent,
+            { backgroundColor: contentBackgroundColor },
+          ]}
+        >
         <ScreenHeader right={<MoreHeaderButton />} title={copy.calendar} />
         <MonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
         <View style={styles.calendarGrid}>
@@ -1687,7 +1733,8 @@ export function MoneyNoteCalendarScreen() {
             );
           })}
         </View>
-      </ScrollView>
+        </ScrollView>
+      </AppBackgroundFrame>
     </SafeAreaView>
   );
 }
@@ -1864,6 +1911,7 @@ function ReportBreakdownList({
 
 export function MoneyNoteReportScreen() {
   const { copy, language } = useMoneyNoteCopy();
+  const appBackground = useAppBackground();
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [activeKind, setActiveKind] = useState<'expense' | 'income'>('expense');
   const monthData = useMoneyNoteMonthData(monthDate);
@@ -1871,10 +1919,17 @@ export function MoneyNoteReportScreen() {
     () => buildReportBreakdownRows(monthData.records, activeKind, language),
     [activeKind, language, monthData.records],
   );
+  const contentBackgroundColor = appBackground.photoUri ? 'transparent' : appBackground.colors.appBackground;
 
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.plainContent}>
+    <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}>
+      <AppBackgroundFrame>
+        <ScrollView
+          contentContainerStyle={[
+            styles.plainContent,
+            { backgroundColor: contentBackgroundColor },
+          ]}
+        >
         <ScreenHeader right={<MoreHeaderButton />} title={copy.report} />
         <MonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
         <ReportSummaryCard
@@ -1903,7 +1958,8 @@ export function MoneyNoteReportScreen() {
             </>
           ) : null}
         </View>
-      </ScrollView>
+        </ScrollView>
+      </AppBackgroundFrame>
     </SafeAreaView>
   );
 }
@@ -2302,7 +2358,9 @@ function MoreRow({
 }
 
 function MoreDivider() {
-  return <View style={styles.moreDivider} />;
+  const appBackground = useAppBackground();
+
+  return <View style={[styles.moreDivider, { backgroundColor: appBackground.colors.appBackground }]} />;
 }
 
 function MoreToolPanel({
@@ -2458,9 +2516,13 @@ function MoreToolPanel({
 export function MoneyNoteMoreScreen() {
   const router = useRouter();
   const { copy, language: appLanguage } = useMoneyNoteCopy();
+  const appBackground = useAppBackground();
   const preferences = usePreferenceSettings();
   const [languageOpen, setLanguageOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
+  const [backgroundOpen, setBackgroundOpen] = useState(false);
+  const [backgroundError, setBackgroundError] = useState<string | null>(null);
+  const [backgroundStatus, setBackgroundStatus] = useState<'failed' | 'idle' | 'saved' | 'saving'>('idle');
   const [languageStatus, setLanguageStatus] = useState<'failed' | 'idle' | 'saved' | 'saving'>('idle');
   const [activePanel, setActivePanel] = useState<MoneyNoteMorePanelKind | null>(null);
   const [fileBusy, setFileBusy] = useState(false);
@@ -2468,6 +2530,11 @@ export function MoneyNoteMoreScreen() {
   const [fileMessage, setFileMessage] = useState<string | null>(null);
   const visibleCurrency = preferences.state.form.currencyCode || moneyNoteDefaultPreferences.currencyCode;
   const panelData = useMoneyNoteMorePanelData(activePanel);
+  const visibleBackground =
+    appBackground.kind === 'photo'
+      ? copy.backgroundFromPhoto
+      : backgroundDisplayName(appBackground.id === 'photo' ? 'mint' : appBackground.id, appLanguage);
+  const contentBackgroundColor = appBackground.photoUri ? 'transparent' : appBackground.colors.appBackground;
 
   const changeLanguage = useCallback(
     (language: AppLanguage) => {
@@ -2496,6 +2563,67 @@ export function MoneyNoteMoreScreen() {
       preferences.updateField('defaultHourlyWage', '0');
     }
   };
+
+  const changeBackground = useCallback(
+    (backgroundId: AppBackgroundId) => {
+      setBackgroundError(null);
+      if (backgroundId === appBackground.id) {
+        setBackgroundStatus('saved');
+        setBackgroundOpen(false);
+        return;
+      }
+
+      setBackgroundStatus('saving');
+      void saveStoredAppBackground(backgroundId)
+        .then(() => {
+          setBackgroundStatus('saved');
+          setBackgroundOpen(false);
+        })
+        .catch(() => setBackgroundStatus('failed'));
+    },
+    [appBackground.id],
+  );
+
+  const choosePhotoBackground = useCallback(async () => {
+    setBackgroundError(null);
+    setBackgroundStatus('saving');
+
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        setBackgroundError(copy.backgroundPermissionDenied);
+        setBackgroundStatus('failed');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: false,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.9,
+      });
+
+      if (result.canceled) {
+        setBackgroundStatus('idle');
+        return;
+      }
+
+      const photoUri = result.assets[0]?.uri;
+
+      if (!photoUri) {
+        setBackgroundStatus('failed');
+        setBackgroundError(copy.backgroundFailed);
+        return;
+      }
+
+      await saveStoredAppBackgroundPhoto(photoUri);
+      setBackgroundStatus('saved');
+      setBackgroundOpen(false);
+    } catch (error) {
+      setBackgroundStatus('failed');
+      setBackgroundError(error instanceof Error ? error.message : copy.backgroundFailed);
+    }
+  }, [copy.backgroundFailed, copy.backgroundPermissionDenied]);
 
   const togglePanel = (panelKind: MoneyNoteMorePanelKind) => {
     setFileBusy(false);
@@ -2578,8 +2706,14 @@ export function MoneyNoteMoreScreen() {
     ) : null;
 
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.moreContent}>
+    <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}>
+      <AppBackgroundFrame>
+        <ScrollView
+          contentContainerStyle={[
+            styles.moreContent,
+            { backgroundColor: contentBackgroundColor },
+          ]}
+        >
         <ScreenHeader title={copy.more} />
         <MoreDivider />
         <MoreRow icon="cog-outline" onPress={() => router.push('/preferences')} title={copy.basicSettings} />
@@ -2633,6 +2767,67 @@ export function MoneyNoteMoreScreen() {
           </View>
         ) : null}
         <MoreRow
+          icon="palette-outline"
+          onPress={() => setBackgroundOpen((current) => !current)}
+          right={visibleBackground}
+          title={copy.background}
+        />
+        {backgroundOpen ? (
+          <View style={styles.backgroundPanel}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={backgroundStatus === 'saving'}
+              onPress={choosePhotoBackground}
+              style={styles.backgroundPhotoButton}
+            >
+              <MaterialCommunityIcons color="#FFFFFF" name="image-plus" size={24} />
+              <Text style={styles.backgroundPhotoButtonText}>
+                {backgroundStatus === 'saving' ? copy.saving : copy.backgroundChoosePhoto}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              disabled={backgroundStatus === 'saving'}
+              onPress={() => changeBackground('mint')}
+              style={styles.backgroundDefaultButton}
+            >
+              <Text style={styles.backgroundDefaultButtonText}>{copy.backgroundDefault}</Text>
+            </Pressable>
+            {appBackgroundOptions.map((option) => {
+              const selected = appBackground.kind === 'preset' && option.id === appBackground.id;
+
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  key={option.id}
+                  onPress={() => changeBackground(option.id)}
+                  style={[styles.backgroundOption, selected ? styles.backgroundOptionSelected : null]}
+                >
+                  <View
+                    style={[
+                      styles.backgroundSwatch,
+                      { backgroundColor: option.colors.appBackground },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.backgroundOptionText,
+                      selected ? styles.backgroundOptionTextSelected : null,
+                    ]}
+                  >
+                    {backgroundDisplayName(option.id, appLanguage)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+            {backgroundStatus === 'saving' ? <Text style={styles.mutedText}>{copy.saving}</Text> : null}
+            {backgroundStatus === 'saved' ? <Text style={styles.successTextInline}>{copy.backgroundSaved}</Text> : null}
+            {backgroundStatus === 'failed' ? (
+              <Text style={styles.warningText}>{backgroundError ?? copy.backgroundFailed}</Text>
+            ) : null}
+          </View>
+        ) : null}
+        <MoreRow
           icon="cash-multiple"
           right={visibleCurrency}
           title={copy.changeCurrency}
@@ -2674,7 +2869,8 @@ export function MoneyNoteMoreScreen() {
             ) : null}
           </View>
         ) : null}
-      </ScrollView>
+        </ScrollView>
+      </AppBackgroundFrame>
     </SafeAreaView>
   );
 }
@@ -2712,9 +2908,11 @@ export function MoneyNotePreferencesScreen() {
   const router = useRouter();
   const { save, state, updateField } = usePreferenceSettings();
   const { copy, language: appLanguage } = useMoneyNoteCopy();
+  const appBackground = useAppBackground();
   const [languageStatus, setLanguageStatus] = useState<'failed' | 'idle' | 'saved' | 'saving'>('idle');
   const saving = state.status === 'saving';
   const usesWholeUnitCurrency = state.form.currencyCode.toUpperCase() === 'VND';
+  const contentBackgroundColor = appBackground.photoUri ? 'transparent' : appBackground.colors.appBackground;
 
   const updateCurrency = (value: string) => {
     const normalized = value.replace(/[^a-z]/gi, '').toUpperCase().slice(0, 3);
@@ -2745,8 +2943,15 @@ export function MoneyNotePreferencesScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.preferencesContent} keyboardShouldPersistTaps="handled">
+    <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}>
+      <AppBackgroundFrame>
+        <ScrollView
+          contentContainerStyle={[
+            styles.preferencesContent,
+            { backgroundColor: contentBackgroundColor },
+          ]}
+          keyboardShouldPersistTaps="handled"
+        >
         <View style={styles.categoryHeader}>
           <IconButton label="<" onPress={() => router.back()} />
           <Text numberOfLines={1} style={styles.categoryHeaderTitle}>
@@ -2836,7 +3041,8 @@ export function MoneyNotePreferencesScreen() {
             <Text style={styles.primaryCtaText}>{saving ? copy.saving : copy.saveSettings}</Text>
           </Pressable>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </AppBackgroundFrame>
     </SafeAreaView>
   );
 }
@@ -3595,6 +3801,74 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 14,
   },
+  backgroundOption: {
+    alignItems: 'center',
+    borderColor: line,
+    borderRadius: 8,
+    borderWidth: 1,
+    flexBasis: '30%',
+    flexGrow: 1,
+    gap: 8,
+    minHeight: 82,
+    justifyContent: 'center',
+    padding: 10,
+  },
+  backgroundOptionSelected: {
+    borderColor: skyBlue,
+    borderWidth: 2,
+  },
+  backgroundOptionText: {
+    ...moneyType.caption,
+    color: ink,
+    textAlign: 'center',
+  },
+  backgroundOptionTextSelected: {
+    color: skyBlue,
+    fontWeight: '700',
+  },
+  backgroundPanel: {
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    padding: 14,
+  },
+  backgroundDefaultButton: {
+    alignItems: 'center',
+    borderColor: line,
+    borderRadius: 10,
+    borderWidth: 1,
+    minHeight: 48,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    width: '100%',
+  },
+  backgroundDefaultButtonText: {
+    ...moneyType.button,
+    color: ink,
+  },
+  backgroundPhotoButton: {
+    alignItems: 'center',
+    backgroundColor: skyBlue,
+    borderRadius: 12,
+    flexDirection: 'row',
+    gap: 8,
+    minHeight: 52,
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    width: '100%',
+  },
+  backgroundPhotoButtonText: {
+    ...moneyType.button,
+    color: '#FFFFFF',
+  },
+  backgroundSwatch: {
+    borderColor: line,
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 36,
+    width: 36,
+  },
   loadingIndicator: {
     marginTop: 32,
   },
@@ -3638,7 +3912,7 @@ const styles = StyleSheet.create({
   },
   moreContent: {
     backgroundColor: '#FFFFFF',
-    paddingBottom: 18,
+    paddingBottom: 132,
   },
   moreDivider: {
     backgroundColor: panel,

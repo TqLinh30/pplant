@@ -3,6 +3,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAppBackground } from '@/features/settings/app-background';
 import { useAppLanguage } from '@/i18n/strings';
 import { typography } from '@/ui/tokens/typography';
 
@@ -66,6 +67,7 @@ function FloatingCameraTabButton() {
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const appLanguage = useAppLanguage();
+  const appBackground = useAppBackground();
   const titles =
     appLanguage === 'en'
       ? {
@@ -85,6 +87,9 @@ export default function TabLayout() {
   const bottomPadding = Math.max(insets.bottom, 6);
   const tabBarHeight = 58 + bottomPadding;
   const journalTitle = appLanguage === 'en' ? 'Journal' : 'Nhật ký';
+  const tabBarBackgroundColor = appBackground.photoUri
+    ? 'rgba(255, 255, 255, 0.88)'
+    : appBackground.colors.appBackground;
 
   return (
     <Tabs
@@ -102,7 +107,7 @@ export default function TabLayout() {
           marginTop: 0,
         },
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: tabBarBackgroundColor,
           borderTopColor: '#DDE7E7',
           height: tabBarHeight,
           paddingBottom: bottomPadding,
