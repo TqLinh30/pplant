@@ -13,7 +13,7 @@ export type JournalOverviewState = {
   status: 'empty' | 'failed' | 'loading' | 'ready';
 };
 
-export function useJournalOverview(selectedDate: Date, monthDate: Date) {
+export function useJournalOverview(selectedDate: Date, monthDate = selectedDate) {
   const [reloadToken, setReloadToken] = useState(0);
   const [state, setState] = useState<JournalOverviewState>({
     data: null,

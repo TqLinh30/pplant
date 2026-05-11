@@ -59,8 +59,8 @@ export const incomeCategoryTemplates: MoneyNoteCategoryTemplate[] = [
   { color: '#12B956', icon: 'wallet-outline', id: 'income-salary', label: 'Tiền lương' },
   { color: '#F39822', icon: 'piggy-bank-outline', id: 'income-allowance', label: 'Tiền phụ cấp' },
   { color: '#F0515F', icon: 'gift-outline', id: 'income-bonus', label: 'Tiền thưởng' },
-  { color: '#45CBE4', icon: 'sack-percent', id: 'income-extra', label: 'Thu nhập phụ' },
   { color: '#55D6BE', icon: 'chart-line', id: 'income-investment', label: 'Đầu tư' },
+  { color: '#45CBE4', icon: 'sack-percent', id: 'income-extra', label: 'Thu nhập phụ' },
   {
     color: '#EF8BBB',
     icon: 'hand-coin-outline',
@@ -93,21 +93,23 @@ export function shiftLocalDate(value: string, days: number): string {
   return formatLocalDate(date);
 }
 
-function weekdayLabelsForLanguage(language: AppLanguage): string[] {
-  if (language === 'en') {
-    return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  }
+export function moneyNoteWeekdayLabelsForLanguage(
+  language: AppLanguage,
+  { startsOnMonday = false }: { startsOnMonday?: boolean } = {},
+): string[] {
+  const labels =
+    language === 'en'
+      ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+      : language === 'zh-Hant'
+        ? ['週日', '週一', '週二', '週三', '週四', '週五', '週六']
+        : ['CN', 'T.2', 'T.3', 'T.4', 'T.5', 'T.6', 'T.7'];
 
-  if (language === 'zh-Hant') {
-    return ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
-  }
-
-  return ['CN', 'T.2', 'T.3', 'T.4', 'T.5', 'T.6', 'T.7'];
+  return startsOnMonday ? [...labels.slice(1), labels[0]] : labels;
 }
 
 export function formatMoneyNoteDate(value: string, language: AppLanguage = 'vi'): string {
   const date = parseLocalDate(value);
-  const weekdays = weekdayLabelsForLanguage(language);
+  const weekdays = moneyNoteWeekdayLabelsForLanguage(language);
 
   return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(
     2,
@@ -117,7 +119,7 @@ export function formatMoneyNoteDate(value: string, language: AppLanguage = 'vi')
 
 export function formatMoneyNoteShortDate(value: string, language: AppLanguage = 'vi'): string {
   const date = parseLocalDate(value);
-  const weekdays = weekdayLabelsForLanguage(language);
+  const weekdays = moneyNoteWeekdayLabelsForLanguage(language);
 
   return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(
     2,

@@ -9,6 +9,7 @@ import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
 import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, TextInput } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -65,13 +66,17 @@ export default function RootLayout() {
     void loadStoredAppBackground();
   }, []);
 
+  useEffect(() => {
+    void SystemUI.setBackgroundColorAsync(appBackground.colors.appBackground);
+  }, [appBackground.colors.appBackground]);
+
   if (!fontsLoaded) {
     return null;
   }
 
   return (
-    <GestureHandlerRootView style={styles.root}>
-      <StatusBar style="dark" />
+    <GestureHandlerRootView style={[styles.root, { backgroundColor: appBackground.colors.appBackground }]}>
+      <StatusBar backgroundColor={appBackground.colors.appBackground} style="dark" />
       <ThemeProvider value={pplantTheme}>
         <WorkspaceGate>
           <Stack screenOptions={{ headerShown: false }}>
@@ -82,6 +87,7 @@ export default function RootLayout() {
             <Stack.Screen name="task/[taskId]" />
             <Stack.Screen name="money/[moneyRecordId]" />
             <Stack.Screen name="report-all-time" />
+            <Stack.Screen name="report-category-detail" />
             <Stack.Screen name="report-category-all-time" />
             <Stack.Screen name="report-category-year" />
             <Stack.Screen name="report-year" />

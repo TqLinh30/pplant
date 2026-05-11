@@ -1,7 +1,7 @@
 import { Tabs, router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, G, LinearGradient, Path, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppBackground } from '@/features/settings/app-background';
@@ -60,16 +60,18 @@ function CaptureCameraIcon() {
       </Defs>
       <Circle cx={48} cy={48} fill="url(#captureIconBg)" r={46} />
       <Circle cx={48} cy={48} fill="none" opacity={0.18} r={42} stroke="#1FAFA5" strokeWidth={2} />
-      <Path
-        d="M21 45C21 40.1 25.1 36 30 36h9.5l3-5.4c1-1.9 3-3 5.1-3h9c2.1 0 4.1 1.1 5.1 3l3 5.4H66c4.9 0 9 4.1 9 9v18c0 4.9-4.1 9-9 9H30c-4.9 0-9-4.1-9-9V45Z"
-        fill="#FFFFFF"
-      />
-      <Circle cx={48} cy={55} fill="url(#captureIconBg)" r={12.5} />
-      <Path d="M48 47.5v15M40.5 55h15" stroke="#FFFFFF" strokeLinecap="round" strokeWidth={6} />
-      <Path
-        d="M65.6 43.5h4.1c1.8 0 3.3 1.5 3.3 3.3s-1.5 3.3-3.3 3.3h-4.1c-1.8 0-3.3-1.5-3.3-3.3s1.5-3.3 3.3-3.3Z"
-        fill="url(#captureIconBg)"
-      />
+      <G transform="translate(0 -4)">
+        <Path
+          d="M21 45C21 40.1 25.1 36 30 36h9.5l3-5.4c1-1.9 3-3 5.1-3h9c2.1 0 4.1 1.1 5.1 3l3 5.4H66c4.9 0 9 4.1 9 9v18c0 4.9-4.1 9-9 9H30c-4.9 0-9-4.1-9-9V45Z"
+          fill="#FFFFFF"
+        />
+        <Circle cx={48} cy={55} fill="url(#captureIconBg)" r={12.5} />
+        <Path d="M48 47.5v15M40.5 55h15" stroke="#FFFFFF" strokeLinecap="round" strokeWidth={6} />
+        <Path
+          d="M65.6 43.5h4.1c1.8 0 3.3 1.5 3.3 3.3s-1.5 3.3-3.3 3.3h-4.1c-1.8 0-3.3-1.5-3.3-3.3s1.5-3.3 3.3-3.3Z"
+          fill="url(#captureIconBg)"
+        />
+      </G>
     </Svg>
   );
 }

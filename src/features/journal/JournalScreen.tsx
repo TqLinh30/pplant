@@ -1,34 +1,30 @@
 import { router } from 'expo-router';
-import { useMemo, useState, type ComponentProps } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Svg, { Circle, G } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { journalMoodCatalog, moodDefinitionFor } from '@/domain/journal/mood-catalog';
+import { journalMoodCatalog, journalMoodLabel, moodDefinitionFor } from '@/domain/journal/mood-catalog';
 import type { JournalEntry, JournalMoodId } from '@/domain/journal/types';
 import { useAppBackground } from '@/features/settings/app-background';
 import { AppBackgroundFrame } from '@/features/settings/AppBackgroundFrame';
-import { useAppLanguage } from '@/i18n/strings';
+import { HeaderLanguageButton } from '@/features/settings/HeaderLanguageButton';
+import { useAppLanguage, type AppLanguage } from '@/i18n/strings';
 import {
-  buildMoneyNoteCalendarMonth,
   formatLocalDate,
   formatMoneyNoteDate,
-  monthLabel,
   parseLocalDate,
   shiftLocalDate,
-  shiftMonth,
 } from '@/features/moneynote/moneyNoteModel';
 
 import { useJournalOverview } from './useJournalOverview';
 import { MoodFaceIcon } from './MoodFaceIcon';
 
 const skyBlue = '#5CC4BA';
-const lightBlue = '#DDF3F0';
 const ink = '#253030';
 const muted = '#718282';
-const line = '#DDE7E7';
 
 const journalCopy = {
   en: {
@@ -126,6 +122,100 @@ const journalType = {
   },
 } as const;
 
+type MoodBreakdownRow = {
+  color: string;
+  count: number;
+  label: string;
+  moodId: JournalMoodId;
+  percent: number;
+};
+
+function polarToCartesian(center: number, radius: number, angleDegrees: number) {
+  const angleRadians = (angleDegrees * Math.PI) / 180;
+
+  return {
+    x: center + radius * Math.cos(angleRadians),
+    y: center + radius * Math.sin(angleRadians),
+  };
+}
+
+function pieSlicePath({
+  center,
+  endAngle,
+  radius,
+  startAngle,
+}: {
+  center: number;
+  endAngle: number;
+  radius: number;
+  startAngle: number;
+}): string {
+  const start = polarToCartesian(center, radius, startAngle);
+  const end = polarToCartesian(center, radius, endAngle);
+  const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
+
+  return [
+    `M ${center} ${center}`,
+    `L ${start.x} ${start.y}`,
+    `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`,
+    'Z',
+  ].join(' ');
+}
+
+function calculateJournalDayMoodBreakdown(
+  entries: JournalEntry[],
+  language: AppLanguage,
+): MoodBreakdownRow[] {
+  const activeEntries = entries.filter((entry) => entry.deletedAt === null);
+  const totalCount = activeEntries.length;
+
+  if (totalCount === 0) {
+    return [];
+  }
+
+  const countsByMood = new Map<JournalMoodId, number>();
+
+  for (const entry of activeEntries) {
+    countsByMood.set(entry.moodId, (countsByMood.get(entry.moodId) ?? 0) + 1);
+  }
+
+  const rows = journalMoodCatalog
+    .map((mood, index) => {
+      const count = countsByMood.get(mood.id) ?? 0;
+      const exactPercent = (count / totalCount) * 100;
+
+      return {
+        color: mood.color,
+        count,
+        floorPercent: Math.floor(exactPercent),
+        index,
+        label: journalMoodLabel(mood, language),
+        moodId: mood.id,
+        remainder: exactPercent % 1,
+      };
+    })
+    .filter((row) => row.count > 0);
+
+  const percentShortfall = 100 - rows.reduce((total, row) => total + row.floorPercent, 0);
+  const rowsByRemainder = [...rows].sort(
+    (left, right) => right.remainder - left.remainder || left.index - right.index,
+  );
+  const extraPercentByMood = new Map<JournalMoodId, number>();
+
+  for (let index = 0; index < percentShortfall; index += 1) {
+    const row = rowsByRemainder[index % rowsByRemainder.length];
+    extraPercentByMood.set(row.moodId, (extraPercentByMood.get(row.moodId) ?? 0) + 1);
+  }
+
+  return rows.map((row) => ({
+    color: row.color,
+    count: row.count,
+    label: row.label,
+    moodId: row.moodId,
+    percent: row.floorPercent + (extraPercentByMood.get(row.moodId) ?? 0),
+  }));
+}
+
 function goToMore() {
   router.push('/(tabs)/settings');
 }
@@ -152,6 +242,15 @@ function HeaderMoreButton() {
   );
 }
 
+function HeaderActions() {
+  return (
+    <View style={styles.headerActions}>
+      <HeaderLanguageButton />
+      <HeaderMoreButton />
+    </View>
+  );
+}
+
 function ScreenHeader({ subtitle, title }: { subtitle?: string; title: string }) {
   return (
     <View style={styles.header}>
@@ -165,7 +264,7 @@ function ScreenHeader({ subtitle, title }: { subtitle?: string; title: string })
           </Text>
         ) : null}
       </View>
-      <HeaderMoreButton />
+      <HeaderActions />
     </View>
   );
 }
@@ -193,7 +292,7 @@ function DatePill({
       <View style={styles.datePill}>
         <Text
           adjustsFontSizeToFit
-          minimumFontScale={0.78}
+          minimumFontScale={0.84}
           numberOfLines={1}
           style={styles.datePillText}
         >
@@ -202,7 +301,7 @@ function DatePill({
         <MaterialCommunityIcons
           color="#20C8C4"
           name="calendar-month-outline"
-          size={24}
+          size={18}
           style={styles.datePillIcon}
         />
       </View>
@@ -233,11 +332,14 @@ function SectionTitleRow({
 
 function DayMoodPill({ moodId }: { moodId: JournalMoodId }) {
   const mood = moodDefinitionFor(moodId);
+  const language = useAppLanguage();
 
   return (
     <View style={[styles.dayMoodPill, { backgroundColor: mood.softColor }]}>
       <MoodFaceIcon moodId={moodId} size={20} />
-      <Text style={[styles.dayMoodPillText, { color: mood.color }]}>{mood.labelVi}</Text>
+      <Text style={[styles.dayMoodPillText, { color: mood.color }]}>
+        {journalMoodLabel(mood, language)}
+      </Text>
     </View>
   );
 }
@@ -286,36 +388,6 @@ function JournalTimeline({
   );
 }
 
-function MonthSwitcher({
-  monthDate,
-  onChange,
-}: {
-  monthDate: Date;
-  onChange: (date: Date) => void;
-}) {
-  return (
-    <View style={styles.monthSwitcher}>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => onChange(shiftMonth(monthDate, -1))}
-        style={styles.stepButton}
-      >
-        <MaterialCommunityIcons color={ink} name="chevron-left" size={24} />
-      </Pressable>
-      <View style={styles.monthPill}>
-        <Text style={styles.monthText}>{monthLabel(monthDate)}</Text>
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => onChange(shiftMonth(monthDate, 1))}
-        style={styles.stepButton}
-      >
-        <MaterialCommunityIcons color={ink} name="chevron-right" size={24} />
-      </Pressable>
-    </View>
-  );
-}
-
 function MoodDonut({
   copy,
   rows,
@@ -325,15 +397,14 @@ function MoodDonut({
 }) {
   const size = 152;
   const center = size / 2;
-  const radius = 48;
-  const strokeWidth = 24;
-  const circumference = 2 * Math.PI * radius;
-  let offset = 0;
+  const radius = center - 2;
+  const totalCount = rows.reduce((total, row) => total + row.count, 0);
+  let currentAngle = -90;
 
   if (rows.length === 0) {
     return (
       <View style={styles.donutEmpty}>
-        <Text style={styles.emptyText}>{copy.emptyMonth}</Text>
+        <Text style={styles.emptyText}>{copy.emptyTimelineTitle}</Text>
       </View>
     );
   }
@@ -341,51 +412,43 @@ function MoodDonut({
   return (
     <View style={styles.donutWrap}>
       <Svg height={size} width={size} viewBox={`0 0 ${size} ${size}`}>
-        <Circle
-          cx={center}
-          cy={center}
-          fill="none"
-          r={radius}
-          stroke="#E9EFEF"
-          strokeWidth={strokeWidth}
-        />
-        <G origin={`${center}, ${center}`} rotation="-90">
-          {rows.map((row) => {
-            const dashLength = Math.max(0.1, (row.percent / 100) * circumference);
-            const segment = (
-              <Circle
-                cx={center}
-                cy={center}
-                fill="none"
-                key={row.moodId}
-                r={radius}
-                stroke={row.color}
-                strokeDasharray={`${dashLength} ${circumference - dashLength}`}
-                strokeDashoffset={-offset}
-                strokeLinecap="butt"
-                strokeWidth={strokeWidth}
-              />
-            );
+        <Circle cx={center} cy={center} fill="#E9EFEF" r={radius} />
+        {rows.map((row) => {
+          if (row.count <= 0 || totalCount <= 0) {
+            return null;
+          }
 
-            offset += dashLength;
-            return segment;
-          })}
-        </G>
+          const sweepAngle = (row.count / totalCount) * 360;
+
+          if (sweepAngle >= 359.99) {
+            return <Circle key={row.moodId} cx={center} cy={center} fill={row.color} r={radius} />;
+          }
+
+          const startAngle = currentAngle;
+          const endAngle = currentAngle + sweepAngle;
+          currentAngle = endAngle;
+
+          return (
+            <Path
+              d={pieSlicePath({ center, endAngle, radius, startAngle })}
+              fill={row.color}
+              key={row.moodId}
+            />
+          );
+        })}
       </Svg>
-      <View style={styles.donutCenter}>
-        <Text style={styles.donutTotal}>{rows.reduce((total, row) => total + row.count, 0)}</Text>
-        <Text style={styles.donutLabel}>{copy.times}</Text>
-      </View>
     </View>
   );
 }
 
 function MoodStats({
   copy,
+  language,
   rows,
 }: {
   copy: (typeof journalCopy)[keyof typeof journalCopy];
-  rows: { color: string; count: number; label: string; moodId: JournalMoodId; percent: number }[];
+  language: AppLanguage;
+  rows: MoodBreakdownRow[];
 }) {
   return (
     <View style={styles.statsPanel}>
@@ -396,7 +459,7 @@ function MoodStats({
           : journalMoodCatalog.slice(0, 4).map((mood) => ({
               color: mood.color,
               count: 0,
-              label: mood.labelVi,
+              label: journalMoodLabel(mood, language),
               moodId: mood.id,
               percent: 0,
             }))
@@ -414,79 +477,17 @@ function MoodStats({
   );
 }
 
-function MoodCalendar({
-  dayMoods,
-  language,
-  monthDate,
-  selectedLocalDate,
-  onSelect,
-}: {
-  dayMoods: { color: string; localDate: string; moodId: JournalMoodId }[];
-  language: keyof typeof journalCopy;
-  monthDate: Date;
-  onSelect: (localDate: string) => void;
-  selectedLocalDate: string;
-}) {
-  const days = useMemo(() => buildMoneyNoteCalendarMonth(monthDate), [monthDate]);
-  const moodByDate = useMemo(
-    () => new Map(dayMoods.map((item) => [item.localDate, item])),
-    [dayMoods],
-  );
-  const weekdayLabels = journalCopy[language].weekdays;
-
-  return (
-    <View style={styles.moodCalendar}>
-      {weekdayLabels.map((label) => (
-        <Text key={label} style={styles.weekdayText}>
-          {label}
-        </Text>
-      ))}
-      {days.map((day) => {
-        const mood = moodByDate.get(day.localDate);
-
-        return (
-          <Pressable
-            accessibilityRole="button"
-            key={day.localDate}
-            onPress={() => onSelect(day.localDate)}
-            style={[
-              styles.calendarDay,
-              selectedLocalDate === day.localDate ? styles.calendarDaySelected : null,
-            ]}
-          >
-            <Text style={[styles.calendarDayText, !day.inCurrentMonth ? styles.dayMuted : null]}>
-              {day.dayOfMonth}
-            </Text>
-            {mood ? (
-              <View style={styles.calendarMoodFace}>
-                <MoodFaceIcon moodId={mood.moodId} size={20} />
-              </View>
-            ) : (
-              <View style={styles.calendarMoodSpacer} />
-            )}
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
 export function JournalScreen() {
   const language = useAppLanguage();
   const copy = journalCopy[language];
   const appBackground = useAppBackground();
   const [selectedDate, setSelectedDate] = useState(() => new Date());
-  const [monthDate, setMonthDate] = useState(() => new Date());
-  const overview = useJournalOverview(selectedDate, monthDate);
+  const overview = useJournalOverview(selectedDate);
   const selectedLocalDate = formatLocalDate(selectedDate);
   const data = overview.state.data;
-  const statsRows = data?.monthSummary.moodBreakdown ?? [];
+  const statsRows = calculateJournalDayMoodBreakdown(data?.entries ?? [], language);
   const showCaptureHero = overview.state.status !== 'loading' && (data?.entries.length ?? 0) === 0;
   const contentBackgroundColor = 'transparent';
-
-  const selectCalendarDate = (localDate: string) => {
-    setSelectedDate(parseLocalDate(localDate));
-  };
 
   return (
     <SafeAreaView
@@ -539,21 +540,9 @@ export function JournalScreen() {
           </View>
 
           <View style={styles.sectionGroup}>
-            <SectionTitleRow
-              icon="chart-box-outline"
-              meta={monthLabel(monthDate)}
-              title={copy.statsTitle}
-            />
+            <SectionTitleRow icon="chart-box-outline" title={copy.statsTitle} />
             <View style={styles.sectionCard}>
-              <MonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
-              <MoodStats copy={copy} rows={statsRows} />
-              <MoodCalendar
-                dayMoods={data?.monthSummary.dayMoods ?? []}
-                language={language}
-                monthDate={monthDate}
-                onSelect={selectCalendarDate}
-                selectedLocalDate={selectedLocalDate}
-              />
+              <MoodStats copy={copy} language={language} rows={statsRows} />
             </View>
           </View>
         </ScrollView>
@@ -563,66 +552,37 @@ export function JournalScreen() {
 }
 
 const styles = StyleSheet.create({
-  calendarDay: {
-    alignItems: 'center',
-    aspectRatio: 1,
-    borderRadius: 8,
-    justifyContent: 'center',
-    padding: 3,
-    width: `${100 / 7}%`,
-  },
-  calendarDaySelected: {
-    backgroundColor: lightBlue,
-  },
-  calendarDayText: {
-    ...journalType.caption,
-    color: ink,
-  },
-  calendarMoodFace: {
-    height: 22,
-    marginTop: 2,
-    width: 22,
-  },
-  calendarMoodSpacer: {
-    height: 22,
-    marginTop: 2,
-  },
   content: {
     gap: 16,
     paddingBottom: 108,
   },
   datePill: {
     alignItems: 'center',
-    backgroundColor: '#E5F7F5',
-    borderColor: '#D8EEF0',
-    borderRadius: 24,
+    backgroundColor: '#DDF3F0',
+    borderColor: '#CBECEA',
+    borderRadius: 16,
     borderWidth: 1,
-    elevation: 2,
     flex: 1,
     flexDirection: 'row',
+    height: 50,
     justifyContent: 'center',
-    minHeight: 50,
     paddingHorizontal: 44,
-    shadowColor: '#99D9DA',
-    shadowOffset: {
-      height: 5,
-      width: 0,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
   },
   datePillIcon: {
+    color: skyBlue,
+    fontSize: 18,
+    fontWeight: '400',
     position: 'absolute',
     right: 18,
   },
   datePillText: {
-    color: '#18325C',
+    color: ink,
     flex: 1,
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 17,
-    fontWeight: '700',
+    fontFamily: 'Montserrat_500Medium',
+    fontSize: 16,
+    fontWeight: '500',
     letterSpacing: 0,
-    lineHeight: 23,
+    lineHeight: 22,
     minWidth: 0,
     textAlign: 'center',
   },
@@ -633,9 +593,6 @@ const styles = StyleSheet.create({
     gap: 24,
     paddingBottom: 2,
     paddingHorizontal: 24,
-  },
-  dayMuted: {
-    color: '#B7B7B7',
   },
   dayMoodPill: {
     alignItems: 'center',
@@ -650,28 +607,11 @@ const styles = StyleSheet.create({
   dayMoodPillText: {
     ...journalType.label,
   },
-  donutCenter: {
-    alignItems: 'center',
-    height: 70,
-    justifyContent: 'center',
-    left: 41,
-    position: 'absolute',
-    top: 41,
-    width: 70,
-  },
   donutEmpty: {
     alignItems: 'center',
     height: 152,
     justifyContent: 'center',
     width: 152,
-  },
-  donutLabel: {
-    ...journalType.caption,
-    color: muted,
-  },
-  donutTotal: {
-    ...journalType.titleSmall,
-    color: ink,
   },
   donutWrap: {
     height: 152,
@@ -711,6 +651,12 @@ const styles = StyleSheet.create({
     paddingLeft: 22,
     paddingRight: 14,
     paddingTop: 6,
+  },
+  headerActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    zIndex: 30,
   },
   headerIconButton: {
     alignItems: 'center',
@@ -813,48 +759,6 @@ const styles = StyleSheet.create({
   loading: {
     marginVertical: 14,
   },
-  moodCalendar: {
-    backgroundColor: '#FFFFFF',
-    borderColor: line,
-    borderRadius: 10,
-    borderWidth: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    overflow: 'hidden',
-    padding: 8,
-  },
-  monthPill: {
-    alignItems: 'center',
-    backgroundColor: '#E5F7F5',
-    borderColor: '#D8EEF0',
-    borderRadius: 24,
-    borderWidth: 1,
-    elevation: 2,
-    flex: 1,
-    justifyContent: 'center',
-    minHeight: 50,
-    paddingHorizontal: 20,
-    shadowColor: '#99D9DA',
-    shadowOffset: {
-      height: 5,
-      width: 0,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-  },
-  monthSwitcher: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12,
-  },
-  monthText: {
-    color: '#18325C',
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 25,
-  },
   safeArea: {
     flex: 1,
   },
@@ -924,22 +828,22 @@ const styles = StyleSheet.create({
   },
   timeText: {
     ...journalType.caption,
-    color: '#2A7CAC',
+    color: '#168F89',
     marginBottom: 6,
   },
   timeline: {
     gap: 0,
   },
   timelineDot: {
-    backgroundColor: '#4D8FD9',
-    borderColor: '#CBE2F8',
+    backgroundColor: '#35C6BD',
+    borderColor: '#D8F5F2',
     borderRadius: 6,
     borderWidth: 2,
     height: 12,
     width: 12,
   },
   timelineLine: {
-    backgroundColor: '#CFE1E1',
+    backgroundColor: '#BFE9E6',
     flex: 1,
     minHeight: 44,
     width: 1,
@@ -954,12 +858,5 @@ const styles = StyleSheet.create({
     ...journalType.caption,
     color: '#E46B6B',
     marginHorizontal: 18,
-  },
-  weekdayText: {
-    ...journalType.caption,
-    color: muted,
-    paddingVertical: 6,
-    textAlign: 'center',
-    width: `${100 / 7}%`,
   },
 });

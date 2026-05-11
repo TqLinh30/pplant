@@ -6,9 +6,9 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "pplant",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/icon.png"
     },
     "android": {
       "adaptiveIcon": {
@@ -20,6 +20,11 @@
       "predictiveBackGestureEnabled": false,
       "permissions": ["android.permission.CAMERA"],
       "package": "com.tranlinh30502.pplant"
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#F2F7F7",
+      "barStyle": "dark-content",
+      "translucent": false
     },
     "web": {
       "output": "static",

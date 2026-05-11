@@ -1,3 +1,5 @@
+import type { AppLanguage } from '@/i18n/strings';
+
 import type { JournalMoodId } from './types';
 
 export type JournalMoodDefinition = {
@@ -6,6 +8,7 @@ export type JournalMoodDefinition = {
   id: JournalMoodId;
   labelEn: string;
   labelVi: string;
+  labelZhHant: string;
   softColor: string;
 };
 
@@ -14,8 +17,9 @@ export const journalMoodCatalog: JournalMoodDefinition[] = [
     color: '#E94E77',
     icon: 'heart',
     id: 'love',
-    labelEn: 'Love',
-    labelVi: 'Yêu',
+    labelEn: 'Wonderful',
+    labelVi: 'Tuyệt vời',
+    labelZhHant: '超棒',
     softColor: '#FFE8F0',
   },
   {
@@ -24,6 +28,7 @@ export const journalMoodCatalog: JournalMoodDefinition[] = [
     id: 'excited',
     labelEn: 'Excited',
     labelVi: 'Hào hứng',
+    labelZhHant: '興奮',
     softColor: '#FFF4D7',
   },
   {
@@ -32,6 +37,7 @@ export const journalMoodCatalog: JournalMoodDefinition[] = [
     id: 'calm',
     labelEn: 'Calm',
     labelVi: 'Bình yên',
+    labelZhHant: '平靜',
     softColor: '#DDF7F3',
   },
   {
@@ -40,6 +46,7 @@ export const journalMoodCatalog: JournalMoodDefinition[] = [
     id: 'tired',
     labelEn: 'Tired',
     labelVi: 'Mệt',
+    labelZhHant: '疲憊',
     softColor: '#F5E6DC',
   },
   {
@@ -48,6 +55,7 @@ export const journalMoodCatalog: JournalMoodDefinition[] = [
     id: 'sleepy',
     labelEn: 'Sleepy',
     labelVi: 'Buồn ngủ',
+    labelZhHant: '想睡',
     softColor: '#EAE8FF',
   },
   {
@@ -56,6 +64,7 @@ export const journalMoodCatalog: JournalMoodDefinition[] = [
     id: 'sad',
     labelEn: 'Sad',
     labelVi: 'Buồn',
+    labelZhHant: '難過',
     softColor: '#E5F1FF',
   },
   {
@@ -64,6 +73,7 @@ export const journalMoodCatalog: JournalMoodDefinition[] = [
     id: 'stressed',
     labelEn: 'Stressed',
     labelVi: 'Căng thẳng',
+    labelZhHant: '壓力大',
     softColor: '#FFE8E8',
   },
   {
@@ -72,10 +82,28 @@ export const journalMoodCatalog: JournalMoodDefinition[] = [
     id: 'neutral',
     labelEn: 'Neutral',
     labelVi: 'Bình thường',
+    labelZhHant: '普通',
     softColor: '#EEF4F4',
   },
 ];
 
 export function moodDefinitionFor(id: JournalMoodId): JournalMoodDefinition {
   return journalMoodCatalog.find((mood) => mood.id === id) ?? journalMoodCatalog[journalMoodCatalog.length - 1];
+}
+
+export function journalMoodLabel(
+  moodOrId: JournalMoodDefinition | JournalMoodId,
+  language: AppLanguage,
+): string {
+  const mood = typeof moodOrId === 'string' ? moodDefinitionFor(moodOrId) : moodOrId;
+
+  if (language === 'en') {
+    return mood.labelEn;
+  }
+
+  if (language === 'zh-Hant') {
+    return mood.labelZhHant;
+  }
+
+  return mood.labelVi;
 }

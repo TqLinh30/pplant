@@ -18,7 +18,7 @@ import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { journalMoodCatalog } from '@/domain/journal/mood-catalog';
+import { journalMoodCatalog, journalMoodLabel } from '@/domain/journal/mood-catalog';
 import type { JournalMoodId } from '@/domain/journal/types';
 import { useAppBackground } from '@/features/settings/app-background';
 import { AppBackgroundFrame } from '@/features/settings/AppBackgroundFrame';
@@ -33,8 +33,30 @@ const lightBlue = '#DDF3F0';
 const ink = '#253030';
 const muted = '#718282';
 const line = '#DDE7E7';
-const panel = '#F2F7F7';
 const danger = '#E46B6B';
+const fastJournalPictureMaxSide = 1600;
+const fastJournalPictureMinSide = 720;
+
+const journalDesignCopy = {
+  en: {
+    addNote: 'Add a note',
+    headerSubtitle: 'Save this moment 💕',
+    headerTitle: 'Create journal',
+    save: 'Save journal',
+  },
+  vi: {
+    addNote: 'Thêm một ghi chú',
+    headerSubtitle: 'Lưu lại khoảnh khắc này 💕',
+    headerTitle: 'Tạo nhật ký',
+    save: 'Lưu nhật ký',
+  },
+  'zh-Hant': {
+    addNote: '新增備註',
+    headerSubtitle: '留下這一刻 💕',
+    headerTitle: '建立日記',
+    save: '儲存日記',
+  },
+} as const;
 
 const captureCopy = {
   en: {
@@ -134,20 +156,73 @@ const captureType = {
   },
 } as const;
 
-function Header({ copy }: { copy: (typeof captureCopy)[keyof typeof captureCopy] }) {
+function parsePictureSize(size: string): { height: number; width: number } | null {
+  const [widthText, heightText] = size.split('x');
+  const width = Number(widthText);
+  const height = Number(heightText);
+
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return null;
+  }
+
+  return { height, width };
+}
+
+function chooseFastJournalPictureSize(sizes: string[]): string | undefined {
+  const candidates = sizes
+    .map((size) => ({ size, dimensions: parsePictureSize(size) }))
+    .filter(
+      (
+        candidate,
+      ): candidate is {
+        dimensions: { height: number; width: number };
+        size: string;
+      } => Boolean(candidate.dimensions),
+    )
+    .filter(({ dimensions }) => {
+      const longSide = Math.max(dimensions.height, dimensions.width);
+      const shortSide = Math.min(dimensions.height, dimensions.width);
+      const ratio = longSide / shortSide;
+
+      return (
+        Math.abs(ratio - 4 / 3) < 0.04 &&
+        longSide <= fastJournalPictureMaxSide &&
+        shortSide >= fastJournalPictureMinSide
+      );
+    })
+    .sort(
+      (left, right) =>
+        left.dimensions.width * left.dimensions.height -
+        right.dimensions.width * right.dimensions.height,
+    );
+
+  return candidates[0]?.size;
+}
+
+function Header({
+  copy,
+  subtitle,
+  title,
+}: {
+  copy: (typeof captureCopy)[keyof typeof captureCopy];
+  subtitle: string;
+  title: string;
+}) {
   return (
     <View style={styles.header}>
+      <Text style={[styles.headerSparkle, styles.headerSparkleLeft]}>✦</Text>
+      <Text style={[styles.headerSparkle, styles.headerSparkleRight]}>✦</Text>
       <Pressable
         accessibilityLabel={copy.headerBack}
         accessibilityRole="button"
         onPress={() => router.back()}
         style={styles.iconButton}
       >
-        <MaterialCommunityIcons color={ink} name="chevron-left" size={28} />
+        <MaterialCommunityIcons color={skyBlue} name="chevron-left" size={34} />
       </Pressable>
       <View style={styles.headerText}>
-        <Text style={styles.headerTitle}>{copy.headerTitle}</Text>
-        <Text style={styles.headerSubtitle}>{copy.headerSubtitle}</Text>
+        <Text style={styles.headerTitle}>{title}</Text>
+        <Text style={styles.headerSubtitle}>{subtitle}</Text>
       </View>
     </View>
   );
@@ -163,23 +238,30 @@ function MoodOption({
   selected: boolean;
 }) {
   const mood = journalMoodCatalog.find((item) => item.id === moodId) ?? journalMoodCatalog[0];
+  const language = useAppLanguage();
+  const label = journalMoodLabel(mood, language);
 
   return (
     <Pressable
       accessibilityRole="button"
       onPress={() => onSelect(moodId)}
-      style={[
-        styles.moodOption,
-        selected ? styles.moodOptionSelected : null,
-        { backgroundColor: mood.softColor },
-      ]}
+      style={styles.moodOption}
     >
-      <MoodFaceIcon moodId={moodId} size={34} />
+      <View
+        style={[
+          styles.moodIconFrame,
+          { backgroundColor: mood.softColor },
+          selected ? styles.moodIconFrameSelected : null,
+        ]}
+      >
+        <MoodFaceIcon moodId={moodId} size={31} />
+      </View>
       <Text
+        adjustsFontSizeToFit
         numberOfLines={1}
         style={[styles.moodLabel, selected ? styles.moodLabelSelected : null]}
       >
-        {mood.labelVi}
+        {label}
       </Text>
     </Pressable>
   );
@@ -207,16 +289,21 @@ export function JournalCaptureScreen() {
   const appBackground = useAppBackground();
   const language = useAppLanguage();
   const copy = captureCopy[language];
+  const designCopy = journalDesignCopy[language];
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const { height: windowHeight } = useWindowDimensions();
   const cameraRef = useRef<CameraView>(null);
+  const noteInputRef = useRef<TextInput>(null);
   const permissionRequestedRef = useRef(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [noteFocused, setNoteFocused] = useState(false);
+  const [noteEditorVisible, setNoteEditorVisible] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [pictureSize, setPictureSize] = useState<string | undefined>();
   const [takingPhoto, setTakingPhoto] = useState(false);
+  const pictureSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedHandledRef = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
   const capture = useJournalCapture();
@@ -236,11 +323,21 @@ export function JournalCaptureScreen() {
   const canSave = !saving && !photoPreparing && Boolean(state.photo && state.moodId);
   const previewUri = state.previewUri ?? state.photo?.photoUri ?? null;
   const canTakeInlinePhoto = Boolean(cameraPermission?.granted && cameraReady && !working);
-  const scrollNoteIntoView = () => {
+  const canUseCameraControl = Boolean(previewUri || canTakeInlinePhoto);
+  const clearPictureSaveTimeout = useCallback(() => {
+    if (!pictureSaveTimeoutRef.current) {
+      return;
+    }
+
+    clearTimeout(pictureSaveTimeoutRef.current);
+    pictureSaveTimeoutRef.current = null;
+  }, []);
+  const showNoteEditor = useCallback(() => {
+    setNoteEditorVisible(true);
     setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 120);
-  };
+      noteInputRef.current?.focus();
+    }, 80);
+  }, []);
 
   const acceptInlinePicture = useCallback(
     (picture: CameraCapturedPicture) => {
@@ -255,6 +352,23 @@ export function JournalCaptureScreen() {
     [capture],
   );
 
+  const handleCameraReady = useCallback(() => {
+    setCameraReady(true);
+
+    void cameraRef.current
+      ?.getAvailablePictureSizesAsync()
+      .then((sizes) => {
+        const selectedSize = chooseFastJournalPictureSize(sizes);
+
+        if (selectedSize) {
+          setPictureSize(selectedSize);
+        }
+      })
+      .catch(() => {
+        setPictureSize(undefined);
+      });
+  }, []);
+
   const takeInlinePhoto = useCallback(async () => {
     if (!cameraRef.current || !canTakeInlinePhoto) {
       return;
@@ -262,31 +376,78 @@ export function JournalCaptureScreen() {
 
     setTakingPhoto(true);
     setCameraError(null);
+    clearPictureSaveTimeout();
 
-    try {
-      const picture = await cameraRef.current.takePictureAsync({
-        quality: 0.86,
-        shutterSound: true,
-      });
+    let handled = false;
+    const handlePictureReady = (picture: CameraCapturedPicture | null | undefined) => {
+      if (handled) {
+        return;
+      }
+
+      handled = true;
+      clearPictureSaveTimeout();
 
       if (!picture?.uri) {
         setCameraError(copy.captureError);
+        setTakingPhoto(false);
         return;
       }
 
       acceptInlinePicture(picture);
-    } catch {
-      setCameraError(copy.captureError);
-    } finally {
       setTakingPhoto(false);
+    };
+
+    pictureSaveTimeoutRef.current = setTimeout(() => {
+      handlePictureReady(null);
+    }, 5000);
+
+    try {
+      const picture = await cameraRef.current.takePictureAsync({
+        base64: false,
+        exif: false,
+        fastMode: true,
+        onPictureSaved: handlePictureReady,
+        quality: 0.72,
+        shutterSound: false,
+      });
+
+      if (picture?.uri) {
+        handlePictureReady(picture);
+      }
+    } catch {
+      handlePictureReady(null);
     }
-  }, [acceptInlinePicture, canTakeInlinePhoto, copy.captureError]);
+  }, [acceptInlinePicture, canTakeInlinePhoto, clearPictureSaveTimeout, copy.captureError]);
 
   const retakeInlinePhoto = useCallback(() => {
     setCameraError(null);
     setCameraReady(false);
+    setPictureSize(undefined);
+    clearPictureSaveTimeout();
     capture.retakePhoto();
-  }, [capture]);
+  }, [capture, clearPictureSaveTimeout]);
+
+  const handleCameraControlPress = useCallback(() => {
+    if (previewUri) {
+      retakeInlinePhoto();
+      return;
+    }
+
+    void takeInlinePhoto();
+  }, [previewUri, retakeInlinePhoto, takeInlinePhoto]);
+
+  const handleCloseControlPress = useCallback(() => {
+    if (previewUri) {
+      retakeInlinePhoto();
+      return;
+    }
+
+    router.back();
+  }, [previewUri, retakeInlinePhoto]);
+
+  useEffect(() => {
+    return clearPictureSaveTimeout;
+  }, [clearPictureSaveTimeout]);
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', (event) => {
@@ -298,9 +459,6 @@ export function JournalCaptureScreen() {
           ? measuredKeyboardHeight
           : Math.min(event.endCoordinates.height, windowHeight * 0.44),
       );
-      setTimeout(() => {
-        scrollRef.current?.scrollToEnd({ animated: true });
-      }, 50);
     });
     const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
       setKeyboardVisible(false);
@@ -324,6 +482,12 @@ export function JournalCaptureScreen() {
       void requestCameraPermission();
     }
   }, [cameraPermission, requestCameraPermission]);
+
+  useEffect(() => {
+    if (previewUri && !state.moodId) {
+      capture.setMood('love');
+    }
+  }, [capture, previewUri, state.moodId]);
 
   useEffect(() => {
     if (state.status !== 'saved' || savedHandledRef.current) {
@@ -351,7 +515,11 @@ export function JournalCaptureScreen() {
             ref={scrollRef}
             style={styles.scroll}
           >
-            <Header copy={copy} />
+            <Header
+              copy={copy}
+              subtitle={designCopy.headerSubtitle}
+              title={designCopy.headerTitle}
+            />
 
             {saving ? (
               <View
@@ -366,82 +534,121 @@ export function JournalCaptureScreen() {
 
             {errorNotice ? <Notice {...errorNotice} /> : null}
 
-            <View style={styles.cameraPanel}>
-              {previewUri ? (
-                <>
-                  <Image source={{ uri: previewUri }} style={styles.previewImage} transition={80} />
-                  {photoPreparing ? (
-                    <View style={styles.photoPreparingBadge}>
-                      <ActivityIndicator color="#FFFFFF" size="small" />
-                      <Text style={styles.photoPreparingText}>{copy.preparingPhoto}</Text>
-                    </View>
-                  ) : null}
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={saving}
-                    onPress={retakeInlinePhoto}
-                    style={styles.retakeButton}
-                  >
-                    <MaterialCommunityIcons
-                      color="#FFFFFF"
-                      name="camera-retake-outline"
-                      size={18}
+            <View style={styles.cameraBlock}>
+              <View style={styles.cameraPanel}>
+                {previewUri ? (
+                  <>
+                    <Image
+                      contentFit="cover"
+                      source={{ uri: previewUri }}
+                      style={styles.previewImage}
+                      transition={80}
                     />
-                    <Text style={styles.retakeText}>{copy.retake}</Text>
-                  </Pressable>
-                </>
-              ) : cameraPermission?.granted ? (
-                <>
-                  <CameraView
-                    active
-                    facing="back"
-                    mode="picture"
-                    onCameraReady={() => setCameraReady(true)}
-                    onMountError={() => setCameraError(copy.cameraMountError)}
-                    ratio="4:3"
-                    ref={cameraRef}
-                    style={styles.cameraView}
-                  />
-                  <View style={styles.cameraOverlay}>
-                    <Text style={styles.cameraHint}>{copy.cameraHint}</Text>
-                    {cameraError ? <Text style={styles.cameraErrorText}>{cameraError}</Text> : null}
+                    {photoPreparing ? (
+                      <View style={styles.photoPreparingBadge}>
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                        <Text style={styles.photoPreparingText}>{copy.preparingPhoto}</Text>
+                      </View>
+                    ) : null}
+                    {noteEditorVisible || state.note.trim().length > 0 ? (
+                      <TextInput
+                        accessibilityLabel={designCopy.addNote}
+                        onBlur={() => setNoteFocused(false)}
+                        onChangeText={capture.setNote}
+                        onFocus={() => setNoteFocused(true)}
+                        onSubmitEditing={Keyboard.dismiss}
+                        placeholder={designCopy.addNote}
+                        placeholderTextColor="#3F9F99"
+                        ref={noteInputRef}
+                        returnKeyType="done"
+                        style={styles.addNoteInput}
+                        value={state.note}
+                      />
+                    ) : (
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={showNoteEditor}
+                        style={styles.addNoteButton}
+                      >
+                        <Text style={styles.addNoteButtonText}>{designCopy.addNote}</Text>
+                      </Pressable>
+                    )}
+                  </>
+                ) : cameraPermission?.granted ? (
+                  <>
+                    <View style={styles.cameraLens}>
+                      <CameraView
+                        active
+                        animateShutter={false}
+                        facing="back"
+                        mode="picture"
+                        onCameraReady={handleCameraReady}
+                        onMountError={() => setCameraError(copy.cameraMountError)}
+                        pictureSize={pictureSize}
+                        ratio="4:3"
+                        ref={cameraRef}
+                        style={styles.cameraView}
+                      />
+                    </View>
+                    {cameraError ? (
+                      <View style={styles.cameraErrorBadge}>
+                        <Text style={styles.cameraErrorText}>{cameraError}</Text>
+                      </View>
+                    ) : null}
+                  </>
+                ) : (
+                  <View style={styles.cameraPermissionPanel}>
+                    <MaterialCommunityIcons color={skyBlue} name="camera-plus-outline" size={40} />
+                    <Text style={styles.photoMissingTitle}>{copy.cameraPermissionTitle}</Text>
+                    <Text style={styles.helper}>{copy.cameraPermissionBody}</Text>
                     <Pressable
                       accessibilityRole="button"
-                      disabled={!canTakeInlinePhoto}
-                      onPress={takeInlinePhoto}
-                      style={[
-                        styles.inlineCaptureButton,
-                        !canTakeInlinePhoto ? styles.disabledButton : null,
-                      ]}
+                      onPress={requestCameraPermission}
+                      style={styles.primaryButton}
                     >
-                      {takingPhoto ? (
-                        <ActivityIndicator color={skyBlue} />
-                      ) : (
-                        <MaterialCommunityIcons color={skyBlue} name="camera" size={28} />
-                      )}
+                      <Text style={styles.primaryButtonText}>{copy.allowCamera}</Text>
                     </Pressable>
                   </View>
-                </>
-              ) : (
-                <View style={styles.cameraPermissionPanel}>
-                  <MaterialCommunityIcons color={skyBlue} name="camera-plus-outline" size={40} />
-                  <Text style={styles.photoMissingTitle}>{copy.cameraPermissionTitle}</Text>
-                  <Text style={styles.helper}>{copy.cameraPermissionBody}</Text>
+                )}
+              </View>
+              {cameraPermission?.granted ? (
+                <View style={styles.cameraControlRow}>
                   <Pressable
                     accessibilityRole="button"
-                    onPress={requestCameraPermission}
-                    style={styles.primaryButton}
+                    onPress={handleCloseControlPress}
+                    style={styles.sideCircleButton}
                   >
-                    <Text style={styles.primaryButtonText}>{copy.allowCamera}</Text>
+                    <MaterialCommunityIcons color={skyBlue} name="close" size={34} />
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={!canUseCameraControl}
+                    onPress={handleCameraControlPress}
+                    style={[
+                      styles.inlineCaptureButton,
+                      !canUseCameraControl ? styles.disabledButton : null,
+                    ]}
+                  >
+                    {takingPhoto ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <MaterialCommunityIcons color="#FFFFFF" name="camera" size={38} />
+                    )}
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled
+                    style={styles.sideCircleButton}
+                  >
+                    <MaterialCommunityIcons color={skyBlue} name="download-outline" size={34} />
                   </Pressable>
                 </View>
-              )}
+              ) : null}
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{copy.moodQuestion}</Text>
-              <View style={styles.moodGrid}>
-                {journalMoodCatalog.map((mood) => (
+            {previewUri ? (
+              <View style={styles.moodTray}>
+                {journalMoodCatalog.slice(0, 4).map((mood) => (
                   <MoodOption
                     key={mood.id}
                     moodId={mood.id}
@@ -450,56 +657,40 @@ export function JournalCaptureScreen() {
                   />
                 ))}
               </View>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{copy.noteTitle}</Text>
-              <TextInput
-                multiline
-                onChangeText={capture.setNote}
-                onBlur={() => setNoteFocused(false)}
-                onFocus={() => {
-                  setNoteFocused(true);
-                  scrollNoteIntoView();
-                }}
-                onPressIn={() => {
-                  setNoteFocused(true);
-                  scrollNoteIntoView();
-                }}
-                placeholder={copy.notePlaceholder}
-                placeholderTextColor="#A8A8A8"
-                style={styles.noteInput}
-                value={state.note}
-              />
-            </View>
-          </ScrollView>
-          <View
-            style={[
-              styles.actions,
-              {
-                bottom: actionBarBottom,
-                paddingBottom: actionBottomPadding,
-              },
-            ]}
-          >
-            {state.actionError ? (
-              <Text style={styles.warningText}>{state.actionError.message}</Text>
             ) : null}
-            <Pressable
-              accessibilityRole="button"
-              disabled={!canSave}
-              onPress={capture.save}
-              style={[styles.primaryButton, !canSave ? styles.disabledButton : null]}
+
+          </ScrollView>
+          {keyboardVisible ? null : (
+            <View
+              style={[
+                styles.actions,
+                {
+                  bottom: actionBarBottom,
+                  paddingBottom: actionBottomPadding,
+                },
+              ]}
             >
-              <Text style={styles.primaryButtonText}>
-                {photoPreparing
-                  ? copy.preparingPhoto
-                  : state.status === 'saving'
-                    ? copy.saving
-                    : copy.save}
-              </Text>
-            </Pressable>
-          </View>
+              {state.actionError ? (
+                <Text style={styles.warningText}>{state.actionError.message}</Text>
+              ) : null}
+              <Pressable
+                accessibilityRole="button"
+                disabled={!canSave}
+                onPress={capture.save}
+                style={[styles.saveButton, !canSave ? styles.disabledButton : null]}
+              >
+                <MaterialCommunityIcons color="#FFFFFF" name="creation" size={18} />
+                <Text style={styles.saveButtonText}>
+                  {photoPreparing
+                    ? copy.preparingPhoto
+                    : state.status === 'saving'
+                      ? copy.saving
+                      : designCopy.save}
+                </Text>
+                <MaterialCommunityIcons color="#FFFFFF" name="heart-outline" size={24} />
+              </Pressable>
+            </View>
+          )}
         </View>
       </AppBackgroundFrame>
     </SafeAreaView>
@@ -508,55 +699,115 @@ export function JournalCaptureScreen() {
 
 const styles = StyleSheet.create({
   actions: {
-    backgroundColor: panel,
-    borderTopColor: line,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    backgroundColor: 'transparent',
     gap: 10,
     left: 0,
-    paddingTop: 12,
+    paddingTop: 8,
     position: 'absolute',
     right: 0,
   },
   content: {
-    gap: 16,
+    gap: 18,
     paddingBottom: 18,
+  },
+  addNoteButton: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: 'rgba(92, 196, 186, 0.16)',
+    borderRadius: 24,
+    borderWidth: 1,
+    bottom: 14,
+    elevation: 6,
+    justifyContent: 'center',
+    minHeight: 40,
+    paddingHorizontal: 20,
+    position: 'absolute',
+    shadowColor: '#6EBEBB',
+    shadowOffset: {
+      height: 4,
+      width: 0,
+    },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+  },
+  addNoteButtonText: {
+    ...captureType.caption,
+    color: '#3F9F99',
+    fontFamily: 'Montserrat_700Bold',
+    fontWeight: '700',
+  },
+  addNoteInput: {
+    ...captureType.caption,
+    alignSelf: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: 'rgba(92, 196, 186, 0.16)',
+    borderRadius: 24,
+    borderWidth: 1,
+    bottom: 14,
+    color: '#3F9F99',
+    elevation: 6,
+    fontFamily: 'Montserrat_700Bold',
+    fontWeight: '700',
+    height: 40,
+    maxWidth: '76%',
+    minWidth: 196,
+    paddingHorizontal: 20,
+    paddingVertical: 0,
+    position: 'absolute',
+    shadowColor: '#6EBEBB',
+    shadowOffset: {
+      height: 4,
+      width: 0,
+    },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    textAlign: 'center',
+    textAlignVertical: 'center',
   },
   cameraErrorText: {
     ...captureType.caption,
     color: '#FFFFFF',
     textAlign: 'center',
   },
-  cameraHint: {
-    ...captureType.caption,
-    color: '#FFFFFF',
-    opacity: 0.94,
-    textAlign: 'center',
+  cameraErrorBadge: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(37, 48, 48, 0.72)',
+    borderRadius: 18,
+    bottom: 12,
+    left: 14,
+    minHeight: 36,
+    paddingHorizontal: 12,
+    position: 'absolute',
+    right: 14,
+    justifyContent: 'center',
   },
-  cameraOverlay: {
+  cameraLens: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    justifyContent: 'flex-end',
-    paddingBottom: 16,
-    paddingHorizontal: 16,
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  cameraBlock: {
+    gap: 20,
+    marginHorizontal: 26,
   },
   cameraPanel: {
-    aspectRatio: 1.35,
+    aspectRatio: 1.16,
     backgroundColor: '#FFFFFF',
-    borderColor: '#E4F1F1',
-    borderRadius: 22,
-    borderWidth: 1,
-    elevation: 4,
-    marginHorizontal: 16,
+    borderColor: '#FFFFFF',
+    borderRadius: 30,
+    borderWidth: 7,
+    elevation: 7,
     overflow: 'hidden',
     position: 'relative',
     shadowColor: '#99D9DA',
     shadowOffset: {
-      height: 8,
+      height: 10,
       width: 0,
     },
-    shadowOpacity: 0.16,
-    shadowRadius: 14,
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
   },
   cameraPermissionPanel: {
     alignItems: 'center',
@@ -566,29 +817,62 @@ const styles = StyleSheet.create({
     padding: 22,
   },
   cameraView: {
-    ...StyleSheet.absoluteFillObject,
+    aspectRatio: 3 / 4,
+    width: '100%',
+  },
+  cameraControlRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 46,
   },
   disabledButton: {
-    opacity: 0.55,
+    opacity: 0.62,
   },
   header: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    gap: 12,
-    minHeight: 64,
-    paddingHorizontal: 14,
+    justifyContent: 'center',
+    minHeight: 176,
+    paddingHorizontal: 26,
+    position: 'relative',
+  },
+  headerSparkle: {
+    color: '#AEE4DF',
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 25,
+    lineHeight: 26,
+    position: 'absolute',
+  },
+  headerSparkleLeft: {
+    left: 78,
+    top: 108,
+  },
+  headerSparkleRight: {
+    right: 86,
+    top: 138,
   },
   headerSubtitle: {
-    ...captureType.caption,
-    color: muted,
+    color: '#8F9A9A',
+    fontFamily: 'Montserrat_400Regular',
+    fontSize: 17,
+    fontWeight: '400',
+    letterSpacing: 0,
+    lineHeight: 24,
+    marginTop: 8,
+    textAlign: 'center',
   },
   headerText: {
-    flex: 1,
+    alignItems: 'center',
+    marginTop: 48,
   },
   headerTitle: {
-    ...captureType.title,
     color: ink,
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 31,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 38,
+    textAlign: 'center',
   },
   helper: {
     ...captureType.body,
@@ -597,9 +881,22 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     alignItems: 'center',
-    height: 42,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 33,
+    elevation: 7,
+    height: 66,
     justifyContent: 'center',
-    width: 36,
+    left: 28,
+    position: 'absolute',
+    shadowColor: '#91CFCB',
+    shadowOffset: {
+      height: 8,
+      width: 0,
+    },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    top: 14,
+    width: 66,
   },
   inlineLoading: {
     alignItems: 'center',
@@ -610,53 +907,103 @@ const styles = StyleSheet.create({
   },
   inlineCaptureButton: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: 'rgba(255, 255, 255, 0.86)',
-    borderRadius: 34,
-    borderWidth: 6,
-    elevation: 6,
-    height: 68,
+    backgroundColor: '#7EDDD5',
+    borderColor: 'rgba(255, 255, 255, 0.82)',
+    borderRadius: 41,
+    borderWidth: 0,
+    elevation: 9,
+    height: 82,
     justifyContent: 'center',
-    marginTop: 10,
-    shadowColor: '#000000',
+    shadowColor: '#62C9C0',
     shadowOffset: {
-      height: 5,
+      height: 10,
       width: 0,
     },
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
-    width: 68,
+    shadowOpacity: 0.36,
+    shadowRadius: 16,
+    width: 82,
+  },
+  sideCircleButton: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 32,
+    elevation: 7,
+    height: 64,
+    justifyContent: 'center',
+    shadowColor: '#9ED4D0',
+    shadowOffset: {
+      height: 8,
+      width: 0,
+    },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    width: 64,
   },
   keyboardRoot: {
     flex: 1,
   },
-  moodGrid: {
+  moodTray: {
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    backgroundColor: '#FFFFFF',
+    borderColor: 'rgba(232, 243, 243, 0.95)',
+    borderRadius: 24,
+    borderWidth: 1,
+    elevation: 5,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
+    justifyContent: 'space-between',
+    marginHorizontal: 30,
+    minHeight: 96,
+    paddingHorizontal: 9,
+    paddingVertical: 10,
+    shadowColor: '#9ED4D0',
+    shadowOffset: {
+      height: 8,
+      width: 0,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
   },
   moodLabel: {
-    ...captureType.caption,
-    color: ink,
-    marginTop: 4,
+    color: '#898D90',
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 16,
+    marginTop: 5,
+    minWidth: 0,
     textAlign: 'center',
   },
   moodLabelSelected: {
     color: skyBlue,
   },
+  moodIconFrame: {
+    alignItems: 'center',
+    borderColor: '#FFFFFF',
+    borderRadius: 27,
+    borderWidth: 4,
+    height: 54,
+    justifyContent: 'center',
+    width: 54,
+  },
+  moodIconFrameSelected: {
+    borderColor: skyBlue,
+    shadowColor: '#72D0C8',
+    shadowOffset: {
+      height: 4,
+      width: 0,
+    },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    transform: [{ scale: 1.04 }],
+  },
   moodOption: {
     alignItems: 'center',
-    borderColor: 'transparent',
-    borderRadius: 10,
-    borderWidth: 2,
-    flexBasis: '23%',
-    flexGrow: 1,
-    minHeight: 78,
+    flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 5,
-  },
-  moodOptionSelected: {
-    borderColor: skyBlue,
+    minWidth: 0,
   },
   noteInput: {
     ...captureType.body,
@@ -741,6 +1088,33 @@ const styles = StyleSheet.create({
     ...captureType.button,
     color: '#FFFFFF',
   },
+  saveButton: {
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    backgroundColor: '#88DDD6',
+    borderRadius: 20,
+    elevation: 8,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    marginHorizontal: 42,
+    minHeight: 62,
+    shadowColor: '#62C9C0',
+    shadowOffset: {
+      height: 8,
+      width: 0,
+    },
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 26,
+  },
   retakeButton: {
     alignItems: 'center',
     backgroundColor: 'rgba(37, 48, 48, 0.68)',
@@ -765,7 +1139,9 @@ const styles = StyleSheet.create({
   },
   section: {
     backgroundColor: '#FFFFFF',
+    borderRadius: 18,
     gap: 12,
+    marginHorizontal: 28,
     paddingHorizontal: 16,
     paddingVertical: 16,
   },

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type DimensionValue,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -16,14 +17,14 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, G, Path, Polyline } from 'react-native-svg';
+import Svg, { Circle, G, Path } from 'react-native-svg';
 
 import { createAppError, type AppError } from '@/domain/common/app-error';
 import type { CategoryTopicItem } from '@/domain/categories/types';
-import { moodDefinitionFor } from '@/domain/journal/mood-catalog';
+import { journalMoodLabel, moodDefinitionFor } from '@/domain/journal/mood-catalog';
 import type { JournalEntry, JournalMoodId } from '@/domain/journal/types';
 import type { MoneyHistorySummary } from '@/domain/money/calculations';
-import type { MoneyRecord } from '@/domain/money/types';
+import type { MoneyRecord, MoneyRecordKind } from '@/domain/money/types';
 import type { UserPreferences } from '@/domain/preferences/types';
 import { err, isErr, ok, type AppResult } from '@/domain/common/result';
 import {
@@ -44,6 +45,7 @@ import {
   useAppBackground,
   type AppBackgroundId,
 } from '@/features/settings/app-background';
+import { HeaderLanguageButton } from '@/features/settings/HeaderLanguageButton';
 import { MoodFaceIcon } from '@/features/journal/MoodFaceIcon';
 import { useJournalOverview } from '@/features/journal/useJournalOverview';
 import { AppBackgroundFrame } from '@/features/settings/AppBackgroundFrame';
@@ -64,6 +66,7 @@ import {
   formatLocalDate,
   getMonthBounds,
   incomeCategoryTemplates,
+  moneyNoteWeekdayLabelsForLanguage,
   moneyNoteDefaultPreferences,
   monthLabel,
   parseMoneyNoteAmountInput,
@@ -114,6 +117,10 @@ const moneyNoteCopy = {
     help: 'Trợ giúp',
     income: 'Thu nhập',
     incomeAmount: 'Tiền thu',
+    incomeByMonth: 'Thu nhập theo tháng',
+    journal: 'Nhật ký',
+    journalNoteFallback: 'Khoảnh khắc trong ngày',
+    calendarJournalEmpty: 'Chưa có nhật ký trong ngày',
     languageFailed: 'Không thể lưu ngôn ngữ.',
     languageSaved: 'Đã đổi ngôn ngữ.',
     locale: 'Khu vực',
@@ -127,6 +134,7 @@ const moneyNoteCopy = {
     report: 'Báo cáo',
     reportAllTime: 'Báo cáo toàn kì',
     reportYear: 'Báo cáo trong năm',
+    spendingByMonth: 'Chi tiêu theo tháng',
     saveCurrency: 'Lưu tiền tệ',
     saveFailed: 'Không thể lưu thay đổi.',
     saveSettings: 'Lưu cài đặt',
@@ -185,6 +193,10 @@ const moneyNoteCopy = {
     help: 'Help',
     income: 'Income',
     incomeAmount: 'Income',
+    incomeByMonth: 'Monthly income',
+    journal: 'Journal',
+    journalNoteFallback: 'Moment from the day',
+    calendarJournalEmpty: 'No journal for this day',
     languageFailed: 'Could not save language.',
     languageSaved: 'Language changed.',
     locale: 'Locale',
@@ -198,6 +210,7 @@ const moneyNoteCopy = {
     report: 'Report',
     reportAllTime: 'All-time report',
     reportYear: 'Yearly report',
+    spendingByMonth: 'Monthly spending',
     saveCurrency: 'Save currency',
     saveFailed: 'Could not save changes.',
     saveSettings: 'Save settings',
@@ -256,6 +269,10 @@ const moneyNoteCopy = {
     help: '說明',
     income: '收入',
     incomeAmount: '收入金額',
+    incomeByMonth: '每月收入',
+    journal: '日記',
+    journalNoteFallback: '今天的片刻',
+    calendarJournalEmpty: '當日尚無日記',
     languageFailed: '無法儲存語言。',
     languageSaved: '語言已變更。',
     locale: '地區格式',
@@ -269,6 +286,7 @@ const moneyNoteCopy = {
     report: '報告',
     reportAllTime: '全期間報告',
     reportYear: '年度報告',
+    spendingByMonth: '每月支出',
     saveCurrency: '儲存幣別',
     saveFailed: '無法儲存變更。',
     saveSettings: '儲存設定',
@@ -493,6 +511,10 @@ function recordDisplayLabel(record: MoneyRecord, language: AppLanguage, fallback
   }
 
   return record.merchantOrSource ?? fallback;
+}
+
+function reportCategoryKeyForRecord(record: MoneyRecord): string {
+  return record.categoryId ?? record.merchantOrSource ?? 'uncategorized';
 }
 
 const moneyType = {
@@ -742,6 +764,162 @@ function useMoneyNoteMonthData(monthDate: Date): MonthDataState {
   return state;
 }
 
+function formatReportMonthParam(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function parseReportMonthParam(value: string | null | undefined): Date {
+  const match = value?.match(/^(\d{4})-(\d{2})$/);
+
+  if (!match) {
+    return new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+    return new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  }
+
+  return new Date(year, month - 1, 1);
+}
+
+function searchParamValue(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function reportCategoryRequestFilter(categoryKey: string): {
+  categoryId?: string;
+  merchantOrSource?: string;
+} {
+  if (categoryKey.length === 0 || categoryKey === 'uncategorized') {
+    return {};
+  }
+
+  if (categoryKey.startsWith('category-')) {
+    return { categoryId: categoryKey };
+  }
+
+  return { merchantOrSource: categoryKey };
+}
+
+function reportCategoryRecordMatches(record: MoneyRecord, kind: MoneyRecordKind, categoryKey: string): boolean {
+  return (
+    record.deletedAt === null &&
+    record.kind === kind &&
+    reportCategoryKeyForRecord(record) === categoryKey
+  );
+}
+
+function useReportCategoryDetailData({
+  categoryKey,
+  kind,
+  monthDate,
+}: {
+  categoryKey: string;
+  kind: MoneyRecordKind;
+  monthDate: Date;
+}): CategoryDetailDataState {
+  const [reloadToken, setReloadToken] = useState(0);
+  const [state, setState] = useState<CategoryDetailDataState>({
+    currencyCode: moneyNoteDefaultPreferences.currencyCode,
+    locale: moneyNoteDefaultPreferences.locale,
+    records: [],
+    status: 'loading',
+  });
+  const preferencesAttempted = useRef(false);
+  const focusedOnce = useRef(false);
+  const reload = useCallback(() => {
+    setReloadToken((current) => current + 1);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (focusedOnce.current) {
+        reload();
+        return;
+      }
+
+      focusedOnce.current = true;
+    }, [reload]),
+  );
+  useEffect(() => subscribeMoneyRecordsChanged(reload), [reload]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const trendStart = shiftMonth(monthDate, -5);
+    const rangeStart = getMonthBounds(trendStart).dateFrom;
+    const rangeEnd = getMonthBounds(monthDate).dateTo;
+
+    const load = async () => {
+      setState((current) => ({ ...current, error: undefined, status: 'loading' }));
+
+      if (categoryKey.length === 0) {
+        setState({
+          currencyCode: moneyNoteDefaultPreferences.currencyCode,
+          locale: moneyNoteDefaultPreferences.locale,
+          records: [],
+          status: 'ready',
+        });
+        return;
+      }
+
+      const result = await loadMoneyHistory({
+        ...reportCategoryRequestFilter(categoryKey),
+        dateFrom: rangeStart,
+        dateTo: rangeEnd,
+        kind,
+        limit: 50,
+        sort: 'date_desc',
+        summaryMode: 'month',
+      });
+
+      if (cancelled) {
+        return;
+      }
+
+      if (result.ok) {
+        setState({
+          currencyCode: result.value.preferences.currencyCode,
+          locale: result.value.preferences.locale,
+          records: result.value.records.filter((record) =>
+            reportCategoryRecordMatches(record, kind, categoryKey),
+          ),
+          status: 'ready',
+        });
+        return;
+      }
+
+      if (result.error.recovery === 'settings' && !preferencesAttempted.current) {
+        preferencesAttempted.current = true;
+        const preferences = await ensureMoneyNotePreferences();
+
+        if (!cancelled && preferences.ok) {
+          await load();
+          return;
+        }
+      }
+
+      setState({
+        currencyCode: moneyNoteDefaultPreferences.currencyCode,
+        error: result.error,
+        locale: moneyNoteDefaultPreferences.locale,
+        records: [],
+        status: 'failed',
+      });
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [categoryKey, kind, monthDate, reloadToken]);
+
+  return state;
+}
+
 type MoneyNoteMorePanelKind =
   | 'backup'
   | 'categoryAllTime'
@@ -779,6 +957,21 @@ type ReportBreakdownRow = {
   percent: number;
 };
 
+type CategoryDetailDataState = {
+  currencyCode: string;
+  error?: AppError;
+  locale: string;
+  records: MoneyRecord[];
+  status: 'failed' | 'loading' | 'ready';
+};
+
+type CategoryMonthlyTrendRow = {
+  amountMinor: number;
+  key: string;
+  label: string;
+  monthDate: Date;
+};
+
 type MoneyNoteAnnualReportMode = 'expense' | 'income' | 'net';
 
 type YearlyMonthReportRow = {
@@ -791,11 +984,9 @@ type YearlyMonthReportRow = {
 };
 
 type ReportChartSegment = ReportBreakdownRow & {
-  connectorPoints: string;
-  dashLength: number;
-  dashOffset: number;
-  labelLeft: number;
-  labelTop: number;
+  borderColor: string;
+  path: string;
+  softColor: string;
 };
 
 const morePanelEmptyState: MorePanelDataState = {
@@ -975,7 +1166,7 @@ function buildCategoryReportRows(
     }
 
     const template = templateForRecord(record);
-    const key = record.categoryId ?? record.merchantOrSource ?? 'uncategorized';
+    const key = reportCategoryKeyForRecord(record);
     const existing =
       rows.get(key) ??
       ({
@@ -1018,7 +1209,7 @@ function buildReportBreakdownRows(
     .filter((record) => record.kind === kind && record.deletedAt === null)
     .forEach((record) => {
       const template = templateForRecord(record);
-      const key = record.categoryId ?? record.merchantOrSource ?? 'uncategorized';
+      const key = reportCategoryKeyForRecord(record);
       const templateIndex = template
         ? allMoneyNoteCategoryTemplates.findIndex((candidate) => candidate.id === template.id)
         : -1;
@@ -1154,92 +1345,80 @@ function shiftYear(year: number, years: number): number {
   return year + years;
 }
 
-function clampNumber(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
-
-function pointOnCircle(centerX: number, centerY: number, radius: number, angleDeg: number) {
-  const angle = (angleDeg * Math.PI) / 180;
+function polarPoint(centerX: number, centerY: number, radius: number, angle: number) {
+  const radians = (angle * Math.PI) / 180;
 
   return {
-    x: centerX + Math.cos(angle) * radius,
-    y: centerY + Math.sin(angle) * radius,
+    x: centerX + Math.cos(radians) * radius,
+    y: centerY + Math.sin(radians) * radius,
   };
 }
 
-function directionalBendX(
-  startX: number,
-  bendX: number,
-  endX: number,
-  isRightSide: boolean,
-): number {
-  // Keep the bend between the donut edge and label so leader lines never kink back inward.
-  if (isRightSide) {
-    const min = startX + 4;
-    const max = endX - 6;
+function donutSegmentPath({
+  centerX,
+  centerY,
+  endAngle,
+  innerRadius,
+  outerRadius,
+  startAngle,
+}: {
+  centerX: number;
+  centerY: number;
+  endAngle: number;
+  innerRadius: number;
+  outerRadius: number;
+  startAngle: number;
+}): string {
+  const outerStart = polarPoint(centerX, centerY, outerRadius, startAngle);
+  const outerEnd = polarPoint(centerX, centerY, outerRadius, endAngle);
+  const innerEnd = polarPoint(centerX, centerY, innerRadius, endAngle);
+  const innerStart = polarPoint(centerX, centerY, innerRadius, startAngle);
+  const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
 
-    return max < min ? (startX + endX) / 2 : clampNumber(bendX, min, max);
-  }
-
-  const min = endX + 6;
-  const max = startX - 4;
-
-  return max < min ? (startX + endX) / 2 : clampNumber(bendX, min, max);
+  return [
+    `M ${outerStart.x} ${outerStart.y}`,
+    `A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${outerEnd.x} ${outerEnd.y}`,
+    `L ${innerEnd.x} ${innerEnd.y}`,
+    `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${innerStart.x} ${innerStart.y}`,
+    'Z',
+  ].join(' ');
 }
 
 function buildReportChartSegments({
   centerX,
   centerY,
-  chartHeight,
-  chartWidth,
-  circumference,
   radius,
   rows,
   strokeWidth,
 }: {
   centerX: number;
   centerY: number;
-  chartHeight: number;
-  chartWidth: number;
-  circumference: number;
   radius: number;
   rows: ReportBreakdownRow[];
   strokeWidth: number;
 }): ReportChartSegment[] {
-  let arcOffset = 0;
   let angleOffset = -90;
-  const labelWidth = 84;
-  const labelPadding = 8;
+  const innerRadius = radius - strokeWidth / 2;
+  const outerRadius = radius + strokeWidth / 2;
 
   return rows.map((row) => {
-    const sweepAngle = (row.percent / 100) * 360;
-    const midAngle = angleOffset + sweepAngle / 2;
-    const outerRadius = radius + strokeWidth / 2;
-    const connectorStart = pointOnCircle(centerX, centerY, outerRadius + 3, midAngle);
-    const connectorBend = pointOnCircle(centerX, centerY, outerRadius + 10, midAngle);
-    const isRightSide = Math.cos((midAngle * Math.PI) / 180) >= 0;
-    const labelLeft = isRightSide ? chartWidth - labelWidth - labelPadding : labelPadding;
-    const connectorEndX = isRightSide ? labelLeft - 8 : labelLeft + labelWidth - 8;
-    const connectorEndY = connectorBend.y;
-    const labelTop = clampNumber(connectorEndY - 25, 8, chartHeight - 58);
-    const dashLength = Math.max(0.1, (row.percent / 100) * circumference);
-    // Connector geometry is derived from the segment midpoint so the label always describes that exact color.
-    const connectorBendX = directionalBendX(
-      connectorStart.x,
-      connectorBend.x,
-      connectorEndX,
-      isRightSide,
-    );
+    const sweepAngle = Math.max(0.1, (row.percent / 100) * 360);
+    const startAngle = angleOffset;
+    const endAngle = Math.min(angleOffset + sweepAngle, 269.999);
     const segment = {
       ...row,
-      connectorPoints: `${connectorStart.x},${connectorStart.y} ${connectorBendX},${connectorBend.y} ${connectorEndX},${connectorEndY}`,
-      dashLength,
-      dashOffset: -arcOffset,
-      labelLeft,
-      labelTop,
+      borderColor: '#EDF4F5',
+      path: donutSegmentPath({
+        centerX,
+        centerY,
+        endAngle,
+        innerRadius,
+        outerRadius,
+        startAngle,
+      }),
+      softColor: '#F7FBFB',
     };
 
-    arcOffset += dashLength;
     angleOffset += sweepAngle;
 
     return segment;
@@ -1394,6 +1573,15 @@ function MoreHeaderButton() {
         <MaterialCommunityIcons color={skyBlue} name="dots-horizontal" size={18} />
       </View>
     </Pressable>
+  );
+}
+
+function MoneyNoteHeaderActions() {
+  return (
+    <View style={styles.headerActionGroup}>
+      <HeaderLanguageButton />
+      <MoreHeaderButton />
+    </View>
   );
 }
 
@@ -1672,7 +1860,7 @@ export function MoneyNoteEntryScreen() {
           contentContainerStyle={[styles.entryContent, { backgroundColor: contentBackgroundColor }]}
           keyboardShouldPersistTaps="handled"
         >
-          <ScreenHeader right={<MoreHeaderButton />} title={copy.appTitle} variant="entry" />
+          <ScreenHeader right={<MoneyNoteHeaderActions />} title={copy.appTitle} variant="entry" />
 
           <View style={styles.entrySheet}>
             {!appBackground.photoUri ? <EntryBackgroundDecor /> : null}
@@ -1818,9 +2006,10 @@ function InlineDatePicker({
   onSelect: (localDate: string) => void;
   value: string;
 }) {
+  const language = useAppLanguage();
   const [visibleMonth, setVisibleMonth] = useState(() => parseLocalDate(value));
   const days = useMemo(() => buildMoneyNoteCalendarMonth(visibleMonth), [visibleMonth]);
-  const weekdayLabels = ['T.2', 'T.3', 'T.4', 'T.5', 'T.6', 'T.7', 'CN'];
+  const weekdayLabels = moneyNoteWeekdayLabelsForLanguage(language, { startsOnMonday: true });
 
   useEffect(() => {
     setVisibleMonth(parseLocalDate(value));
@@ -1872,18 +2061,24 @@ function CalendarPageHeader({ title }: { title: string }) {
           {title}
         </Text>
       </View>
-      <MoreHeaderButton />
+      <MoneyNoteHeaderActions />
     </View>
   );
 }
 
 function CalendarMonthSwitcher({
+  displayLocalDate,
+  language,
   monthDate,
   onChange,
 }: {
+  displayLocalDate?: string;
+  language: AppLanguage;
   monthDate: Date;
   onChange: (date: Date) => void;
 }) {
+  const dateLabel = formatMoneyNoteDate(displayLocalDate ?? formatLocalDate(monthDate), language);
+
   return (
     <View style={styles.calendarMonthSwitcher}>
       <Pressable
@@ -1896,16 +2091,16 @@ function CalendarMonthSwitcher({
       <View style={styles.calendarMonthPill}>
         <Text
           adjustsFontSizeToFit
-          minimumFontScale={0.78}
+          minimumFontScale={0.84}
           numberOfLines={1}
           style={styles.calendarMonthText}
         >
-          {monthLabel(monthDate)}
+          {dateLabel}
         </Text>
         <MaterialCommunityIcons
           color="#20C8C4"
           name="calendar-month-outline"
-          size={24}
+          size={18}
           style={styles.calendarMonthIcon}
         />
       </View>
@@ -1922,9 +2117,11 @@ function CalendarMonthSwitcher({
 
 function CalendarDetailTabs({
   active,
+  copy,
   onChange,
 }: {
   active: CalendarDetailTab;
+  copy: typeof moneyNoteCopy.vi;
   onChange: (tab: CalendarDetailTab) => void;
 }) {
   return (
@@ -1948,7 +2145,7 @@ function CalendarDetailTabs({
             active === 'spending' ? styles.calendarDetailTabTextActive : null,
           ]}
         >
-          Chi tiêu
+          {copy.expense}
         </Text>
       </Pressable>
       <Pressable
@@ -1970,7 +2167,7 @@ function CalendarDetailTabs({
             active === 'journal' ? styles.calendarDetailTabTextActive : null,
           ]}
         >
-          Nhật ký
+          {copy.journal}
         </Text>
         {active === 'journal' ? (
           <View style={styles.calendarJournalHeart}>
@@ -1988,7 +2185,7 @@ function ReportPageHeader({ title }: { title: string }) {
       <Text numberOfLines={1} style={styles.reportPageTitle}>
         {title}
       </Text>
-      <MoreHeaderButton />
+      <MoneyNoteHeaderActions />
     </View>
   );
 }
@@ -2236,19 +2433,35 @@ function CalendarSpendingPanel({
   );
 }
 
-function CalendarMoodPill({ moodId }: { moodId: JournalMoodId }) {
+function CalendarMoodPill({
+  language,
+  moodId,
+}: {
+  language: AppLanguage;
+  moodId: JournalMoodId;
+}) {
   const mood = moodDefinitionFor(moodId);
 
   return (
     <View style={[styles.calendarMoodPill, { backgroundColor: mood.softColor }]}>
       <MoodFaceIcon moodId={moodId} size={24} />
-      <Text style={[styles.calendarMoodPillText, { color: mood.color }]}>{mood.labelVi}</Text>
+      <Text style={[styles.calendarMoodPillText, { color: mood.color }]}>
+        {journalMoodLabel(mood, language)}
+      </Text>
     </View>
   );
 }
 
-function CalendarJournalRow({ entry, isLast }: { entry: JournalEntry; isLast: boolean }) {
-  const note = entry.note?.trim() || 'Khoảnh khắc trong ngày';
+function CalendarJournalRow({
+  copy,
+  entry,
+  isLast,
+}: {
+  copy: typeof moneyNoteCopy.vi;
+  entry: JournalEntry;
+  isLast: boolean;
+}) {
+  const note = entry.note?.trim() || copy.journalNoteFallback;
 
   return (
     <View style={styles.calendarJournalRow}>
@@ -2273,25 +2486,23 @@ function CalendarJournalRow({ entry, isLast }: { entry: JournalEntry; isLast: bo
 }
 
 function CalendarJournalPanel({
+  copy,
   entries,
+  language,
   selectedLocalDate,
 }: {
+  copy: typeof moneyNoteCopy.vi;
   entries: JournalEntry[];
+  language: AppLanguage;
   selectedLocalDate: string;
 }) {
-  const language = useAppLanguage();
-  const emptyCopy = {
-    en: 'No journal for this day',
-    vi: 'Chưa có nhật ký trong ngày',
-    'zh-Hant': '當日尚無日記',
-  }[language];
   const moodId = entries[0]?.moodId;
 
   return (
     <View style={styles.calendarDetailBody}>
       <View style={styles.calendarJournalCard}>
         <View style={styles.calendarJournalCardHeader}>
-          {moodId ? <CalendarMoodPill moodId={moodId} /> : <View />}
+          {moodId ? <CalendarMoodPill language={language} moodId={moodId} /> : <View />}
           <View style={styles.calendarJournalDateBadge}>
             <MaterialCommunityIcons color="#18325C" name="calendar-month" size={18} />
             <Text style={styles.calendarRecordDateText}>
@@ -2299,9 +2510,16 @@ function CalendarJournalPanel({
             </Text>
           </View>
         </View>
-        {entries.length === 0 ? <Text style={styles.calendarEmptyText}>{emptyCopy}</Text> : null}
+        {entries.length === 0 ? (
+          <Text style={styles.calendarEmptyText}>{copy.calendarJournalEmpty}</Text>
+        ) : null}
         {entries.map((entry, index) => (
-          <CalendarJournalRow entry={entry} isLast={index === entries.length - 1} key={entry.id} />
+          <CalendarJournalRow
+            copy={copy}
+            entry={entry}
+            isLast={index === entries.length - 1}
+            key={entry.id}
+          />
         ))}
       </View>
     </View>
@@ -2357,7 +2575,7 @@ export function MoneyNoteCalendarScreen() {
   const [detailTab, setDetailTab] = useState<CalendarDetailTab>('spending');
   const monthData = useMoneyNoteMonthData(monthDate);
   const days = useMemo(() => buildMoneyNoteCalendarMonth(monthDate), [monthDate]);
-  const weekdayLabels = ['T.2', 'T.3', 'T.4', 'T.5', 'T.6', 'T.7', 'CN'];
+  const weekdayLabels = moneyNoteWeekdayLabelsForLanguage(language, { startsOnMonday: true });
   const selectedJournalDate = useMemo(() => parseLocalDate(selectedLocalDate), [selectedLocalDate]);
   const journalOverview = useJournalOverview(selectedJournalDate, monthDate);
   const journalEntries = journalOverview.state.data?.entries ?? [];
@@ -2420,15 +2638,20 @@ export function MoneyNoteCalendarScreen() {
           ]}
         >
           <CalendarPageHeader title={copy.calendar} />
-          <CalendarMonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
+          <CalendarMonthSwitcher
+            displayLocalDate={selectedLocalDate}
+            language={language}
+            monthDate={monthDate}
+            onChange={setMonthDate}
+          />
           <View style={styles.calendarGrid}>
-            {weekdayLabels.map((label) => (
+            {weekdayLabels.map((label, index) => (
               <View key={label} style={styles.weekdayCell}>
                 <Text
                   style={[
                     styles.weekdayText,
-                    label === 'T.7' ? styles.saturdayText : null,
-                    label === 'CN' ? styles.sundayText : null,
+                    index === 5 ? styles.saturdayText : null,
+                    index === 6 ? styles.sundayText : null,
                   ]}
                 >
                   {label}
@@ -2498,7 +2721,7 @@ export function MoneyNoteCalendarScreen() {
             </Text>
           ) : null}
           <View style={styles.calendarDetailPanel}>
-            <CalendarDetailTabs active={detailTab} onChange={setDetailTab} />
+            <CalendarDetailTabs active={detailTab} copy={copy} onChange={setDetailTab} />
             {detailTab === 'spending' ? (
               <CalendarSpendingPanel
                 copy={copy}
@@ -2512,7 +2735,9 @@ export function MoneyNoteCalendarScreen() {
               />
             ) : (
               <CalendarJournalPanel
+                copy={copy}
                 entries={journalEntries}
+                language={language}
                 selectedLocalDate={selectedLocalDate}
               />
             )}
@@ -2568,149 +2793,133 @@ function ReportSummaryCard({
 function ReportChartCallout({
   language,
   segment,
+  slot,
 }: {
   language: AppLanguage;
   segment: ReportChartSegment;
+  slot: ReportCalloutSlot;
 }) {
   return (
     <View
       style={[
         styles.reportChartCallout,
-        {
-          left: segment.labelLeft,
-          top: segment.labelTop,
-        },
+        styles[`reportChartCallout${slot}`],
+        { backgroundColor: segment.softColor, borderColor: segment.borderColor },
       ]}
     >
-      <View>
-        <Text style={styles.reportChartCalloutPercent}>
+      <View style={[styles.reportChartCalloutDot, { backgroundColor: segment.color }]} />
+      <CategoryIcon icon={segment.icon} size={32} />
+      <View style={styles.reportChartCalloutTextWrap}>
+        <Text numberOfLines={1} style={styles.reportChartCalloutLabel}>
+          {segment.label}
+        </Text>
+        <Text numberOfLines={1} style={[styles.reportChartCalloutPercent, { color: segment.color }]}>
           {formatReportPercent(segment.percent, language)}
         </Text>
-        <View style={styles.reportChartCalloutLabelRow}>
-          <CategoryIcon icon={segment.icon} size={24} />
-          <Text numberOfLines={1} style={styles.reportChartCalloutLabel}>
-            {segment.label}
-          </Text>
-        </View>
       </View>
     </View>
   );
 }
 
-const reportDonutPalette = ['#EA5AAA', '#FF566C', '#FFA51D', '#A97735', '#4ED6C8', '#7EA7FF'];
+const reportDonutPalette = [
+  { borderColor: '#F8DCE7', color: '#EE6C9B', softColor: '#FFF5F8' },
+  { borderColor: '#D9F0FA', color: '#58C2DE', softColor: '#F2FAFF' },
+  { borderColor: '#F7DED4', color: '#FF8065', softColor: '#FFF5F0' },
+  { borderColor: '#D8F3EF', color: '#56D1C5', softColor: '#F2FCFA' },
+  { borderColor: '#FFE9BC', color: '#F8BA4E', softColor: '#FFF9EA' },
+  { borderColor: '#E3DCFF', color: '#9788F3', softColor: '#F6F3FF' },
+];
+const reportCalloutSlots = ['BottomRight', 'BottomLeft', 'TopLeft', 'TopRight'] as const;
+type ReportCalloutSlot = (typeof reportCalloutSlots)[number];
 
-const reportCalloutTopSlots = [20, 126] as const;
-type ReportCalloutSide = 'left' | 'right';
+function sortReportChartRows(rows: ReportBreakdownRow[]): ReportBreakdownRow[] {
+  return [...rows].sort((left, right) => right.amountMinor - left.amountMinor);
+}
 
-function arrangeReportCallouts(
-  segments: ReportChartSegment[],
-  {
-    centerX,
-    centerY,
-    chartWidth,
-    radius,
-    strokeWidth,
-  }: {
-    centerX: number;
-    centerY: number;
-    chartWidth: number;
-    radius: number;
-    strokeWidth: number;
-  },
-): ReportChartSegment[] {
-  const labelWidth = 96;
-  const labelPadding = 10;
-  const ringOuterRadius = radius + strokeWidth / 2 + 3;
-  const selectedSegments = [...segments]
-    .sort((left, right) => right.amountMinor - left.amountMinor)
-    .slice(0, 4);
-  const segmentsBySide: Record<ReportCalloutSide, ReportChartSegment[]> = {
-    left: [],
-    right: [],
-  };
+function reportChartColorByKey(rows: ReportBreakdownRow[]): Map<string, string> {
+  return new Map(
+    sortReportChartRows(rows).map((row, index) => [
+      row.key,
+      reportDonutPalette[index % reportDonutPalette.length].color,
+    ]),
+  );
+}
 
-  selectedSegments.forEach((segment) => {
-    const side: ReportCalloutSide = segment.labelLeft > chartWidth / 2 ? 'right' : 'left';
-    segmentsBySide[side].push(segment);
-  });
-
-  const connectorStartXFor = (segment: ReportChartSegment) => {
-    const [startPoint] = segment.connectorPoints.split(' ');
-    const [startXText] = startPoint.split(',');
-    const startX = Number(startXText);
-
-    return Number.isFinite(startX) ? startX : chartWidth / 2;
-  };
-  const moveNearestCenterSegment = (fromSide: ReportCalloutSide, toSide: ReportCalloutSide) => {
-    const fromSegments = segmentsBySide[fromSide];
-    let moveIndex = 0;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-
-    fromSegments.forEach((segment, index) => {
-      const distance = Math.abs(connectorStartXFor(segment) - chartWidth / 2);
-
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        moveIndex = index;
-      }
-    });
-
-    const [movedSegment] = fromSegments.splice(moveIndex, 1);
-
-    if (movedSegment) {
-      segmentsBySide[toSide].push(movedSegment);
-    }
-  };
-
-  (['left', 'right'] as const).forEach((side) => {
-    const otherSide = side === 'left' ? 'right' : 'left';
-
-    while (segmentsBySide[side].length > 2) {
-      moveNearestCenterSegment(side, otherSide);
-    }
-  });
-
-  if (selectedSegments.length === 4) {
-    (['left', 'right'] as const).forEach((side) => {
-      const otherSide = side === 'left' ? 'right' : 'left';
-
-      while (segmentsBySide[side].length < 2 && segmentsBySide[otherSide].length > 2) {
-        moveNearestCenterSegment(otherSide, side);
-      }
-    });
+function reportDetailMonthChip(monthDate: Date, language: AppLanguage): string {
+  if (language === 'en') {
+    return monthDate.toLocaleDateString('en-US', { month: 'short' });
   }
 
-  const arrangedSegments: ReportChartSegment[] = [];
+  if (language === 'zh-Hant') {
+    return `${monthDate.getMonth() + 1}月`;
+  }
 
-  (['left', 'right'] as const).forEach((side) => {
-    segmentsBySide[side]
-      .sort((left, right) => left.labelTop - right.labelTop)
-      .forEach((segment, index, sideSegments) => {
-        const labelLeft = side === 'right' ? chartWidth - labelWidth - labelPadding : labelPadding;
-        const labelTop = sideSegments.length === 1 ? 74 : reportCalloutTopSlots[Math.min(index, 1)];
-        const endX = side === 'right' ? labelLeft - 6 : labelLeft + labelWidth + 6;
-        const endY = labelTop + 36;
-        const verticalOffset =
-          sideSegments.length === 1
-            ? 0
-            : index === 0
-              ? -ringOuterRadius * 0.68
-              : ringOuterRadius * 0.68;
-        const startY = centerY + verticalOffset;
-        const horizontalOffset = Math.sqrt(Math.max(0, ringOuterRadius ** 2 - verticalOffset ** 2));
-        const startX = side === 'right' ? centerX + horizontalOffset : centerX - horizontalOffset;
-        const elbowX = (startX + endX) / 2;
+  return `T${monthDate.getMonth() + 1}`;
+}
 
-        arrangedSegments.push({
-          ...segment,
-          connectorPoints: `${startX},${startY} ${elbowX},${startY} ${elbowX},${endY} ${endX},${endY}`,
-          labelLeft,
-          labelTop,
-        });
-      });
+function reportTrendMonthLabel(monthDate: Date, language: AppLanguage): string {
+  const month = monthDate.getMonth() + 1;
+
+  if (language === 'en') {
+    return month === 1
+      ? `${monthDate.getFullYear()}`
+      : monthDate.toLocaleDateString('en-US', { month: 'short' });
+  }
+
+  if (language === 'zh-Hant') {
+    return month === 1 ? `${monthDate.getFullYear()}/01` : `${month}月`;
+  }
+
+  return month === 1 ? `01/${monthDate.getFullYear()}` : `T${month}`;
+}
+
+function buildCategoryTrendRows(
+  records: MoneyRecord[],
+  monthDate: Date,
+  language: AppLanguage,
+): CategoryMonthlyTrendRow[] {
+  return Array.from({ length: 6 }, (_, index) => {
+    const rowMonth = shiftMonth(monthDate, index - 5);
+    const monthKey = formatReportMonthParam(rowMonth);
+    const amountMinor = records
+      .filter((record) => record.localDate.slice(0, 7) === monthKey)
+      .reduce((total, record) => total + record.amountMinor, 0);
+
+    return {
+      amountMinor,
+      key: monthKey,
+      label: reportTrendMonthLabel(rowMonth, language),
+      monthDate: rowMonth,
+    };
+  });
+}
+
+function niceChartStep(rawStep: number): number {
+  if (rawStep <= 0) {
+    return 100;
+  }
+
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+  const normalized = rawStep / magnitude;
+  const niceNormalized =
+    normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 2.5 ? 2.5 : normalized <= 5 ? 5 : 10;
+
+  return niceNormalized * magnitude;
+}
+
+function groupRecordsByLocalDate(records: MoneyRecord[]): { localDate: string; records: MoneyRecord[] }[] {
+  const grouped = new Map<string, MoneyRecord[]>();
+
+  records.forEach((record) => {
+    const existing = grouped.get(record.localDate) ?? [];
+    existing.push(record);
+    grouped.set(record.localDate, existing);
   });
 
-  return arrangedSegments;
+  return Array.from(grouped.entries()).map(([localDate, groupedRecords]) => ({
+    localDate,
+    records: groupedRecords,
+  }));
 }
 
 function ReportDonutChart({
@@ -2722,34 +2931,26 @@ function ReportDonutChart({
   language: AppLanguage;
   rows: ReportBreakdownRow[];
 }) {
-  const chartHeight = 204;
+  const chartHeight = 296;
   const chartWidth = 344;
   const centerX = chartWidth / 2;
   const centerY = chartHeight / 2;
-  const radius = 50;
+  const radius = 60;
   const strokeWidth = 28;
-  const circumference = 2 * Math.PI * radius;
-  const chartRows = [...rows].sort((left, right) => right.amountMinor - left.amountMinor);
+  const chartRows = sortReportChartRows(rows);
   const segments = buildReportChartSegments({
     centerX,
     centerY,
-    chartHeight,
-    chartWidth,
-    circumference,
     radius,
     rows: chartRows,
     strokeWidth,
   }).map((segment, index) => ({
     ...segment,
-    color: reportDonutPalette[index % reportDonutPalette.length],
+    borderColor: reportDonutPalette[index % reportDonutPalette.length].borderColor,
+    color: reportDonutPalette[index % reportDonutPalette.length].color,
+    softColor: reportDonutPalette[index % reportDonutPalette.length].softColor,
   }));
-  const calloutSegments = arrangeReportCallouts(segments, {
-    centerX,
-    centerY,
-    chartWidth,
-    radius,
-    strokeWidth,
-  });
+  const calloutSegments = segments.slice(0, 4);
   const centerSegment = chartRows[0];
 
   return (
@@ -2764,41 +2965,26 @@ function ReportDonutChart({
             stroke="#E9EFEF"
             strokeWidth={strokeWidth}
           />
-          <G origin={`${centerX}, ${centerY}`} rotation="-90">
-            {segments.map((segment) => (
-              <Circle
-                cx={centerX}
-                cy={centerY}
-                fill="none"
-                key={segment.key}
-                r={radius}
-                stroke={segment.color}
-                strokeDasharray={`${segment.dashLength} ${circumference - segment.dashLength}`}
-                strokeDashoffset={segment.dashOffset}
-                strokeWidth={strokeWidth}
-              />
-            ))}
-          </G>
-          {calloutSegments.map((segment) => (
-            <Polyline
-              fill="none"
-              key={`connector-${segment.key}`}
-              points={segment.connectorPoints}
-              stroke={segment.color}
-              strokeLinecap="round"
+          {segments.map((segment) => (
+            <Path
+              d={segment.path}
+              fill={segment.color}
+              key={segment.key}
+              stroke="#FFFFFF"
               strokeLinejoin="round"
               strokeWidth={2}
             />
           ))}
         </Svg>
         <View style={styles.reportChartHole}>
-          {centerSegment ? <CategoryIcon icon={centerSegment.icon} size={54} /> : null}
+          {centerSegment ? <CategoryIcon icon={centerSegment.icon} size={58} /> : null}
         </View>
-        {calloutSegments.map((segment) => (
+        {calloutSegments.map((segment, index) => (
           <ReportChartCallout
             key={`callout-${segment.key}`}
             language={language}
             segment={segment}
+            slot={reportCalloutSlots[index]}
           />
         ))}
         {rows.length === 0 ? <Text style={styles.reportChartEmptyText}>{copy.noData}</Text> : null}
@@ -2811,11 +2997,13 @@ function ReportBreakdownList({
   currencyCode,
   language,
   locale,
+  onRowPress,
   rows,
 }: {
   currencyCode: string;
   language: AppLanguage;
   locale: string;
+  onRowPress?: (row: ReportBreakdownRow) => void;
   rows: ReportBreakdownRow[];
 }) {
   if (rows.length === 0) {
@@ -2826,16 +3014,28 @@ function ReportBreakdownList({
     );
   }
 
+  const displayRows = sortReportChartRows(rows);
+  const chartColorByKey = reportChartColorByKey(rows);
+
   return (
     <View style={styles.reportBreakdownList}>
-      {rows.slice(0, 6).map((row, index) => (
-        <View
+      {displayRows.slice(0, 6).map((row, index) => (
+        <Pressable
+          accessibilityRole={onRowPress ? 'button' : undefined}
+          disabled={!onRowPress}
           key={row.key}
+          onPress={onRowPress ? () => onRowPress(row) : undefined}
           style={[
             styles.reportBreakdownRow,
-            index === Math.min(rows.length, 6) - 1 ? styles.reportBreakdownRowLast : null,
+            index === Math.min(displayRows.length, 6) - 1 ? styles.reportBreakdownRowLast : null,
           ]}
         >
+          <View
+            style={[
+              styles.reportBreakdownColorDot,
+              { backgroundColor: chartColorByKey.get(row.key) ?? row.color },
+            ]}
+          />
           <CategoryIcon icon={row.icon} size={42} />
           <Text numberOfLines={1} style={styles.reportBreakdownTitle}>
             {row.label}
@@ -2847,7 +3047,7 @@ function ReportBreakdownList({
             {formatReportPercent(row.percent, language)}
           </Text>
           <MaterialCommunityIcons color="#666666" name="chevron-right" size={22} />
-        </View>
+        </Pressable>
       ))}
     </View>
   );
@@ -2855,6 +3055,7 @@ function ReportBreakdownList({
 
 export function MoneyNoteReportScreen() {
   const { copy, language } = useMoneyNoteCopy();
+  const router = useRouter();
   const appBackground = useAppBackground();
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [activeKind, setActiveKind] = useState<'expense' | 'income'>('expense');
@@ -2862,6 +3063,22 @@ export function MoneyNoteReportScreen() {
   const breakdownRows = useMemo(
     () => buildReportBreakdownRows(monthData.records, activeKind, language),
     [activeKind, language, monthData.records],
+  );
+  const chartColorByKey = useMemo(() => reportChartColorByKey(breakdownRows), [breakdownRows]);
+  const openCategoryDetail = useCallback(
+    (row: ReportBreakdownRow) => {
+      const params = new URLSearchParams({
+        categoryKey: row.key,
+        color: chartColorByKey.get(row.key) ?? row.color,
+        icon: row.icon,
+        kind: activeKind,
+        label: row.label,
+        month: formatReportMonthParam(monthDate),
+      });
+
+      router.push(`/report-category-detail?${params.toString()}` as never);
+    },
+    [activeKind, chartColorByKey, monthDate, router],
   );
   const contentBackgroundColor = 'transparent';
 
@@ -2878,7 +3095,11 @@ export function MoneyNoteReportScreen() {
           ]}
         >
           <ReportPageHeader title={copy.report} />
-          <CalendarMonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
+          <CalendarMonthSwitcher
+            language={language}
+            monthDate={monthDate}
+            onChange={setMonthDate}
+          />
           <ReportSummaryCard
             copy={copy}
             currencyCode={monthData.currencyCode}
@@ -2900,11 +3121,320 @@ export function MoneyNoteReportScreen() {
                   currencyCode={monthData.currencyCode}
                   language={language}
                   locale={monthData.locale}
+                  onRowPress={openCategoryDetail}
                   rows={breakdownRows}
                 />
               </>
             ) : null}
           </View>
+        </ScrollView>
+      </AppBackgroundFrame>
+    </SafeAreaView>
+  );
+}
+
+function CategoryDetailTrendChart({
+  accentColor,
+  copy,
+  currencyCode,
+  kind,
+  language,
+  locale,
+  rows,
+}: {
+  accentColor: string;
+  copy: typeof moneyNoteCopy.vi;
+  currencyCode: string;
+  kind: MoneyRecordKind;
+  language: AppLanguage;
+  locale: string;
+  rows: CategoryMonthlyTrendRow[];
+}) {
+  const maxMinor = Math.max(...rows.map((row) => row.amountMinor), 0);
+  const stepMinor = niceChartStep(maxMinor / 6);
+  const scaleMaxMinor = stepMinor * 6;
+  const gridValues = [6, 5, 4, 3, 2, 1, 0].map((step) => stepMinor * step);
+  const title = kind === 'expense' ? copy.spendingByMonth : copy.incomeByMonth;
+
+  return (
+    <View style={styles.categoryDetailChartCard}>
+      <View style={styles.categoryDetailChartHeader}>
+        <View style={styles.categoryDetailChartIcon}>
+          <MaterialCommunityIcons color={skyBlue} name="chart-bar" size={22} />
+        </View>
+        <Text style={styles.categoryDetailChartTitle}>{title}</Text>
+      </View>
+      <View style={styles.categoryTrendChartArea}>
+        <View style={styles.categoryTrendYAxis}>
+          {gridValues.map((value) => (
+            <Text key={value} numberOfLines={1} style={styles.categoryTrendYAxisLabel}>
+              {formatMoneyNoteAmount(value, { currencyCode, locale })}
+            </Text>
+          ))}
+        </View>
+        <View style={styles.categoryTrendPlot}>
+          <View pointerEvents="none" style={styles.categoryTrendGrid}>
+            {gridValues.map((value) => (
+              <View key={value} style={styles.categoryTrendGridLine} />
+            ))}
+          </View>
+          <View style={styles.categoryTrendBarsLayer}>
+            {rows.map((row) => {
+              const barHeightPercent =
+                row.amountMinor === 0 ? 0 : Math.max(3, (row.amountMinor / scaleMaxMinor) * 100);
+              const valueLabelBottom: DimensionValue =
+                row.amountMinor === 0 ? 16 : `${Math.min(92, barHeightPercent + 4)}%`;
+
+              return (
+                <View key={row.key} style={styles.categoryTrendBarSlot}>
+                  <Text
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.72}
+                    numberOfLines={1}
+                    style={[
+                      styles.categoryTrendBarValue,
+                      { bottom: valueLabelBottom, color: accentColor },
+                    ]}
+                  >
+                    {formatMoneyNoteAmount(row.amountMinor, { currencyCode, locale })}
+                  </Text>
+                  <View
+                    style={[
+                      styles.categoryTrendBar,
+                      {
+                        backgroundColor: accentColor,
+                        height: `${barHeightPercent}%`,
+                        opacity: row.amountMinor === 0 ? 0 : 1,
+                      },
+                    ]}
+                  />
+                  <View style={[styles.categoryTrendDot, { backgroundColor: skyBlue }]} />
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+      <View style={styles.categoryTrendXAxis}>
+        <View style={styles.categoryTrendXAxisSpacer} />
+        {rows.map((row) => (
+          <Text key={row.key} numberOfLines={1} style={styles.categoryTrendXAxisLabel}>
+            {row.label}
+          </Text>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function CategoryDetailRecordGroups({
+  accentColor,
+  currencyCode,
+  icon,
+  kind,
+  label,
+  language,
+  locale,
+  onRecordPress,
+  records,
+}: {
+  accentColor: string;
+  currencyCode: string;
+  icon: string;
+  kind: MoneyRecordKind;
+  label: string;
+  language: AppLanguage;
+  locale: string;
+  onRecordPress: (record: MoneyRecord) => void;
+  records: MoneyRecord[];
+}) {
+  const groups = groupRecordsByLocalDate(records);
+
+  return (
+    <View style={styles.categoryDetailRecordList}>
+      {groups.map((group) => {
+        const totalMinor = group.records.reduce((total, record) => total + record.amountMinor, 0);
+        const signedTotalMinor = kind === 'expense' ? -totalMinor : totalMinor;
+
+        return (
+          <View key={group.localDate} style={styles.categoryDetailRecordCard}>
+            <View style={styles.categoryDetailRecordDateRow}>
+              <View style={styles.categoryDetailDateLeft}>
+                <MaterialCommunityIcons color={skyBlue} name="calendar-month-outline" size={24} />
+                <Text numberOfLines={1} style={styles.categoryDetailRecordDateText}>
+                  {formatMoneyNoteDate(group.localDate, language)}
+                </Text>
+              </View>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.categoryDetailRecordDateAmount,
+                  kind === 'expense' ? styles.expenseAmount : styles.incomeAmount,
+                ]}
+              >
+                {formatMoneyNoteAmount(signedTotalMinor, { currencyCode, locale })}
+              </Text>
+            </View>
+            {group.records.map((record) => (
+              <Pressable
+                accessibilityRole="button"
+                key={record.id}
+                onPress={() => onRecordPress(record)}
+                style={styles.categoryDetailRecordRow}
+              >
+                <View style={styles.categoryDetailRecordIconWrap}>
+                  <CategoryIcon icon={icon} size={40} />
+                </View>
+                <Text numberOfLines={1} style={styles.categoryDetailRecordTitle}>
+                  {label}
+                </Text>
+                <MaterialCommunityIcons
+                  color={accentColor}
+                  name="star-four-points"
+                  size={18}
+                  style={styles.categoryDetailRecordSpark}
+                />
+                <Text numberOfLines={1} style={styles.categoryDetailRecordAmount}>
+                  {formatMoneyNoteAmount(record.amountMinor, {
+                    currencyCode: record.currencyCode,
+                    locale,
+                  })}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+export function MoneyNoteReportCategoryDetailScreen() {
+  const { copy, language } = useMoneyNoteCopy();
+  const router = useRouter();
+  const appBackground = useAppBackground();
+  const params = useLocalSearchParams<{
+    categoryKey?: string;
+    color?: string;
+    icon?: string;
+    kind?: MoneyRecordKind;
+    label?: string;
+    month?: string;
+  }>();
+  const categoryKey = searchParamValue(params.categoryKey) ?? '';
+  const kind = searchParamValue(params.kind) === 'income' ? 'income' : 'expense';
+  const label = searchParamValue(params.label) ?? copy.category;
+  const icon = searchParamValue(params.icon) ?? (kind === 'expense' ? 'tag-outline' : 'cash-plus');
+  const accentColor = searchParamValue(params.color) ?? (kind === 'expense' ? expenseColor : incomeColor);
+  const monthDate = useMemo(
+    () => parseReportMonthParam(searchParamValue(params.month)),
+    [params.month],
+  );
+  const data = useReportCategoryDetailData({ categoryKey, kind, monthDate });
+  const selectedMonthKey = formatReportMonthParam(monthDate);
+  const selectedRecords = useMemo(
+    () => data.records.filter((record) => record.localDate.slice(0, 7) === selectedMonthKey),
+    [data.records, selectedMonthKey],
+  );
+  const trendRows = useMemo(
+    () => buildCategoryTrendRows(data.records, monthDate, language),
+    [data.records, language, monthDate],
+  );
+  const selectedTotalMinor = selectedRecords.reduce((total, record) => total + record.amountMinor, 0);
+
+  return (
+    <SafeAreaView
+      edges={['top']}
+      style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}
+    >
+      <AppBackgroundFrame>
+        <ScrollView contentContainerStyle={styles.categoryDetailContent}>
+          <View style={styles.categoryDetailHero}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.back()}
+              style={styles.categoryDetailBackButton}
+            >
+              <MaterialCommunityIcons color="#043D3D" name="arrow-left" size={23} />
+            </Pressable>
+            <View style={styles.categoryDetailHeroMain}>
+              <CategoryIcon icon={icon} size={56} />
+              <View style={styles.categoryDetailHeroTextColumn}>
+                <Text
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.68}
+                  numberOfLines={1}
+                  style={styles.categoryDetailTitle}
+                >
+                  {label}
+                </Text>
+                <View style={styles.categoryDetailChips}>
+                  <View style={styles.categoryDetailAmountChip}>
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.categoryDetailAmountChipText, { color: accentColor }]}
+                    >
+                      {formatMoneyNoteAmount(selectedTotalMinor, {
+                        currencyCode: data.currencyCode,
+                        locale: data.locale,
+                      })}
+                    </Text>
+                  </View>
+                  <View style={styles.categoryDetailMonthChip}>
+                    <Text style={styles.categoryDetailMonthChipText}>
+                      {reportDetailMonthChip(monthDate, language)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+            <MaterialCommunityIcons
+              color="#A5E4DE"
+              name="star-four-points"
+              size={20}
+              style={styles.categoryDetailHeroStar}
+            />
+            <MaterialCommunityIcons
+              color="#FFFFFF"
+              name="cloud"
+              size={32}
+              style={styles.categoryDetailHeroCloud}
+            />
+          </View>
+          {data.status === 'loading' ? <ActivityIndicator color={skyBlue} /> : null}
+          {data.status === 'failed' ? (
+            <Text style={styles.warningText}>{data.error?.message ?? copy.couldNotLoadReport}</Text>
+          ) : null}
+          {data.status === 'ready' ? (
+            <>
+              <CategoryDetailTrendChart
+                accentColor={accentColor}
+                copy={copy}
+                currencyCode={data.currencyCode}
+                kind={kind}
+                language={language}
+                locale={data.locale}
+                rows={trendRows}
+              />
+              {selectedRecords.length === 0 ? (
+                <View style={styles.categoryDetailEmptyCard}>
+                  <Text style={styles.reportEmptyListText}>{copy.noData}</Text>
+                </View>
+              ) : (
+                <CategoryDetailRecordGroups
+                  accentColor={accentColor}
+                  currencyCode={data.currencyCode}
+                  icon={icon}
+                  kind={kind}
+                  label={label}
+                  language={language}
+                  locale={data.locale}
+                  onRecordPress={(record) => router.push(`/money/${record.id}`)}
+                  records={selectedRecords}
+                />
+              )}
+            </>
+          ) : null}
         </ScrollView>
       </AppBackgroundFrame>
     </SafeAreaView>
@@ -4770,28 +5300,23 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   calendarMonthIcon: {
+    color: skyBlue,
+    fontSize: 18,
+    fontWeight: '400',
     position: 'absolute',
     right: 18,
   },
   calendarMonthPill: {
     alignItems: 'center',
-    backgroundColor: '#E5F7F5',
-    borderColor: '#D8EEF0',
-    borderRadius: 24,
+    backgroundColor: lightBlue,
+    borderColor: '#CBECEA',
+    borderRadius: 16,
     borderWidth: 1,
-    elevation: 2,
     flex: 1,
     flexDirection: 'row',
+    height: 50,
     justifyContent: 'center',
-    minHeight: 50,
     paddingHorizontal: 44,
-    shadowColor: '#99D9DA',
-    shadowOffset: {
-      height: 5,
-      width: 0,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
   },
   calendarMonthSwitcher: {
     alignItems: 'center',
@@ -4801,13 +5326,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   calendarMonthText: {
-    color: '#18325C',
+    color: ink,
     flex: 1,
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 17,
-    fontWeight: '700',
+    fontFamily: 'Montserrat_500Medium',
+    fontSize: 16,
+    fontWeight: '500',
     letterSpacing: 0,
-    lineHeight: 23,
+    lineHeight: 22,
     minWidth: 0,
     textAlign: 'center',
   },
@@ -5286,6 +5811,13 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     marginLeft: 10,
+    zIndex: 30,
+  },
+  headerActionGroup: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    zIndex: 30,
   },
   moreHeaderButton: {
     alignItems: 'center',
@@ -5750,6 +6282,367 @@ const styles = StyleSheet.create({
     color: ink,
     flex: 1,
   },
+  categoryDetailAmountChip: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    elevation: 2,
+    justifyContent: 'center',
+    minHeight: 30,
+    minWidth: 92,
+    paddingHorizontal: 12,
+    shadowColor: '#95B4BD',
+    shadowOffset: {
+      height: 5,
+      width: 0,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+  },
+  categoryDetailAmountChipText: {
+    fontFamily: 'Montserrat_800ExtraBold',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0,
+    lineHeight: 21,
+  },
+  categoryDetailBackButton: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E7F3F3',
+    borderRadius: 12,
+    borderWidth: 1,
+    elevation: 3,
+    height: 36,
+    justifyContent: 'center',
+    left: 0,
+    position: 'absolute',
+    shadowColor: '#95B4BD',
+    shadowOffset: {
+      height: 7,
+      width: 0,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 14,
+    top: 8,
+    width: 36,
+    zIndex: 2,
+  },
+  categoryDetailChartCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    borderColor: '#DDF3F0',
+    borderRadius: 24,
+    borderWidth: 1,
+    elevation: 5,
+    marginHorizontal: 14,
+    marginTop: 8,
+    paddingBottom: 14,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    shadowColor: '#95B4BD',
+    shadowOffset: {
+      height: 10,
+      width: 0,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+  },
+  categoryDetailChartHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+  },
+  categoryDetailChartIcon: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#DDF3F0',
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: 'center',
+    shadowColor: '#95B4BD',
+    shadowOffset: {
+      height: 5,
+      width: 0,
+    },
+    shadowOpacity: 0.13,
+    shadowRadius: 12,
+    width: 36,
+  },
+  categoryDetailChartTitle: {
+    fontFamily: 'Montserrat_800ExtraBold',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0,
+    lineHeight: 22,
+    color: ink,
+  },
+  categoryDetailChips: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 3,
+  },
+  categoryDetailContent: {
+    paddingBottom: 120,
+    paddingHorizontal: 0,
+    paddingTop: 10,
+  },
+  categoryDetailDateLeft: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 12,
+    minWidth: 0,
+  },
+  categoryDetailEmptyCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    borderColor: '#EDF4F5',
+    borderRadius: 18,
+    borderWidth: 1,
+    marginHorizontal: 14,
+    marginTop: 16,
+    overflow: 'hidden',
+  },
+  categoryDetailHero: {
+    minHeight: 96,
+    marginHorizontal: 14,
+    position: 'relative',
+  },
+  categoryDetailHeroMain: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    marginLeft: 54,
+    marginRight: 84,
+    paddingTop: 0,
+  },
+  categoryDetailHeroTextColumn: {
+    flex: 1,
+    minWidth: 0,
+  },
+  categoryDetailHeroCloud: {
+    position: 'absolute',
+    right: 8,
+    top: 0,
+  },
+  categoryDetailHeroStar: {
+    position: 'absolute',
+    right: 70,
+    top: 8,
+  },
+  categoryDetailMonthChip: {
+    alignItems: 'center',
+    backgroundColor: '#F2FCFA',
+    borderColor: '#DDF3F0',
+    borderRadius: 15,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 30,
+    minWidth: 58,
+    paddingHorizontal: 12,
+  },
+  categoryDetailMonthChipText: {
+    color: skyBlue,
+    fontFamily: 'Montserrat_800ExtraBold',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0,
+    lineHeight: 20,
+  },
+  categoryDetailRecordAmount: {
+    color: ink,
+    fontFamily: 'Montserrat_800ExtraBold',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0,
+    lineHeight: 22,
+    marginLeft: 'auto',
+  },
+  categoryDetailRecordCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    borderColor: '#DDF3F0',
+    borderRadius: 18,
+    borderWidth: 1,
+    elevation: 4,
+    marginHorizontal: 14,
+    marginTop: 16,
+    overflow: 'hidden',
+    shadowColor: '#95B4BD',
+    shadowOffset: {
+      height: 8,
+      width: 0,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+  },
+  categoryDetailRecordDateAmount: {
+    fontFamily: 'Montserrat_800ExtraBold',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0,
+    lineHeight: 20,
+    marginLeft: 10,
+  },
+  categoryDetailRecordDateRow: {
+    alignItems: 'center',
+    backgroundColor: '#F2FCFA',
+    borderBottomColor: '#DDF3F0',
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    minHeight: 42,
+    paddingHorizontal: 14,
+  },
+  categoryDetailRecordDateText: {
+    color: '#0D7770',
+    flex: 1,
+    fontFamily: 'Montserrat_800ExtraBold',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0,
+    lineHeight: 20,
+  },
+  categoryDetailRecordIconWrap: {
+    alignItems: 'center',
+    backgroundColor: '#FFF5F0',
+    borderRadius: 24,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  categoryDetailRecordList: {
+    paddingTop: 4,
+  },
+  categoryDetailRecordRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 64,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  categoryDetailRecordSpark: {
+    marginLeft: -8,
+  },
+  categoryDetailRecordTitle: {
+    color: ink,
+    fontFamily: 'Montserrat_800ExtraBold',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0,
+    lineHeight: 23,
+    maxWidth: '44%',
+  },
+  categoryDetailTitle: {
+    color: '#0E2239',
+    fontFamily: 'Montserrat_800ExtraBold',
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: 0,
+    lineHeight: 30,
+    marginTop: 0,
+    textAlign: 'left',
+    width: '100%',
+  },
+  categoryTrendBar: {
+    borderRadius: 7,
+    minHeight: 0,
+    bottom: 0,
+    position: 'absolute',
+    width: 26,
+  },
+  categoryTrendBarsLayer: {
+    bottom: 0,
+    flexDirection: 'row',
+    gap: 6,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  categoryTrendBarSlot: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'flex-end',
+    minWidth: 0,
+    position: 'relative',
+  },
+  categoryTrendBarValue: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 16,
+    maxWidth: 50,
+    position: 'absolute',
+    textAlign: 'center',
+  },
+  categoryTrendChartArea: {
+    flexDirection: 'row',
+    minHeight: 214,
+  },
+  categoryTrendDot: {
+    bottom: -5,
+    borderRadius: 5,
+    height: 10,
+    position: 'absolute',
+    width: 10,
+  },
+  categoryTrendGrid: {
+    bottom: 0,
+    justifyContent: 'space-between',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  categoryTrendGridLine: {
+    borderTopColor: '#D9DFE3',
+    borderTopWidth: 1,
+    borderStyle: 'dashed',
+    height: 1,
+  },
+  categoryTrendPlot: {
+    borderBottomColor: '#8EDDD8',
+    borderBottomWidth: 2,
+    flex: 1,
+    marginTop: 2,
+    position: 'relative',
+  },
+  categoryTrendXAxis: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 8,
+  },
+  categoryTrendXAxisLabel: {
+    color: '#3F4756',
+    flex: 1,
+    fontFamily: 'Montserrat_500Medium',
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 18,
+    minWidth: 0,
+    textAlign: 'center',
+  },
+  categoryTrendXAxisSpacer: {
+    width: 76,
+  },
+  categoryTrendYAxis: {
+    justifyContent: 'space-between',
+    paddingBottom: 0,
+    paddingRight: 8,
+    width: 76,
+  },
+  categoryTrendYAxisLabel: {
+    color: '#3F4756',
+    fontFamily: 'Montserrat_500Medium',
+    fontSize: 11,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 15,
+    textAlign: 'right',
+  },
   reportContent: {
     paddingBottom: 112,
     paddingTop: 0,
@@ -5778,6 +6671,13 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     minWidth: 78,
     textAlign: 'right',
+  },
+  reportBreakdownColorDot: {
+    borderColor: '#FFFFFF',
+    borderRadius: 6,
+    borderWidth: 2,
+    height: 12,
+    width: 12,
   },
   reportBreakdownList: {
     backgroundColor: 'rgba(255, 255, 255, 0.98)',
@@ -5855,17 +6755,45 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
   },
   reportChartCallout: {
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+    elevation: 1,
+    flexDirection: 'row',
+    gap: 5,
+    height: 54,
+    paddingHorizontal: 7,
     position: 'absolute',
-    width: 96,
+    shadowColor: '#9DB8B8',
+    shadowOffset: {
+      height: 6,
+      width: 0,
+    },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    width: 138,
+  },
+  reportChartCalloutBottomLeft: {
+    bottom: 16,
+    left: 12,
+  },
+  reportChartCalloutBottomRight: {
+    bottom: 16,
+    right: 12,
+  },
+  reportChartCalloutDot: {
+    borderRadius: 5,
+    height: 10,
+    width: 10,
   },
   reportChartCalloutLabel: {
     color: ink,
-    flex: 1,
     fontFamily: 'Montserrat_700Bold',
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 0,
-    lineHeight: 18,
+    lineHeight: 17,
+    minWidth: 0,
   },
   reportChartCalloutLabelRow: {
     alignItems: 'center',
@@ -5874,17 +6802,28 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   reportChartCalloutPercent: {
-    color: '#575C66',
-    fontFamily: 'Montserrat_500Medium',
-    fontSize: 14,
-    fontWeight: '500',
+    fontFamily: 'Montserrat_800ExtraBold',
+    fontSize: 16,
+    fontWeight: '800',
     letterSpacing: 0,
-    lineHeight: 19,
+    lineHeight: 20,
+  },
+  reportChartCalloutTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  reportChartCalloutTopLeft: {
+    left: 12,
+    top: 16,
+  },
+  reportChartCalloutTopRight: {
+    right: 12,
+    top: 16,
   },
   reportChartCanvas: {
     alignItems: 'center',
     alignSelf: 'center',
-    height: 204,
+    height: 296,
     justifyContent: 'center',
     maxWidth: 344,
     width: '100%',
@@ -5898,16 +6837,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderColor: '#E9EFEF',
-    borderRadius: 39,
+    borderRadius: 44,
     borderWidth: 5,
-    height: 78,
+    height: 88,
     justifyContent: 'center',
     left: '50%',
-    marginLeft: -39,
-    marginTop: -39,
+    marginLeft: -44,
+    marginTop: -44,
     position: 'absolute',
     top: '50%',
-    width: 78,
+    width: 88,
   },
   reportChartPanel: {
     backgroundColor: 'rgba(255, 255, 255, 0.98)',
@@ -5916,7 +6855,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     elevation: 4,
     marginHorizontal: 18,
-    minHeight: 218,
+    minHeight: 310,
     paddingHorizontal: 8,
     paddingVertical: 8,
     shadowColor: '#95B4BD',
