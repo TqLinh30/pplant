@@ -1,4 +1,5 @@
 import type { MoneyRecord } from '@/domain/money/types';
+import type { AppLanguage } from '@/i18n/strings';
 
 export type MoneyNoteCategoryTemplate = {
   color: string;
@@ -37,7 +38,12 @@ export const moneyNoteDefaultPreferences = {
 
 export const expenseCategoryTemplates: MoneyNoteCategoryTemplate[] = [
   { color: '#F39822', icon: 'food-fork-drink', id: 'expense-food', label: 'Ăn uống' },
-  { color: '#16B65C', icon: 'bottle-soda-outline', id: 'expense-daily', label: 'Chi tiêu hằng ngày' },
+  {
+    color: '#16B65C',
+    icon: 'bottle-soda-outline',
+    id: 'expense-daily',
+    label: 'Chi tiêu hằng ngày',
+  },
   { color: '#2C5FB8', icon: 'tshirt-crew-outline', id: 'expense-clothes', label: 'Quần áo' },
   { color: '#E84786', icon: 'lipstick', id: 'expense-cosmetics', label: 'Mỹ phẩm' },
   { color: '#F0D928', icon: 'glass-cocktail', id: 'expense-social', label: 'Phí giao lưu' },
@@ -55,7 +61,12 @@ export const incomeCategoryTemplates: MoneyNoteCategoryTemplate[] = [
   { color: '#F0515F', icon: 'gift-outline', id: 'income-bonus', label: 'Tiền thưởng' },
   { color: '#45CBE4', icon: 'sack-percent', id: 'income-extra', label: 'Thu nhập phụ' },
   { color: '#55D6BE', icon: 'chart-line', id: 'income-investment', label: 'Đầu tư' },
-  { color: '#EF8BBB', icon: 'hand-coin-outline', id: 'income-temporary', label: 'Thu nhập tạm thời' },
+  {
+    color: '#EF8BBB',
+    icon: 'hand-coin-outline',
+    id: 'income-temporary',
+    label: 'Thu nhập tạm thời',
+  },
 ];
 
 export const allMoneyNoteCategoryTemplates = [
@@ -82,9 +93,21 @@ export function shiftLocalDate(value: string, days: number): string {
   return formatLocalDate(date);
 }
 
-export function formatMoneyNoteDate(value: string): string {
+function weekdayLabelsForLanguage(language: AppLanguage): string[] {
+  if (language === 'en') {
+    return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  }
+
+  if (language === 'zh-Hant') {
+    return ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+  }
+
+  return ['CN', 'T.2', 'T.3', 'T.4', 'T.5', 'T.6', 'T.7'];
+}
+
+export function formatMoneyNoteDate(value: string, language: AppLanguage = 'vi'): string {
   const date = parseLocalDate(value);
-  const weekdays = ['CN', 'T.2', 'T.3', 'T.4', 'T.5', 'T.6', 'T.7'];
+  const weekdays = weekdayLabelsForLanguage(language);
 
   return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(
     2,
@@ -92,9 +115,9 @@ export function formatMoneyNoteDate(value: string): string {
   )}/${date.getFullYear()} (${weekdays[date.getDay()]})`;
 }
 
-export function formatMoneyNoteShortDate(value: string): string {
+export function formatMoneyNoteShortDate(value: string, language: AppLanguage = 'vi'): string {
   const date = parseLocalDate(value);
-  const weekdays = ['CN', 'T.2', 'T.3', 'T.4', 'T.5', 'T.6', 'T.7'];
+  const weekdays = weekdayLabelsForLanguage(language);
 
   return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(
     2,
@@ -120,7 +143,10 @@ export function shiftMonth(date: Date, months: number): Date {
   return new Date(date.getFullYear(), date.getMonth() + months, 1);
 }
 
-export function buildMoneyNoteCalendarMonth(date: Date, today = new Date()): MoneyNoteCalendarDay[] {
+export function buildMoneyNoteCalendarMonth(
+  date: Date,
+  today = new Date(),
+): MoneyNoteCalendarDay[] {
   const firstOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
   const mondayOffset = (firstOfMonth.getDay() + 6) % 7;
   const cursor = new Date(firstOfMonth);

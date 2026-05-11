@@ -16,7 +16,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, G, Polyline } from 'react-native-svg';
+import Svg, { Circle, G, Path, Polyline } from 'react-native-svg';
 
 import { createAppError, type AppError } from '@/domain/common/app-error';
 import type { CategoryTopicItem } from '@/domain/categories/types';
@@ -142,6 +142,20 @@ const moneyNoteCopy = {
     backgroundSaved: 'Đã đổi background.',
     theme: 'Thay đổi màu chủ đề',
     themeValue: 'Mint teal',
+    allTime: 'Toàn thời gian',
+    createCsv: 'Tạo file CSV',
+    createJsonBackup: 'Tạo bản sao JSON',
+    couldNotLoadData: 'Không thể tải dữ liệu.',
+    couldNotLoadReport: 'Không thể tải báo cáo.',
+    editTitle: 'Chỉnh sửa',
+    initialBalance: 'Số dư ban đầu',
+    monthPrefix: 'Tháng',
+    recordsInView: 'bản ghi trong mục này',
+    saveExpenseCta: 'Nhập khoản Tiền chi',
+    saveIncomeCta: 'Nhập khoản Tiền thu',
+    savedExpense: 'Đã lưu khoản chi.',
+    savedIncome: 'Đã lưu khoản thu.',
+    uncategorized: 'Khác',
   },
   en: {
     appTitle: 'MoneyNote Ledger',
@@ -199,6 +213,91 @@ const moneyNoteCopy = {
     backgroundSaved: 'Background changed.',
     theme: 'Theme color',
     themeValue: 'Mint teal',
+    allTime: 'All time',
+    createCsv: 'Create CSV',
+    createJsonBackup: 'Create JSON backup',
+    couldNotLoadData: 'Could not load data.',
+    couldNotLoadReport: 'Could not load report.',
+    editTitle: 'Edit',
+    initialBalance: 'Initial balance',
+    monthPrefix: 'Month',
+    recordsInView: 'records in this view',
+    saveExpenseCta: 'Save Expense',
+    saveIncomeCta: 'Save Income',
+    savedExpense: 'Saved expense.',
+    savedIncome: 'Saved income.',
+    uncategorized: 'Uncategorized',
+  },
+  'zh-Hant': {
+    appTitle: 'MoneyNote 收支簿',
+    addCategory: '新增分類',
+    appInfo: '應用程式資訊',
+    backupData: '備份資料',
+    basicSettings: '基本設定',
+    calendar: '日曆',
+    categoryAllTimeReport: '全期間分類報告',
+    categoryYearReport: '年度分類報告',
+    category: '分類',
+    categoryEditTitle: '分類',
+    categoryName: '分類名稱',
+    changeCurrency: '變更幣別',
+    changeLanguage: '變更語言',
+    currency: '幣別',
+    currencyCode: '幣別代碼',
+    currencyHelper: '可以在這裡快速切換，或到基本設定中細調。',
+    currencySaved: '幣別已儲存。',
+    date: '日期',
+    delete: '刪除',
+    display: '顯示',
+    edit: '編輯',
+    exportData: '匯出資料',
+    expense: '支出',
+    expenseAmount: '支出金額',
+    help: '說明',
+    income: '收入',
+    incomeAmount: '收入金額',
+    languageFailed: '無法儲存語言。',
+    languageSaved: '語言已變更。',
+    locale: '地區格式',
+    more: '更多',
+    net: '總計',
+    noData: '無資料',
+    note: '備註',
+    notePlaceholder: '新增備註',
+    overwrite: '覆寫',
+    recordUpdated: '變更已儲存。',
+    report: '報告',
+    reportAllTime: '全期間報告',
+    reportYear: '年度報告',
+    saveCurrency: '儲存幣別',
+    saveFailed: '無法儲存變更。',
+    saveSettings: '儲存設定',
+    saving: '儲存中...',
+    settingsSaved: '設定已儲存。',
+    premium: 'Premium 服務（無廣告等）',
+    background: '變更背景',
+    backgroundChoosePhoto: '選擇照片',
+    backgroundDefault: '使用預設背景',
+    backgroundFailed: '無法變更背景。',
+    backgroundFromPhoto: '你的照片',
+    backgroundPermissionDenied: '請允許相簿存取權限，以選擇背景。',
+    backgroundSaved: '背景已變更。',
+    theme: '主題顏色',
+    themeValue: '薄荷青',
+    allTime: '全期間',
+    createCsv: '建立 CSV',
+    createJsonBackup: '建立 JSON 備份',
+    couldNotLoadData: '無法載入資料。',
+    couldNotLoadReport: '無法載入報告。',
+    editTitle: '編輯',
+    initialBalance: '期初餘額',
+    monthPrefix: '月份',
+    recordsInView: '筆紀錄在此檢視中',
+    saveExpenseCta: '輸入支出',
+    saveIncomeCta: '輸入收入',
+    savedExpense: '已儲存支出。',
+    savedIncome: '已儲存收入。',
+    uncategorized: '未分類',
   },
 } satisfies Record<AppLanguage, Record<string, string>>;
 
@@ -222,6 +321,26 @@ const englishCategoryLabels: Record<string, string> = {
   'income-temporary': 'Temporary income',
 };
 
+const zhHantCategoryLabels: Record<string, string> = {
+  'expense-clothes': '服飾',
+  'expense-cosmetics': '美妝',
+  'expense-daily': '日用品',
+  'expense-education': '教育',
+  'expense-electricity': '電費',
+  'expense-food': '飲食',
+  'expense-health': '醫療',
+  'expense-phone': '通訊費',
+  'expense-rent': '房租',
+  'expense-social': '社交費',
+  'expense-transport': '交通',
+  'income-allowance': '生活費',
+  'income-bonus': '獎金',
+  'income-extra': '副收入',
+  'income-investment': '投資',
+  'income-salary': '薪資',
+  'income-temporary': '臨時收入',
+};
+
 const quickCurrencyOptions = [
   { code: 'TWD', label: 'NT$', locale: 'zh-TW' },
   { code: 'VND', label: 'VND', locale: 'vi-VN' },
@@ -239,20 +358,62 @@ function useMoneyNoteCopy() {
 }
 
 function languageDisplayName(language: AppLanguage, displayLanguage: AppLanguage): string {
-  if (displayLanguage === 'en') {
-    return language === 'vi' ? 'Vietnamese' : 'English';
-  }
+  const labels = {
+    en: {
+      en: 'English',
+      vi: 'Vietnamese',
+      'zh-Hant': 'Traditional Chinese',
+    },
+    vi: {
+      en: 'Tiếng Anh',
+      vi: 'Tiếng Việt',
+      'zh-Hant': 'Tiếng Trung phồn thể',
+    },
+    'zh-Hant': {
+      en: '英文',
+      vi: '越南文',
+      'zh-Hant': '繁體中文',
+    },
+  } satisfies Record<AppLanguage, Record<AppLanguage, string>>;
 
-  return language === 'vi' ? 'Tiếng Việt' : 'English';
+  return labels[displayLanguage][language];
+}
+
+function localeForLanguage(language: AppLanguage): string {
+  return language === 'zh-Hant' ? 'zh-TW' : language === 'en' ? 'en-US' : 'vi-VN';
 }
 
 function backgroundDisplayName(backgroundId: AppBackgroundId, language: AppLanguage): string {
-  const option = appBackgroundOptions.find((item) => item.id === backgroundId) ?? appBackgroundOptions[0];
-  return language === 'en' ? option.labelEn : option.labelVi;
+  const option =
+    appBackgroundOptions.find((item) => item.id === backgroundId) ?? appBackgroundOptions[0];
+  if (language === 'en') {
+    return option.labelEn;
+  }
+
+  if (language === 'zh-Hant') {
+    const zhLabels: Record<AppBackgroundId, string> = {
+      cream: '奶油白',
+      lavender: '薰衣草紫',
+      mint: '薄荷綠',
+      rose: '玫瑰粉',
+      sky: '天空藍',
+    };
+    return zhLabels[option.id];
+  }
+
+  return option.labelVi;
 }
 
 function categoryDisplayLabel(template: MoneyNoteCategoryTemplate, language: AppLanguage): string {
-  return language === 'en' ? englishCategoryLabels[template.id] ?? template.label : template.label;
+  if (language === 'en') {
+    return englishCategoryLabels[template.id] ?? template.label;
+  }
+
+  if (language === 'zh-Hant') {
+    return zhHantCategoryLabels[template.id] ?? template.label;
+  }
+
+  return template.label;
 }
 
 type MoneyNoteCategoryOption = MoneyNoteCategoryTemplate & {
@@ -307,7 +468,8 @@ function categoryOptionIdForDraft(
   merchantOrSource: string,
 ): string {
   return (
-    options.find((option) => option.categoryId === categoryId || option.label === merchantOrSource)?.id ??
+    options.find((option) => option.categoryId === categoryId || option.label === merchantOrSource)
+      ?.id ??
     options[0]?.id ??
     ''
   );
@@ -401,8 +563,13 @@ const emptyTotals: MoneyNoteTotals = {
   netMinor: 0,
 };
 
-function findCategoryByTemplate(categories: CategoryTopicItem[], template: MoneyNoteCategoryTemplate) {
-  return categories.find((category) => category.name === template.label && category.archivedAt === null);
+function findCategoryByTemplate(
+  categories: CategoryTopicItem[],
+  template: MoneyNoteCategoryTemplate,
+) {
+  return categories.find(
+    (category) => category.name === template.label && category.archivedAt === null,
+  );
 }
 
 function totalsFromRecordsOrSummaries(
@@ -457,7 +624,9 @@ function useEnsureMoneyNoteDefaults(
     const activeNames = new Set<string>(
       categories.filter((category) => category.archivedAt === null).map((item) => item.name),
     );
-    const missing = allMoneyNoteCategoryTemplates.filter((template) => !activeNames.has(template.label));
+    const missing = allMoneyNoteCategoryTemplates.filter(
+      (template) => !activeNames.has(template.label),
+    );
 
     if (missing.length === 0) {
       return;
@@ -725,7 +894,10 @@ function useMoneyNoteMorePanelData(panelKind: MoneyNoteMorePanelKind | null): Mo
   return state;
 }
 
-function useMoneyNoteReportData(panelKind: MoneyNoteMorePanelKind, year?: number): MorePanelDataState {
+function useMoneyNoteReportData(
+  panelKind: MoneyNoteMorePanelKind,
+  year?: number,
+): MorePanelDataState {
   const [reloadToken, setReloadToken] = useState(0);
   const [state, setState] = useState<MorePanelDataState>({
     ...morePanelEmptyState,
@@ -791,7 +963,10 @@ function useMoneyNoteReportData(panelKind: MoneyNoteMorePanelKind, year?: number
   return state;
 }
 
-function buildCategoryReportRows(records: MoneyRecord[], language: AppLanguage): CategoryReportRow[] {
+function buildCategoryReportRows(
+  records: MoneyRecord[],
+  language: AppLanguage,
+): CategoryReportRow[] {
   const rows = new Map<string, CategoryReportRow>();
 
   records.forEach((record) => {
@@ -809,7 +984,7 @@ function buildCategoryReportRows(records: MoneyRecord[], language: AppLanguage):
         icon: template?.icon ?? 'tag-outline',
         incomeMinor: 0,
         key,
-        label: recordDisplayLabel(record, language, language === 'en' ? 'Uncategorized' : 'Khác'),
+        label: recordDisplayLabel(record, language, moneyNoteCopy[language].uncategorized),
       } satisfies CategoryReportRow);
 
     if (record.kind === 'expense') {
@@ -854,7 +1029,7 @@ function buildReportBreakdownRows(
           color: template?.color ?? skyBlue,
           icon: template?.icon ?? 'tag-outline',
           key,
-          label: recordDisplayLabel(record, language, language === 'en' ? 'Uncategorized' : 'Khác'),
+          label: recordDisplayLabel(record, language, moneyNoteCopy[language].uncategorized),
           order: templateIndex >= 0 ? templateIndex : allMoneyNoteCategoryTemplates.length,
           percent: 0,
         } satisfies ReportBreakdownRow & { order: number });
@@ -879,7 +1054,7 @@ function buildReportBreakdownRows(
 }
 
 function formatReportPercent(value: number, language: AppLanguage): string {
-  return `${new Intl.NumberFormat(language === 'en' ? 'en-US' : 'vi-VN', {
+  return `${new Intl.NumberFormat(localeForLanguage(language), {
     maximumFractionDigits: 1,
     minimumFractionDigits: value < 10 && value % 1 !== 0 ? 1 : 0,
   }).format(value)} %`;
@@ -894,7 +1069,10 @@ function formatReportMagnitude(
   return `${sign}${formatMoneyNoteAmountMagnitude(amountMinor, { currencyCode, locale })}`;
 }
 
-function annualReportModeLabel(mode: MoneyNoteAnnualReportMode, copy: typeof moneyNoteCopy.vi): string {
+function annualReportModeLabel(
+  mode: MoneyNoteAnnualReportMode,
+  copy: typeof moneyNoteCopy.vi,
+): string {
   if (mode === 'expense') {
     return copy.expense;
   }
@@ -930,7 +1108,10 @@ function annualReportModeColor(mode: MoneyNoteAnnualReportMode): string {
   return skyBlue;
 }
 
-function buildYearlyMonthReportRows(records: MoneyRecord[], mode: MoneyNoteAnnualReportMode): YearlyMonthReportRow[] {
+function buildYearlyMonthReportRows(
+  records: MoneyRecord[],
+  mode: MoneyNoteAnnualReportMode,
+): YearlyMonthReportRow[] {
   const rows = Array.from({ length: 12 }, (_, index) => ({
     amountMinor: 0,
     expenseMinor: 0,
@@ -986,7 +1167,12 @@ function pointOnCircle(centerX: number, centerY: number, radius: number, angleDe
   };
 }
 
-function directionalBendX(startX: number, bendX: number, endX: number, isRightSide: boolean): number {
+function directionalBendX(
+  startX: number,
+  bendX: number,
+  endX: number,
+  isRightSide: boolean,
+): number {
   // Keep the bend between the donut edge and label so leader lines never kink back inward.
   if (isRightSide) {
     const min = startX + 4;
@@ -1029,7 +1215,7 @@ function buildReportChartSegments({
     const sweepAngle = (row.percent / 100) * 360;
     const midAngle = angleOffset + sweepAngle / 2;
     const outerRadius = radius + strokeWidth / 2;
-    const connectorStart = pointOnCircle(centerX, centerY, outerRadius - 2, midAngle);
+    const connectorStart = pointOnCircle(centerX, centerY, outerRadius + 3, midAngle);
     const connectorBend = pointOnCircle(centerX, centerY, outerRadius + 10, midAngle);
     const isRightSide = Math.cos((midAngle * Math.PI) / 180) >= 0;
     const labelLeft = isRightSide ? chartWidth - labelWidth - labelPadding : labelPadding;
@@ -1067,7 +1253,9 @@ function escapeCsvCell(value: unknown): string {
 }
 
 function moneyRecordsToCsv(records: MoneyRecord[], language: AppLanguage): string {
-  const header = ['date', 'kind', 'category', 'amountMinor', 'currencyCode', 'note'].map(escapeCsvCell);
+  const header = ['date', 'kind', 'category', 'amountMinor', 'currencyCode', 'note'].map(
+    escapeCsvCell,
+  );
   const rows = records.map((record) =>
     [
       record.localDate,
@@ -1155,7 +1343,9 @@ async function loadMoneyNoteReportSnapshot(
   });
 }
 
-async function loadMoneyNoteExportSnapshot(panelKind: MoneyNoteMorePanelKind): Promise<MoneyNoteReportSnapshot> {
+async function loadMoneyNoteExportSnapshot(
+  panelKind: MoneyNoteMorePanelKind,
+): Promise<MoneyNoteReportSnapshot> {
   const snapshot = await loadMoneyNoteReportSnapshot(panelKind);
 
   if (!snapshot.ok) {
@@ -1168,13 +1358,21 @@ async function loadMoneyNoteExportSnapshot(panelKind: MoneyNoteMorePanelKind): P
 function ScreenHeader({
   right,
   title,
+  variant = 'default',
 }: {
   right?: React.ReactNode;
   title: string;
+  variant?: 'default' | 'entry';
 }) {
   return (
-    <View style={styles.header}>
-      <Text numberOfLines={1} style={styles.headerTitle}>
+    <View style={[styles.header, variant === 'entry' ? styles.entryHeader : null]}>
+      {variant === 'entry' ? <EntryHeaderDecor /> : null}
+      <Text
+        adjustsFontSizeToFit
+        minimumFontScale={0.82}
+        numberOfLines={1}
+        style={[styles.headerTitle, variant === 'entry' ? styles.entryHeaderTitle : null]}
+      >
         {title}
       </Text>
       {right ? <View style={styles.headerRight}>{right}</View> : null}
@@ -1190,23 +1388,96 @@ function MoreHeaderButton() {
       accessibilityLabel={moneyNoteCopy[useAppLanguage()].more}
       accessibilityRole="button"
       onPress={() => router.push('/(tabs)/settings')}
-      style={styles.moreHeaderButton}>
-      <MaterialCommunityIcons color={ink} name="dots-horizontal" size={26} />
+      style={styles.moreHeaderButton}
+    >
+      <View style={styles.moreHeaderButtonInner}>
+        <MaterialCommunityIcons color={skyBlue} name="dots-horizontal" size={18} />
+      </View>
     </Pressable>
   );
 }
 
-function IconButton({
-  label,
-  onPress,
-}: {
-  label: string;
-  onPress?: () => void;
-}) {
+function IconButton({ label, onPress }: { label: string; onPress?: () => void }) {
+  const iconName =
+    label === '<'
+      ? 'chevron-left'
+      : label === '>'
+        ? 'chevron-right'
+        : label === '+'
+          ? 'plus'
+          : null;
+
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={styles.iconButton}>
-      <Text style={styles.iconButtonText}>{label}</Text>
+      {iconName ? (
+        <MaterialCommunityIcons color={ink} name={iconName as never} size={22} />
+      ) : (
+        <Text style={styles.iconButtonText}>{label}</Text>
+      )}
     </Pressable>
+  );
+}
+
+function EntryBackgroundDecor() {
+  return (
+    <Svg
+      height="160"
+      pointerEvents="none"
+      preserveAspectRatio="none"
+      style={styles.entryBackgroundDecor}
+      viewBox="0 0 390 160"
+      width="100%"
+    >
+      <Path
+        d="M0 70 C30 54 38 24 68 42 C96 58 98 94 128 88 C160 82 167 40 201 48 C236 57 240 102 275 94 C306 88 311 52 339 55 C363 58 374 84 390 91 V160 H0 Z"
+        fill="#E9D8FF"
+        opacity="0.62"
+      />
+      <Path
+        d="M0 112 C24 92 41 101 55 122 C73 93 99 92 111 124 C136 96 163 99 174 132 C203 108 230 112 244 139 C271 116 300 118 316 145 C344 128 368 132 390 148 V160 H0 Z"
+        fill="#D9F9F8"
+        opacity="0.92"
+      />
+      <Path
+        d="M0 138 C26 124 43 129 57 153 C78 128 101 132 112 158 H0 Z"
+        fill="#FFF5BD"
+        opacity="0.78"
+      />
+      <Path
+        d="M302 158 C312 128 344 126 355 151 C368 133 382 132 390 143 V160 H302 Z"
+        fill="#FFD9EE"
+        opacity="0.85"
+      />
+    </Svg>
+  );
+}
+
+function EntryHeaderDecor() {
+  return (
+    <Svg
+      height="100%"
+      pointerEvents="none"
+      preserveAspectRatio="none"
+      style={styles.entryHeaderDecor}
+      viewBox="0 0 390 88"
+      width="100%"
+    >
+      <G opacity="0.52">
+        <Circle cx="327" cy="22" fill="#B8F0ED" r="5" />
+        <Path
+          d="M117 18 C119 10 127 10 129 18 C137 18 141 23 137 28 H111 C107 23 109 18 117 18 Z"
+          fill="#FFFFFF"
+        />
+        <Path
+          d="M298 3 C301 12 303 14 311 17 C303 20 301 23 298 32 C295 23 293 20 285 17 C293 14 295 12 298 3 Z"
+          fill="#FFFFFF"
+        />
+        <Path
+          d="M307 35 C309 41 311 43 316 45 C311 47 309 49 307 55 C305 49 303 47 298 45 C303 43 305 41 307 35 Z"
+          fill="#FFFFFF"
+        />
+      </G>
+    </Svg>
   );
 }
 
@@ -1222,11 +1493,17 @@ function KindTabs({
   return (
     <View style={styles.kindTabs}>
       <Pressable accessibilityRole="tab" onPress={() => onChange('expense')} style={styles.kindTab}>
-        <Text style={[styles.kindTabText, active === 'expense' ? styles.kindTabTextActive : null]}>{copy.expense}</Text>
-        <View style={[styles.kindTabLine, active === 'expense' ? styles.kindTabLineActive : null]} />
+        <Text style={[styles.kindTabText, active === 'expense' ? styles.kindTabTextActive : null]}>
+          {copy.expense}
+        </Text>
+        <View
+          style={[styles.kindTabLine, active === 'expense' ? styles.kindTabLineActive : null]}
+        />
       </Pressable>
       <Pressable accessibilityRole="tab" onPress={() => onChange('income')} style={styles.kindTab}>
-        <Text style={[styles.kindTabText, active === 'income' ? styles.kindTabTextActive : null]}>{copy.income}</Text>
+        <Text style={[styles.kindTabText, active === 'income' ? styles.kindTabTextActive : null]}>
+          {copy.income}
+        </Text>
         <View style={[styles.kindTabLine, active === 'income' ? styles.kindTabLineActive : null]} />
       </Pressable>
     </View>
@@ -1257,15 +1534,26 @@ function CategoryGrid({
           accessibilityRole="button"
           key={category.id}
           onPress={() => onSelect(category)}
-          style={[styles.categoryTile, selectedId === category.id ? styles.categoryTileSelected : null]}>
-          <CategoryIcon color={category.color} icon={category.icon} />
-          <Text numberOfLines={2} style={styles.categoryTileLabel}>
-            {categoryDisplayLabel(category, language)}
-          </Text>
+          style={[
+            styles.categoryTile,
+            selectedId === category.id ? styles.categoryTileSelected : null,
+          ]}
+        >
+          <View style={styles.categoryTileContent}>
+            <CategoryIcon color={category.color} icon={category.icon} size={32} />
+            <Text ellipsizeMode="tail" numberOfLines={1} style={styles.categoryTileLabel}>
+              {categoryDisplayLabel(category, language)}
+            </Text>
+          </View>
         </Pressable>
       ))}
       <Pressable accessibilityRole="button" onPress={onEdit} style={styles.categoryTile}>
-        <Text style={styles.categoryEditText}>{moneyNoteCopy[language].edit}</Text>
+        <View style={styles.categoryTileContent}>
+          <MaterialCommunityIcons color="#F3A64D" name="pencil-outline" size={30} />
+          <Text ellipsizeMode="tail" numberOfLines={1} style={styles.categoryEditText}>
+            {moneyNoteCopy[language].edit}
+          </Text>
+        </View>
       </Pressable>
     </View>
   );
@@ -1274,12 +1562,14 @@ function CategoryGrid({
 function MoneyNoteRow({
   children,
   label,
+  last = false,
 }: {
   children: React.ReactNode;
   label: string;
+  last?: boolean;
 }) {
   return (
-    <View style={styles.formRow}>
+    <View style={[styles.formRow, last ? styles.formRowLast : null]}>
       <Text style={styles.formRowLabel}>{label}</Text>
       <View style={styles.formRowBody}>{children}</View>
     </View>
@@ -1292,14 +1582,16 @@ export function MoneyNoteEntryScreen() {
   const appBackground = useAppBackground();
   const capture = useManualMoneyCapture();
   const { reload, state, selectCategory, setKind, updateField } = capture;
-  const baseTemplates = state.draft.kind === 'expense' ? expenseCategoryTemplates : incomeCategoryTemplates;
+  const baseTemplates =
+    state.draft.kind === 'expense' ? expenseCategoryTemplates : incomeCategoryTemplates;
   const templates = useMemo(
     () => categoryOptionsForKind(baseTemplates, state.categories, state.draft.kind),
     [baseTemplates, state.categories, state.draft.kind],
   );
   const [selectedTemplateId, setSelectedTemplateId] = useState(templates[0].id);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
+  const selectedTemplate =
+    templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
   const matchingCategory = selectedTemplate.isCustom
     ? null
     : findCategoryByTemplate(state.categories, selectedTemplate);
@@ -1307,7 +1599,9 @@ export function MoneyNoteEntryScreen() {
   const currencyCode = state.preferences?.currencyCode ?? moneyNoteDefaultPreferences.currencyCode;
   const currencySuffix = currencySuffixForCode(currencyCode);
   const currencyUsesPrefix = currencyCode.toUpperCase() !== 'VND';
-  const contentBackgroundColor = appBackground.photoUri ? 'transparent' : appBackground.colors.appBackground;
+  const contentBackgroundColor = appBackground.photoUri
+    ? 'transparent'
+    : appBackground.colors.appBackground;
 
   useEnsureMoneyNoteDefaults(state.status, state.categories, reload);
   useFocusEffect(
@@ -1345,14 +1639,17 @@ export function MoneyNoteEntryScreen() {
   ]);
 
   const changeKind = (kind: 'expense' | 'income') => {
-    const nextTemplate = kind === 'expense' ? expenseCategoryTemplates[0] : incomeCategoryTemplates[0];
+    const nextTemplate =
+      kind === 'expense' ? expenseCategoryTemplates[0] : incomeCategoryTemplates[0];
     setSelectedTemplateId(nextTemplate.id);
     setKind(kind);
   };
 
   const selectTemplate = (template: MoneyNoteCategoryOption) => {
     setSelectedTemplateId(template.id);
-    const category = template.categoryId ? null : findCategoryByTemplate(state.categories, template);
+    const category = template.categoryId
+      ? null
+      : findCategoryByTemplate(state.categories, template);
     selectCategory(template.categoryId ?? category?.id ?? null);
     updateField('merchantOrSource', template.label);
   };
@@ -1366,104 +1663,124 @@ export function MoneyNoteEntryScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}>
+    <SafeAreaView
+      edges={['top']}
+      style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}
+    >
       <AppBackgroundFrame>
         <ScrollView
-          contentContainerStyle={[
-            styles.entryContent,
-            { backgroundColor: contentBackgroundColor },
-          ]}
+          contentContainerStyle={[styles.entryContent, { backgroundColor: contentBackgroundColor }]}
           keyboardShouldPersistTaps="handled"
         >
-        <ScreenHeader right={<MoreHeaderButton />} title={copy.appTitle} />
-        <KindTabs active={state.draft.kind} copy={copy} onChange={changeKind} />
+          <ScreenHeader right={<MoreHeaderButton />} title={copy.appTitle} variant="entry" />
 
-        <View style={styles.formPanel}>
-          <MoneyNoteRow label={copy.date}>
-            <IconButton label="<" onPress={() => changeDateBy(-1)} />
+          <View style={styles.entrySheet}>
+            {!appBackground.photoUri ? <EntryBackgroundDecor /> : null}
+            <KindTabs active={state.draft.kind} copy={copy} onChange={changeKind} />
+
+            <View style={styles.formPanel}>
+              <MoneyNoteRow label={copy.date}>
+                <IconButton label="<" onPress={() => changeDateBy(-1)} />
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setDatePickerOpen((current) => !current)}
+                  style={styles.datePill}
+                >
+                  <Text
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.84}
+                    numberOfLines={1}
+                    style={styles.datePillText}
+                  >
+                    {formatMoneyNoteDate(state.draft.localDate, language)}
+                  </Text>
+                  <MaterialCommunityIcons color={skyBlue} name="calendar-month-outline" size={18} />
+                </Pressable>
+                <IconButton label=">" onPress={() => changeDateBy(1)} />
+              </MoneyNoteRow>
+              {datePickerOpen ? (
+                <InlineDatePicker
+                  onSelect={(localDate) => {
+                    updateField('localDate', localDate);
+                    setDatePickerOpen(false);
+                  }}
+                  value={state.draft.localDate}
+                />
+              ) : null}
+
+              <MoneyNoteRow label={copy.note}>
+                <TextInput
+                  onChangeText={(value) => updateField('note', value)}
+                  placeholder={copy.notePlaceholder}
+                  placeholderTextColor="#AAAAB5"
+                  style={styles.textInput}
+                  value={state.draft.note}
+                />
+              </MoneyNoteRow>
+
+              <View style={[styles.formRow, styles.formRowLast]}>
+                <Text style={styles.formRowLabel}>
+                  {state.draft.kind === 'expense' ? copy.expenseAmount : copy.incomeAmount}
+                </Text>
+                {currencyUsesPrefix ? (
+                  <Text style={styles.amountRowCurrency}>{currencySuffix}</Text>
+                ) : null}
+                <TextInput
+                  keyboardType="number-pad"
+                  onChangeText={(value) => updateField('amount', parseMoneyNoteAmountInput(value))}
+                  placeholder="0"
+                  placeholderTextColor={ink}
+                  style={styles.amountInput}
+                  value={formatMoneyNoteAmountInput(state.draft.amount)}
+                />
+                {currencyUsesPrefix ? null : (
+                  <Text style={styles.amountRowCurrency}>{currencySuffix}</Text>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.categorySection}>
+              <Text style={styles.sectionLabel}>{copy.category}</Text>
+              <CategoryGrid
+                categories={templates}
+                language={language}
+                onEdit={openCategories}
+                onSelect={selectTemplate}
+                selectedId={selectedTemplate.id}
+              />
+            </View>
+
+            {state.fieldErrors.amount ? (
+              <Text style={styles.warningText}>{state.fieldErrors.amount}</Text>
+            ) : null}
+            {state.actionError ? (
+              <Text style={styles.warningText}>{state.actionError.message}</Text>
+            ) : null}
+            {state.status === 'saved' ? (
+              <Text style={styles.successText}>
+                {state.draft.kind === 'expense' ? copy.savedExpense : copy.savedIncome}
+              </Text>
+            ) : null}
+
             <Pressable
               accessibilityRole="button"
-              onPress={() => setDatePickerOpen((current) => !current)}
-              style={styles.datePill}>
-              <Text numberOfLines={1} style={styles.datePillText}>
-                {formatMoneyNoteDate(state.draft.localDate)}
+              disabled={saving || state.status === 'loading'}
+              onPress={capture.save}
+              style={[
+                styles.primaryCta,
+                styles.entryPrimaryCta,
+                saving ? styles.primaryCtaDisabled : null,
+              ]}
+            >
+              <Text style={[styles.primaryCtaText, styles.entryPrimaryCtaText]}>
+                {saving
+                  ? copy.saving
+                  : state.draft.kind === 'expense'
+                    ? copy.saveExpenseCta
+                    : copy.saveIncomeCta}
               </Text>
-              <MaterialCommunityIcons color={skyBlue} name="calendar-month-outline" size={18} />
             </Pressable>
-            <IconButton label=">" onPress={() => changeDateBy(1)} />
-          </MoneyNoteRow>
-          {datePickerOpen ? (
-            <InlineDatePicker
-              onSelect={(localDate) => {
-                updateField('localDate', localDate);
-                setDatePickerOpen(false);
-              }}
-              value={state.draft.localDate}
-            />
-          ) : null}
-
-          <MoneyNoteRow label={copy.note}>
-            <TextInput
-              onChangeText={(value) => updateField('note', value)}
-              placeholder={copy.notePlaceholder}
-              placeholderTextColor="#BBBBBB"
-              style={styles.textInput}
-              value={state.draft.note}
-            />
-          </MoneyNoteRow>
-
-          <MoneyNoteRow label={state.draft.kind === 'expense' ? copy.expenseAmount : copy.incomeAmount}>
-            {currencyUsesPrefix ? <Text style={styles.currencyPrefix}>{currencySuffix}</Text> : null}
-            <TextInput
-              keyboardType="number-pad"
-              onChangeText={(value) => updateField('amount', parseMoneyNoteAmountInput(value))}
-              placeholder="0"
-              placeholderTextColor={ink}
-              style={styles.amountInput}
-              value={formatMoneyNoteAmountInput(state.draft.amount)}
-            />
-            {currencyUsesPrefix ? null : <Text style={styles.currencySuffix}>{currencySuffix}</Text>}
-          </MoneyNoteRow>
-        </View>
-
-        <View style={styles.categorySection}>
-          <Text style={styles.sectionLabel}>{copy.category}</Text>
-          <CategoryGrid
-            categories={templates}
-            language={language}
-            onEdit={openCategories}
-            onSelect={selectTemplate}
-            selectedId={selectedTemplate.id}
-          />
-        </View>
-
-        {state.fieldErrors.amount ? <Text style={styles.warningText}>{state.fieldErrors.amount}</Text> : null}
-        {state.actionError ? <Text style={styles.warningText}>{state.actionError.message}</Text> : null}
-        {state.status === 'saved' ? (
-          <Text style={styles.successText}>
-            {language === 'en'
-              ? `Saved ${state.draft.kind === 'expense' ? 'expense' : 'income'}.`
-              : `Đã lưu ${state.draft.kind === 'expense' ? 'khoản chi' : 'khoản thu'}.`}
-          </Text>
-        ) : null}
-
-        <Pressable
-          accessibilityRole="button"
-          disabled={saving || state.status === 'loading'}
-          onPress={capture.save}
-          style={[styles.primaryCta, saving ? styles.primaryCtaDisabled : null]}>
-          <Text style={styles.primaryCtaText}>
-            {saving
-              ? copy.saving
-              : state.draft.kind === 'expense'
-                ? language === 'en'
-                  ? 'Save Expense'
-                  : 'Nhập khoản Tiền chi'
-                : language === 'en'
-                  ? 'Save Income'
-                  : 'Nhập khoản Tiền thu'}
-          </Text>
-        </Pressable>
+          </View>
         </ScrollView>
       </AppBackgroundFrame>
     </SafeAreaView>
@@ -1526,14 +1843,16 @@ function InlineDatePicker({
             style={[
               styles.inlineDayCell,
               day.localDate === value ? styles.inlineDayCellSelected : null,
-            ]}>
+            ]}
+          >
             <Text
               style={[
                 styles.inlineDayText,
                 !day.inCurrentMonth ? styles.dayTextMuted : null,
                 day.dayOfWeek === 6 && day.inCurrentMonth ? styles.saturdayText : null,
                 day.dayOfWeek === 0 && day.inCurrentMonth ? styles.sundayText : null,
-              ]}>
+              ]}
+            >
               {day.dayOfMonth}
             </Text>
           </Pressable>
@@ -1552,7 +1871,6 @@ function CalendarPageHeader({ title }: { title: string }) {
         <Text numberOfLines={1} style={styles.calendarPageTitle}>
           {title}
         </Text>
-        <View style={styles.calendarTitleAccent} />
       </View>
       <MoreHeaderButton />
     </View>
@@ -1576,8 +1894,20 @@ function CalendarMonthSwitcher({
         <MaterialCommunityIcons color="#18325C" name="chevron-left" size={30} />
       </Pressable>
       <View style={styles.calendarMonthPill}>
-        <Text style={styles.calendarMonthText}>{monthLabel(monthDate)}</Text>
-        <MaterialCommunityIcons color="#20C8C4" name="calendar-month-outline" size={26} style={styles.calendarMonthIcon} />
+        <Text
+          adjustsFontSizeToFit
+          minimumFontScale={0.78}
+          numberOfLines={1}
+          style={styles.calendarMonthText}
+        >
+          {monthLabel(monthDate)}
+        </Text>
+        <MaterialCommunityIcons
+          color="#20C8C4"
+          name="calendar-month-outline"
+          size={24}
+          style={styles.calendarMonthIcon}
+        />
       </View>
       <Pressable
         accessibilityRole="button"
@@ -1602,20 +1932,44 @@ function CalendarDetailTabs({
       <Pressable
         accessibilityRole="tab"
         onPress={() => onChange('spending')}
-        style={[styles.calendarDetailTab, active === 'spending' ? styles.calendarDetailTabActive : null]}
+        style={[
+          styles.calendarDetailTab,
+          active === 'spending' ? styles.calendarDetailTabActive : null,
+        ]}
       >
-        <MaterialCommunityIcons color={active === 'spending' ? '#14BBB7' : '#9AA4B5'} name="wallet-outline" size={24} />
-        <Text style={[styles.calendarDetailTabText, active === 'spending' ? styles.calendarDetailTabTextActive : null]}>
+        <MaterialCommunityIcons
+          color={active === 'spending' ? '#14BBB7' : '#9AA4B5'}
+          name="wallet-outline"
+          size={24}
+        />
+        <Text
+          style={[
+            styles.calendarDetailTabText,
+            active === 'spending' ? styles.calendarDetailTabTextActive : null,
+          ]}
+        >
           Chi tiêu
         </Text>
       </Pressable>
       <Pressable
         accessibilityRole="tab"
         onPress={() => onChange('journal')}
-        style={[styles.calendarDetailTab, active === 'journal' ? styles.calendarDetailTabActive : null]}
+        style={[
+          styles.calendarDetailTab,
+          active === 'journal' ? styles.calendarDetailTabActive : null,
+        ]}
       >
-        <MaterialCommunityIcons color={active === 'journal' ? '#14BBB7' : '#18325C'} name="book-open-variant-outline" size={24} />
-        <Text style={[styles.calendarDetailTabText, active === 'journal' ? styles.calendarDetailTabTextActive : null]}>
+        <MaterialCommunityIcons
+          color={active === 'journal' ? '#14BBB7' : '#18325C'}
+          name="book-open-variant-outline"
+          size={24}
+        />
+        <Text
+          style={[
+            styles.calendarDetailTabText,
+            active === 'journal' ? styles.calendarDetailTabTextActive : null,
+          ]}
+        >
           Nhật ký
         </Text>
         {active === 'journal' ? (
@@ -1650,17 +2004,45 @@ function ReportKindTabs({
 }) {
   return (
     <View style={styles.reportKindTabs}>
-      <Pressable accessibilityRole="tab" onPress={() => onChange('expense')} style={styles.reportKindTab}>
-        <Text style={[styles.reportKindTabText, active === 'expense' ? styles.reportKindTabTextActive : null]}>
+      <Pressable
+        accessibilityRole="tab"
+        onPress={() => onChange('expense')}
+        style={styles.reportKindTab}
+      >
+        <Text
+          style={[
+            styles.reportKindTabText,
+            active === 'expense' ? styles.reportKindTabTextActive : null,
+          ]}
+        >
           {copy.expense}
         </Text>
-        <View style={[styles.reportKindTabLine, active === 'expense' ? styles.reportKindTabLineActive : null]} />
+        <View
+          style={[
+            styles.reportKindTabLine,
+            active === 'expense' ? styles.reportKindTabLineActive : null,
+          ]}
+        />
       </Pressable>
-      <Pressable accessibilityRole="tab" onPress={() => onChange('income')} style={styles.reportKindTab}>
-        <Text style={[styles.reportKindTabText, active === 'income' ? styles.reportKindTabTextActive : null]}>
+      <Pressable
+        accessibilityRole="tab"
+        onPress={() => onChange('income')}
+        style={styles.reportKindTab}
+      >
+        <Text
+          style={[
+            styles.reportKindTabText,
+            active === 'income' ? styles.reportKindTabTextActive : null,
+          ]}
+        >
           {copy.income}
         </Text>
-        <View style={[styles.reportKindTabLine, active === 'income' ? styles.reportKindTabLineActive : null]} />
+        <View
+          style={[
+            styles.reportKindTabLine,
+            active === 'income' ? styles.reportKindTabLineActive : null,
+          ]}
+        />
       </Pressable>
     </View>
   );
@@ -1678,18 +2060,36 @@ function CalendarSummaryMetricCard({
   tone: 'expense' | 'income' | 'total';
 }) {
   const amountStyle =
-    tone === 'expense' ? styles.calendarMetricAmountExpense : tone === 'income' ? styles.calendarMetricAmountIncome : styles.calendarMetricAmountTotal;
+    tone === 'expense'
+      ? styles.calendarMetricAmountExpense
+      : tone === 'income'
+        ? styles.calendarMetricAmountIncome
+        : styles.calendarMetricAmountTotal;
   const cardStyle =
-    tone === 'expense' ? styles.calendarMetricCardExpense : tone === 'income' ? styles.calendarMetricCardIncome : styles.calendarMetricCardTotal;
+    tone === 'expense'
+      ? styles.calendarMetricCardExpense
+      : tone === 'income'
+        ? styles.calendarMetricCardIncome
+        : styles.calendarMetricCardTotal;
 
   return (
     <View style={[styles.calendarMetricCard, cardStyle]}>
       <MoneyNoteSummaryIcon name={icon} size={34} />
       <View style={styles.calendarMetricText}>
-        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72} style={[styles.calendarMetricLabel, amountStyle]}>
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.72}
+          style={[styles.calendarMetricLabel, amountStyle]}
+        >
           {label}
         </Text>
-        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72} style={[styles.calendarMetricAmount, amountStyle]}>
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.72}
+          style={[styles.calendarMetricAmount, amountStyle]}
+        >
           {amount}
         </Text>
       </View>
@@ -1722,18 +2122,20 @@ function CalendarRecordTable({
     <View style={styles.calendarRecordTable}>
       <View style={styles.calendarRecordTableDateRow}>
         <MaterialCommunityIcons color="#18325C" name="calendar-month" size={18} />
-        <Text style={styles.calendarRecordDateText}>{formatMoneyNoteShortDate(selectedLocalDate)}</Text>
+        <Text style={styles.calendarRecordDateText}>
+          {formatMoneyNoteShortDate(selectedLocalDate, language)}
+        </Text>
       </View>
       <View style={styles.calendarRecordTableInner}>
         <View style={styles.calendarRecordTableHeader}>
-          <Text style={styles.calendarRecordTableHeaderText}>{formatMoneyNoteShortDate(selectedLocalDate)}</Text>
+          <Text style={styles.calendarRecordTableHeaderText}>
+            {formatMoneyNoteShortDate(selectedLocalDate, language)}
+          </Text>
           <Text style={[styles.calendarRecordTableHeaderAmount, selectedNetStyle]}>
             {formatMoneyNoteAmount(selectedTotals.netMinor, { currencyCode, locale })}
           </Text>
         </View>
-        {records.length === 0 ? (
-          <Text style={styles.calendarEmptyText}>{copy.noData}</Text>
-        ) : null}
+        {records.length === 0 ? <Text style={styles.calendarEmptyText}>{copy.noData}</Text> : null}
         {records.map((record) => {
           const template = templateForRecord(record);
           const fallback = record.kind === 'expense' ? copy.expense : copy.income;
@@ -1748,12 +2150,21 @@ function CalendarRecordTable({
               {template ? (
                 <CategoryIcon color={template.color} icon={template.icon} />
               ) : (
-                <MaterialCommunityIcons color={record.kind === 'expense' ? expenseColor : incomeColor} name="cash" size={30} />
+                <MaterialCommunityIcons
+                  color={record.kind === 'expense' ? expenseColor : incomeColor}
+                  name="cash"
+                  size={30}
+                />
               )}
               <Text numberOfLines={1} style={styles.calendarRecordTableTitle}>
                 {recordDisplayLabel(record, language, fallback)}
               </Text>
-              <Text style={[styles.calendarRecordTableAmount, record.kind === 'expense' ? styles.expenseAmount : styles.incomeAmount]}>
+              <Text
+                style={[
+                  styles.calendarRecordTableAmount,
+                  record.kind === 'expense' ? styles.expenseAmount : styles.incomeAmount,
+                ]}
+              >
                 {formatMoneyNoteAmount(record.amountMinor, {
                   currencyCode: record.currencyCode,
                   locale,
@@ -1786,14 +2197,30 @@ function CalendarSpendingPanel({
   selectedLocalDate: string;
   selectedTotals: MoneyNoteTotals;
 }) {
-  const formatAmount = (amountMinor: number) => formatMoneyNoteAmount(amountMinor, { currencyCode, locale });
+  const formatAmount = (amountMinor: number) =>
+    formatMoneyNoteAmount(amountMinor, { currencyCode, locale });
 
   return (
     <View style={styles.calendarDetailBody}>
       <View style={styles.calendarMetricRow}>
-        <CalendarSummaryMetricCard amount={formatAmount(selectedTotals.incomeMinor)} icon="income" label={copy.income} tone="income" />
-        <CalendarSummaryMetricCard amount={formatAmount(selectedTotals.expenseMinor)} icon="expense" label={copy.expense} tone="expense" />
-        <CalendarSummaryMetricCard amount={formatAmount(selectedTotals.netMinor)} icon="total" label={copy.net} tone="total" />
+        <CalendarSummaryMetricCard
+          amount={formatAmount(selectedTotals.incomeMinor)}
+          icon="income"
+          label={copy.income}
+          tone="income"
+        />
+        <CalendarSummaryMetricCard
+          amount={formatAmount(selectedTotals.expenseMinor)}
+          icon="expense"
+          label={copy.expense}
+          tone="expense"
+        />
+        <CalendarSummaryMetricCard
+          amount={formatAmount(selectedTotals.netMinor)}
+          icon="total"
+          label={copy.net}
+          tone="total"
+        />
       </View>
       <CalendarRecordTable
         copy={copy}
@@ -1820,13 +2247,7 @@ function CalendarMoodPill({ moodId }: { moodId: JournalMoodId }) {
   );
 }
 
-function CalendarJournalRow({
-  entry,
-  isLast,
-}: {
-  entry: JournalEntry;
-  isLast: boolean;
-}) {
+function CalendarJournalRow({ entry, isLast }: { entry: JournalEntry; isLast: boolean }) {
   const note = entry.note?.trim() || 'Khoảnh khắc trong ngày';
 
   return (
@@ -1842,7 +2263,11 @@ function CalendarJournalRow({
           {note}
         </Text>
       </View>
-      <Image source={{ uri: entry.photoUri }} style={styles.calendarJournalThumb} transition={140} />
+      <Image
+        source={{ uri: entry.photoUri }}
+        style={styles.calendarJournalThumb}
+        transition={140}
+      />
     </View>
   );
 }
@@ -1854,6 +2279,12 @@ function CalendarJournalPanel({
   entries: JournalEntry[];
   selectedLocalDate: string;
 }) {
+  const language = useAppLanguage();
+  const emptyCopy = {
+    en: 'No journal for this day',
+    vi: 'Chưa có nhật ký trong ngày',
+    'zh-Hant': '當日尚無日記',
+  }[language];
   const moodId = entries[0]?.moodId;
 
   return (
@@ -1863,12 +2294,12 @@ function CalendarJournalPanel({
           {moodId ? <CalendarMoodPill moodId={moodId} /> : <View />}
           <View style={styles.calendarJournalDateBadge}>
             <MaterialCommunityIcons color="#18325C" name="calendar-month" size={18} />
-            <Text style={styles.calendarRecordDateText}>{formatMoneyNoteShortDate(selectedLocalDate)}</Text>
+            <Text style={styles.calendarRecordDateText}>
+              {formatMoneyNoteShortDate(selectedLocalDate, language)}
+            </Text>
           </View>
         </View>
-        {entries.length === 0 ? (
-          <Text style={styles.calendarEmptyText}>Chưa có nhật ký trong ngày</Text>
-        ) : null}
+        {entries.length === 0 ? <Text style={styles.calendarEmptyText}>{emptyCopy}</Text> : null}
         {entries.map((entry, index) => (
           <CalendarJournalRow entry={entry} isLast={index === entries.length - 1} key={entry.id} />
         ))}
@@ -1888,19 +2319,24 @@ function SummaryStrip({
   locale: string;
   totals: MoneyNoteTotals;
 }) {
-  const formatAmount = (amountMinor: number) => formatMoneyNoteAmount(amountMinor, { currencyCode, locale });
+  const formatAmount = (amountMinor: number) =>
+    formatMoneyNoteAmount(amountMinor, { currencyCode, locale });
   const netAmountStyle = totals.netMinor < 0 ? styles.expenseAmount : styles.incomeAmount;
 
   return (
     <View style={styles.summaryStrip}>
       <View style={styles.summaryCell}>
         <Text style={styles.summaryLabel}>{copy.income}</Text>
-        <Text style={[styles.summaryAmount, styles.incomeAmount]}>{formatAmount(totals.incomeMinor)}</Text>
+        <Text style={[styles.summaryAmount, styles.incomeAmount]}>
+          {formatAmount(totals.incomeMinor)}
+        </Text>
       </View>
       <View style={styles.summaryDivider} />
       <View style={styles.summaryCell}>
         <Text style={styles.summaryLabel}>{copy.expense}</Text>
-        <Text style={[styles.summaryAmount, styles.expenseAmount]}>{formatAmount(totals.expenseMinor)}</Text>
+        <Text style={[styles.summaryAmount, styles.expenseAmount]}>
+          {formatAmount(totals.expenseMinor)}
+        </Text>
       </View>
       <View style={styles.summaryDivider} />
       <View style={styles.summaryCell}>
@@ -1928,7 +2364,9 @@ export function MoneyNoteCalendarScreen() {
   const journalMoodByDate = useMemo(() => {
     const dayMoods = journalOverview.state.data?.monthSummary.dayMoods ?? [];
 
-    return new Map<string, (typeof dayMoods)[number]>(dayMoods.map((item) => [String(item.localDate), item]));
+    return new Map<string, (typeof dayMoods)[number]>(
+      dayMoods.map((item) => [String(item.localDate), item]),
+    );
   }, [journalOverview.state.data]);
   const dailyTotals = useMemo(() => {
     if (monthData.summaries.length === 0) {
@@ -1949,11 +2387,8 @@ export function MoneyNoteCalendarScreen() {
     () => monthData.records.filter((record) => record.localDate === selectedLocalDate),
     [monthData.records, selectedLocalDate],
   );
-  const contentBackgroundColor = appBackground.photoUri ? 'transparent' : appBackground.colors.appBackground;
-  const calendarDayCellSize = useMemo(
-    () => Math.floor((viewportWidth - 42) / 7),
-    [viewportWidth],
-  );
+  const contentBackgroundColor = 'transparent';
+  const calendarDayCellSize = useMemo(() => Math.floor((viewportWidth - 42) / 7), [viewportWidth]);
 
   useEffect(() => {
     const bounds = getMonthBounds(monthDate);
@@ -1972,7 +2407,10 @@ export function MoneyNoteCalendarScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}>
+    <SafeAreaView
+      edges={['top']}
+      style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}
+    >
       <AppBackgroundFrame>
         <ScrollView
           contentContainerStyle={[
@@ -1981,90 +2419,104 @@ export function MoneyNoteCalendarScreen() {
             { backgroundColor: contentBackgroundColor },
           ]}
         >
-        <CalendarPageHeader title={copy.calendar} />
-        <CalendarMonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
-        <View style={styles.calendarGrid}>
-          {weekdayLabels.map((label) => (
-            <View key={label} style={styles.weekdayCell}>
-              <Text style={[styles.weekdayText, label === 'T.7' ? styles.saturdayText : null, label === 'CN' ? styles.sundayText : null]}>
-                {label}
-              </Text>
-            </View>
-          ))}
-          {days.map((day) => {
-            const dayTotals = dailyTotals[day.localDate];
-            const dayNet = dayTotals?.netMinor ?? 0;
-            const hasAmount = dayNet !== 0;
-            const isSelected = selectedLocalDate === day.localDate;
-            const mood = journalMoodByDate.get(day.localDate);
-
-            return (
-            <Pressable
-              accessibilityRole="button"
-              key={day.localDate}
-              onPress={() => selectDay(day.localDate, day.inCurrentMonth)}
-              style={[
-                styles.dayCell,
-                { height: calendarDayCellSize, width: calendarDayCellSize },
-                day.isToday && day.inCurrentMonth ? styles.dayCellToday : null,
-              ]}>
-              <View style={[styles.calendarDayTile, isSelected ? styles.dayCellSelected : null]}>
-                <View style={styles.calendarDayHeader}>
-                  <Text
-                    style={[
-                      styles.dayText,
-                      !day.inCurrentMonth ? styles.dayTextMuted : null,
-                      day.dayOfWeek === 6 && day.inCurrentMonth ? styles.saturdayText : null,
-                      day.dayOfWeek === 0 && day.inCurrentMonth ? styles.sundayText : null,
-                    ]}>
-                    {day.dayOfMonth}
-                  </Text>
-                  {mood ? <MoodFaceIcon moodId={mood.moodId} size={16} /> : null}
-                </View>
-                {hasAmount ? (
-                  <Text
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.72}
-                    numberOfLines={1}
-                    style={[
-                      styles.dayAmountText,
-                      dayNet < 0 ? styles.expenseAmount : styles.incomeAmount,
-                    ]}>
-                    {formatMoneyNoteAmountMagnitude(dayNet, {
-                      currencyCode: monthData.currencyCode,
-                      locale: monthData.locale,
-                    })}
-                  </Text>
-                ) : null}
+          <CalendarPageHeader title={copy.calendar} />
+          <CalendarMonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
+          <View style={styles.calendarGrid}>
+            {weekdayLabels.map((label) => (
+              <View key={label} style={styles.weekdayCell}>
+                <Text
+                  style={[
+                    styles.weekdayText,
+                    label === 'T.7' ? styles.saturdayText : null,
+                    label === 'CN' ? styles.sundayText : null,
+                  ]}
+                >
+                  {label}
+                </Text>
               </View>
-            </Pressable>
-            );
-          })}
-        </View>
+            ))}
+            {days.map((day) => {
+              const dayTotals = dailyTotals[day.localDate];
+              const dayNet = dayTotals?.netMinor ?? 0;
+              const hasAmount = dayNet !== 0;
+              const isSelected = selectedLocalDate === day.localDate;
+              const mood = journalMoodByDate.get(day.localDate);
 
-        {monthData.status === 'loading' ? <ActivityIndicator color={skyBlue} /> : null}
-        {monthData.status === 'failed' ? (
-          <Text style={styles.warningText}>
-            {monthData.error?.message ?? (language === 'en' ? 'Could not load data.' : 'Không thể tải dữ liệu.')}
-          </Text>
-        ) : null}
-        <View style={styles.calendarDetailPanel}>
-          <CalendarDetailTabs active={detailTab} onChange={setDetailTab} />
-          {detailTab === 'spending' ? (
-            <CalendarSpendingPanel
-              copy={copy}
-              currencyCode={monthData.currencyCode}
-              language={language}
-              locale={monthData.locale}
-              onRecordPress={(record) => router.push(`/money/${record.id}`)}
-              records={selectedRecords}
-              selectedLocalDate={selectedLocalDate}
-              selectedTotals={selectedTotals}
-            />
-          ) : (
-            <CalendarJournalPanel entries={journalEntries} selectedLocalDate={selectedLocalDate} />
-          )}
-        </View>
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  key={day.localDate}
+                  onPress={() => selectDay(day.localDate, day.inCurrentMonth)}
+                  style={[
+                    styles.dayCell,
+                    { height: calendarDayCellSize, width: calendarDayCellSize },
+                    day.isToday && day.inCurrentMonth ? styles.dayCellToday : null,
+                  ]}
+                >
+                  <View
+                    style={[styles.calendarDayTile, isSelected ? styles.dayCellSelected : null]}
+                  >
+                    <View style={styles.calendarDayHeader}>
+                      <Text
+                        style={[
+                          styles.dayText,
+                          !day.inCurrentMonth ? styles.dayTextMuted : null,
+                          day.dayOfWeek === 6 && day.inCurrentMonth ? styles.saturdayText : null,
+                          day.dayOfWeek === 0 && day.inCurrentMonth ? styles.sundayText : null,
+                        ]}
+                      >
+                        {day.dayOfMonth}
+                      </Text>
+                      {mood ? <MoodFaceIcon moodId={mood.moodId} size={16} /> : null}
+                    </View>
+                    {hasAmount ? (
+                      <Text
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.72}
+                        numberOfLines={1}
+                        style={[
+                          styles.dayAmountText,
+                          dayNet < 0 ? styles.expenseAmount : styles.incomeAmount,
+                        ]}
+                      >
+                        {formatMoneyNoteAmountMagnitude(dayNet, {
+                          currencyCode: monthData.currencyCode,
+                          locale: monthData.locale,
+                        })}
+                      </Text>
+                    ) : null}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {monthData.status === 'loading' ? <ActivityIndicator color={skyBlue} /> : null}
+          {monthData.status === 'failed' ? (
+            <Text style={styles.warningText}>
+              {monthData.error?.message ?? copy.couldNotLoadData}
+            </Text>
+          ) : null}
+          <View style={styles.calendarDetailPanel}>
+            <CalendarDetailTabs active={detailTab} onChange={setDetailTab} />
+            {detailTab === 'spending' ? (
+              <CalendarSpendingPanel
+                copy={copy}
+                currencyCode={monthData.currencyCode}
+                language={language}
+                locale={monthData.locale}
+                onRecordPress={(record) => router.push(`/money/${record.id}`)}
+                records={selectedRecords}
+                selectedLocalDate={selectedLocalDate}
+                selectedTotals={selectedTotals}
+              />
+            ) : (
+              <CalendarJournalPanel
+                entries={journalEntries}
+                selectedLocalDate={selectedLocalDate}
+              />
+            )}
+          </View>
         </ScrollView>
       </AppBackgroundFrame>
     </SafeAreaView>
@@ -2082,7 +2534,8 @@ function ReportSummaryCard({
   locale: string;
   totals: MoneyNoteTotals;
 }) {
-  const formatAmount = (amountMinor: number) => formatMoneyNoteAmount(amountMinor, { currencyCode, locale });
+  const formatAmount = (amountMinor: number) =>
+    formatMoneyNoteAmount(amountMinor, { currencyCode, locale });
   const netAmountStyle = totals.netMinor < 0 ? styles.expenseAmount : styles.incomeAmount;
 
   return (
@@ -2090,12 +2543,16 @@ function ReportSummaryCard({
       <View style={styles.reportTopRow}>
         <View style={styles.reportHalf}>
           <Text style={styles.reportSummaryLabel}>{copy.expense}</Text>
-          <Text style={[styles.reportAmount, styles.expenseAmount]}>-{formatAmount(totals.expenseMinor)}</Text>
+          <Text style={[styles.reportAmount, styles.expenseAmount]}>
+            -{formatAmount(totals.expenseMinor)}
+          </Text>
         </View>
         <View style={styles.reportVerticalLine} />
         <View style={styles.reportHalf}>
           <Text style={styles.reportSummaryLabel}>{copy.income}</Text>
-          <Text style={[styles.reportAmount, styles.incomeAmount]}>+{formatAmount(totals.incomeMinor)}</Text>
+          <Text style={[styles.reportAmount, styles.incomeAmount]}>
+            +{formatAmount(totals.incomeMinor)}
+          </Text>
         </View>
       </View>
       <View style={styles.reportBottomRow}>
@@ -2123,9 +2580,12 @@ function ReportChartCallout({
           left: segment.labelLeft,
           top: segment.labelTop,
         },
-      ]}>
+      ]}
+    >
       <View>
-        <Text style={styles.reportChartCalloutPercent}>{formatReportPercent(segment.percent, language)}</Text>
+        <Text style={styles.reportChartCalloutPercent}>
+          {formatReportPercent(segment.percent, language)}
+        </Text>
         <View style={styles.reportChartCalloutLabelRow}>
           <CategoryIcon icon={segment.icon} size={24} />
           <Text numberOfLines={1} style={styles.reportChartCalloutLabel}>
@@ -2139,36 +2599,118 @@ function ReportChartCallout({
 
 const reportDonutPalette = ['#EA5AAA', '#FF566C', '#FFA51D', '#A97735', '#4ED6C8', '#7EA7FF'];
 
-const reportCalloutSlots = [
-  { side: 'right', top: 122 },
-  { side: 'left', top: 86 },
-  { side: 'right', top: 18 },
-  { side: 'left', top: 18 },
-] as const;
+const reportCalloutTopSlots = [20, 126] as const;
+type ReportCalloutSide = 'left' | 'right';
 
-function arrangeReportCallouts(segments: ReportChartSegment[], chartWidth: number): ReportChartSegment[] {
-  return [...segments]
+function arrangeReportCallouts(
+  segments: ReportChartSegment[],
+  {
+    centerX,
+    centerY,
+    chartWidth,
+    radius,
+    strokeWidth,
+  }: {
+    centerX: number;
+    centerY: number;
+    chartWidth: number;
+    radius: number;
+    strokeWidth: number;
+  },
+): ReportChartSegment[] {
+  const labelWidth = 96;
+  const labelPadding = 10;
+  const ringOuterRadius = radius + strokeWidth / 2 + 3;
+  const selectedSegments = [...segments]
     .sort((left, right) => right.amountMinor - left.amountMinor)
-    .slice(0, reportCalloutSlots.length)
-    .map((segment, index) => {
-      const slot = reportCalloutSlots[index];
-      const labelWidth = 96;
-      const labelLeft = slot.side === 'right' ? chartWidth - labelWidth - 8 : 8;
-      const endX = slot.side === 'right' ? labelLeft - 8 : labelLeft + labelWidth - 8;
-      const endY = slot.top + 19;
-      const [startPoint] = segment.connectorPoints.split(' ');
-      const [startXText, startYText] = startPoint.split(',');
-      const startX = Number(startXText);
-      const startY = Number(startYText);
-      const bendX = slot.side === 'right' ? Math.min(endX - 8, startX + 30) : Math.max(endX + 8, startX - 30);
+    .slice(0, 4);
+  const segmentsBySide: Record<ReportCalloutSide, ReportChartSegment[]> = {
+    left: [],
+    right: [],
+  };
 
-      return {
-        ...segment,
-        connectorPoints: `${startX},${startY} ${bendX},${endY} ${endX},${endY}`,
-        labelLeft,
-        labelTop: slot.top,
-      };
+  selectedSegments.forEach((segment) => {
+    const side: ReportCalloutSide = segment.labelLeft > chartWidth / 2 ? 'right' : 'left';
+    segmentsBySide[side].push(segment);
+  });
+
+  const connectorStartXFor = (segment: ReportChartSegment) => {
+    const [startPoint] = segment.connectorPoints.split(' ');
+    const [startXText] = startPoint.split(',');
+    const startX = Number(startXText);
+
+    return Number.isFinite(startX) ? startX : chartWidth / 2;
+  };
+  const moveNearestCenterSegment = (fromSide: ReportCalloutSide, toSide: ReportCalloutSide) => {
+    const fromSegments = segmentsBySide[fromSide];
+    let moveIndex = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    fromSegments.forEach((segment, index) => {
+      const distance = Math.abs(connectorStartXFor(segment) - chartWidth / 2);
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        moveIndex = index;
+      }
     });
+
+    const [movedSegment] = fromSegments.splice(moveIndex, 1);
+
+    if (movedSegment) {
+      segmentsBySide[toSide].push(movedSegment);
+    }
+  };
+
+  (['left', 'right'] as const).forEach((side) => {
+    const otherSide = side === 'left' ? 'right' : 'left';
+
+    while (segmentsBySide[side].length > 2) {
+      moveNearestCenterSegment(side, otherSide);
+    }
+  });
+
+  if (selectedSegments.length === 4) {
+    (['left', 'right'] as const).forEach((side) => {
+      const otherSide = side === 'left' ? 'right' : 'left';
+
+      while (segmentsBySide[side].length < 2 && segmentsBySide[otherSide].length > 2) {
+        moveNearestCenterSegment(otherSide, side);
+      }
+    });
+  }
+
+  const arrangedSegments: ReportChartSegment[] = [];
+
+  (['left', 'right'] as const).forEach((side) => {
+    segmentsBySide[side]
+      .sort((left, right) => left.labelTop - right.labelTop)
+      .forEach((segment, index, sideSegments) => {
+        const labelLeft = side === 'right' ? chartWidth - labelWidth - labelPadding : labelPadding;
+        const labelTop = sideSegments.length === 1 ? 74 : reportCalloutTopSlots[Math.min(index, 1)];
+        const endX = side === 'right' ? labelLeft - 6 : labelLeft + labelWidth + 6;
+        const endY = labelTop + 36;
+        const verticalOffset =
+          sideSegments.length === 1
+            ? 0
+            : index === 0
+              ? -ringOuterRadius * 0.68
+              : ringOuterRadius * 0.68;
+        const startY = centerY + verticalOffset;
+        const horizontalOffset = Math.sqrt(Math.max(0, ringOuterRadius ** 2 - verticalOffset ** 2));
+        const startX = side === 'right' ? centerX + horizontalOffset : centerX - horizontalOffset;
+        const elbowX = (startX + endX) / 2;
+
+        arrangedSegments.push({
+          ...segment,
+          connectorPoints: `${startX},${startY} ${elbowX},${startY} ${elbowX},${endY} ${endX},${endY}`,
+          labelLeft,
+          labelTop,
+        });
+      });
+  });
+
+  return arrangedSegments;
 }
 
 function ReportDonutChart({
@@ -2201,7 +2743,13 @@ function ReportDonutChart({
     ...segment,
     color: reportDonutPalette[index % reportDonutPalette.length],
   }));
-  const calloutSegments = arrangeReportCallouts(segments, chartWidth);
+  const calloutSegments = arrangeReportCallouts(segments, {
+    centerX,
+    centerY,
+    chartWidth,
+    radius,
+    strokeWidth,
+  });
   const centerSegment = chartRows[0];
 
   return (
@@ -2237,6 +2785,8 @@ function ReportDonutChart({
               key={`connector-${segment.key}`}
               points={segment.connectorPoints}
               stroke={segment.color}
+              strokeLinecap="round"
+              strokeLinejoin="round"
               strokeWidth={2}
             />
           ))}
@@ -2245,11 +2795,13 @@ function ReportDonutChart({
           {centerSegment ? <CategoryIcon icon={centerSegment.icon} size={54} /> : null}
         </View>
         {calloutSegments.map((segment) => (
-          <ReportChartCallout key={`callout-${segment.key}`} language={language} segment={segment} />
+          <ReportChartCallout
+            key={`callout-${segment.key}`}
+            language={language}
+            segment={segment}
+          />
         ))}
-        {rows.length === 0 ? (
-          <Text style={styles.reportChartEmptyText}>{copy.noData}</Text>
-        ) : null}
+        {rows.length === 0 ? <Text style={styles.reportChartEmptyText}>{copy.noData}</Text> : null}
       </View>
     </View>
   );
@@ -2291,7 +2843,9 @@ function ReportBreakdownList({
           <Text style={styles.reportBreakdownAmount}>
             {formatMoneyNoteAmount(row.amountMinor, { currencyCode, locale })}
           </Text>
-          <Text style={styles.reportBreakdownPercent}>{formatReportPercent(row.percent, language)}</Text>
+          <Text style={styles.reportBreakdownPercent}>
+            {formatReportPercent(row.percent, language)}
+          </Text>
           <MaterialCommunityIcons color="#666666" name="chevron-right" size={22} />
         </View>
       ))}
@@ -2309,10 +2863,13 @@ export function MoneyNoteReportScreen() {
     () => buildReportBreakdownRows(monthData.records, activeKind, language),
     [activeKind, language, monthData.records],
   );
-  const contentBackgroundColor = appBackground.photoUri ? 'transparent' : appBackground.colors.appBackground;
+  const contentBackgroundColor = 'transparent';
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}>
+    <SafeAreaView
+      edges={['top']}
+      style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}
+    >
       <AppBackgroundFrame>
         <ScrollView
           contentContainerStyle={[
@@ -2320,47 +2877,41 @@ export function MoneyNoteReportScreen() {
             { backgroundColor: contentBackgroundColor },
           ]}
         >
-        <ReportPageHeader title={copy.report} />
-        <CalendarMonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
-        <ReportSummaryCard
-          copy={copy}
-          currencyCode={monthData.currencyCode}
-          locale={monthData.locale}
-          totals={monthData.totals}
-        />
-        <ReportKindTabs active={activeKind} copy={copy} onChange={setActiveKind} />
-        <View style={styles.reportBody}>
-          {monthData.status === 'loading' ? <ActivityIndicator color={skyBlue} /> : null}
-          {monthData.status === 'failed' ? (
-            <Text style={styles.warningText}>
-              {monthData.error?.message ?? (language === 'en' ? 'Could not load report.' : 'Không thể tải báo cáo.')}
-            </Text>
-          ) : null}
-          {monthData.status === 'ready' ? (
-            <>
-              <ReportDonutChart copy={copy} language={language} rows={breakdownRows} />
-              <ReportBreakdownList
-                currencyCode={monthData.currencyCode}
-                language={language}
-                locale={monthData.locale}
-                rows={breakdownRows}
-              />
-            </>
-          ) : null}
-        </View>
+          <ReportPageHeader title={copy.report} />
+          <CalendarMonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
+          <ReportSummaryCard
+            copy={copy}
+            currencyCode={monthData.currencyCode}
+            locale={monthData.locale}
+            totals={monthData.totals}
+          />
+          <ReportKindTabs active={activeKind} copy={copy} onChange={setActiveKind} />
+          <View style={styles.reportBody}>
+            {monthData.status === 'loading' ? <ActivityIndicator color={skyBlue} /> : null}
+            {monthData.status === 'failed' ? (
+              <Text style={styles.warningText}>
+                {monthData.error?.message ?? copy.couldNotLoadReport}
+              </Text>
+            ) : null}
+            {monthData.status === 'ready' ? (
+              <>
+                <ReportDonutChart copy={copy} language={language} rows={breakdownRows} />
+                <ReportBreakdownList
+                  currencyCode={monthData.currencyCode}
+                  language={language}
+                  locale={monthData.locale}
+                  rows={breakdownRows}
+                />
+              </>
+            ) : null}
+          </View>
         </ScrollView>
       </AppBackgroundFrame>
     </SafeAreaView>
   );
 }
 
-function ReportDetailHeader({
-  right,
-  title,
-}: {
-  right?: React.ReactNode;
-  title: string;
-}) {
+function ReportDetailHeader({ right, title }: { right?: React.ReactNode; title: string }) {
   const router = useRouter();
 
   return (
@@ -2423,8 +2974,11 @@ function AnnualReportModeTabs({
             accessibilityRole="tab"
             key={mode}
             onPress={() => onChange(mode)}
-            style={[styles.reportModeTab, selected ? styles.reportModeTabActive : null]}>
-            <Text style={[styles.reportModeTabText, selected ? styles.reportModeTabTextActive : null]}>
+            style={[styles.reportModeTab, selected ? styles.reportModeTabActive : null]}
+          >
+            <Text
+              style={[styles.reportModeTabText, selected ? styles.reportModeTabTextActive : null]}
+            >
               {annualReportModeLabel(mode, copy)}
             </Text>
           </Pressable>
@@ -2506,11 +3060,7 @@ function ReportLoadingState({
   }
 
   if (data.status === 'failed') {
-    return (
-      <Text style={styles.warningText}>
-        {data.error?.message ?? (language === 'en' ? 'Could not load report.' : 'Không thể tải báo cáo.')}
-      </Text>
-    );
+    return <Text style={styles.warningText}>{data.error?.message ?? copy.couldNotLoadReport}</Text>;
   }
 
   if (data.status !== 'ready') {
@@ -2539,7 +3089,7 @@ function AllTimeTotalsTable({
     { amountMinor: totals.expenseMinor, label: copy.expense },
     { amountMinor: totals.netMinor, label: copy.net },
     { divider: true, key: 'divider' },
-    { amountMinor: 0, label: language === 'en' ? 'Initial balance' : 'Số dư ban đầu' },
+    { amountMinor: 0, label: copy.initialBalance },
     { amountMinor: totals.netMinor, label: copy.net },
   ];
 
@@ -2628,14 +3178,17 @@ export function MoneyNoteYearReportScreen() {
             <View style={styles.yearTotalRow}>
               <Text style={styles.yearTotalLabel}>{copy.net}</Text>
               <Text style={[styles.yearTotalAmount, amountStyle]}>
-                {formatMoneyNoteAmount(totalMinor, { currencyCode: data.currencyCode, locale: data.locale })}
+                {formatMoneyNoteAmount(totalMinor, {
+                  currencyCode: data.currencyCode,
+                  locale: data.locale,
+                })}
               </Text>
             </View>
             <View style={styles.yearMonthList}>
               {monthRows.map((row) => (
                 <View key={row.month} style={styles.yearMonthRow}>
                   <Text style={styles.yearMonthRowLabel}>
-                    {language === 'en' ? `Month ${row.month}` : `Tháng ${row.month}`}
+                    {copy.monthPrefix} {row.month}
                   </Text>
                   <Text
                     style={[
@@ -2645,7 +3198,8 @@ export function MoneyNoteYearReportScreen() {
                           ? styles.expenseAmount
                           : styles.incomeAmount
                         : null,
-                    ]}>
+                    ]}
+                  >
                     {formatMoneyNoteAmount(row.amountMinor, {
                       currencyCode: data.currencyCode,
                       locale: data.locale,
@@ -2690,7 +3244,9 @@ function MoneyNoteCategoryReportDetailScreen({
           }
           title={title}
         />
-        {panelKind === 'categoryYear' ? <YearSwitcher label={`${year}`} onChange={setYear} year={year} /> : null}
+        {panelKind === 'categoryYear' ? (
+          <YearSwitcher label={`${year}`} onChange={setYear} year={year} />
+        ) : null}
         <KindTabs active={activeKind} copy={copy} onChange={setActiveKind} />
         <View style={styles.reportBody}>
           {data.status === 'ready' ? (
@@ -2715,12 +3271,14 @@ function MoneyNoteCategoryReportDetailScreen({
 export function MoneyNoteCategoryYearReportScreen() {
   const { copy } = useMoneyNoteCopy();
 
-  return <MoneyNoteCategoryReportDetailScreen panelKind="categoryYear" title={copy.categoryYearReport} />;
+  return (
+    <MoneyNoteCategoryReportDetailScreen panelKind="categoryYear" title={copy.categoryYearReport} />
+  );
 }
 
 export function MoneyNoteCategoryAllTimeReportScreen() {
   const { language } = useMoneyNoteCopy();
-  const title = language === 'en' ? 'All time' : 'Toàn thời gian';
+  const title = moneyNoteCopy[language].allTime;
 
   return <MoneyNoteCategoryReportDetailScreen panelKind="categoryAllTime" title={title} />;
 }
@@ -2738,7 +3296,12 @@ function MoreRow({
 }) {
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={styles.moreRow}>
-      <MaterialCommunityIcons color={skyBlue} name={icon as never} size={28} style={styles.moreIcon} />
+      <MaterialCommunityIcons
+        color={skyBlue}
+        name={icon as never}
+        size={28}
+        style={styles.moreIcon}
+      />
       <Text numberOfLines={1} style={styles.moreTitle}>
         {title}
       </Text>
@@ -2750,7 +3313,9 @@ function MoreRow({
 function MoreDivider() {
   const appBackground = useAppBackground();
 
-  return <View style={[styles.moreDivider, { backgroundColor: appBackground.colors.appBackground }]} />;
+  return (
+    <View style={[styles.moreDivider, { backgroundColor: appBackground.colors.appBackground }]} />
+  );
 }
 
 function MoreToolPanel({
@@ -2789,17 +3354,12 @@ function MoreToolPanel({
       currencyCode: data.currencyCode,
       locale: data.locale,
     });
-  const recordsLabel =
-    language === 'en'
-      ? `${data.totalCount} records in this view`
-      : `${data.totalCount} bản ghi trong mục này`;
+  const recordsLabel = `${data.totalCount} ${copy.recordsInView}`;
 
   return (
     <View style={styles.morePanel}>
       <Text style={styles.morePanelTitle}>{titleByKind[kind]}</Text>
-      {data.status === 'loading' ? (
-        <ActivityIndicator color={skyBlue} />
-      ) : null}
+      {data.status === 'loading' ? <ActivityIndicator color={skyBlue} /> : null}
       {data.status === 'failed' ? (
         <Text style={styles.warningText}>{data.error?.message ?? copy.saveFailed}</Text>
       ) : null}
@@ -2836,8 +3396,11 @@ function MoreToolPanel({
                   <Text
                     style={[
                       styles.moreReportAmount,
-                      row.incomeMinor - row.expenseMinor < 0 ? styles.expenseAmount : styles.incomeAmount,
-                    ]}>
+                      row.incomeMinor - row.expenseMinor < 0
+                        ? styles.expenseAmount
+                        : styles.incomeAmount,
+                    ]}
+                  >
                     {formatAmount(row.incomeMinor - row.expenseMinor)}
                   </Text>
                 </View>
@@ -2845,12 +3408,18 @@ function MoreToolPanel({
             </View>
           ) : (
             <View style={styles.moreReportList}>
-              {data.records.length === 0 ? <Text style={styles.mutedText}>{copy.noData}</Text> : null}
+              {data.records.length === 0 ? (
+                <Text style={styles.mutedText}>{copy.noData}</Text>
+              ) : null}
               {data.records.slice(0, 6).map((record) => (
                 <View key={record.id} style={styles.moreReportRow}>
                   <MaterialCommunityIcons
                     color={record.kind === 'expense' ? expenseColor : incomeColor}
-                    name={record.kind === 'expense' ? 'arrow-down-circle-outline' : 'arrow-up-circle-outline'}
+                    name={
+                      record.kind === 'expense'
+                        ? 'arrow-down-circle-outline'
+                        : 'arrow-up-circle-outline'
+                    }
                     size={28}
                     style={styles.moreReportIcon}
                   />
@@ -2858,14 +3427,19 @@ function MoreToolPanel({
                     <Text numberOfLines={1} style={styles.moreReportTitle}>
                       {recordDisplayLabel(record, language, copy.category)}
                     </Text>
-                    <Text style={styles.moreReportMeta}>{formatMoneyNoteShortDate(record.localDate)}</Text>
+                    <Text style={styles.moreReportMeta}>
+                      {formatMoneyNoteShortDate(record.localDate, language)}
+                    </Text>
                   </View>
                   <Text
                     style={[
                       styles.moreReportAmount,
                       record.kind === 'expense' ? styles.expenseAmount : styles.incomeAmount,
-                    ]}>
-                    {formatAmount(record.kind === 'expense' ? -record.amountMinor : record.amountMinor)}
+                    ]}
+                  >
+                    {formatAmount(
+                      record.kind === 'expense' ? -record.amountMinor : record.amountMinor,
+                    )}
                   </Text>
                 </View>
               ))}
@@ -2880,17 +3454,14 @@ function MoreToolPanel({
                 style={[
                   styles.morePanelButton,
                   fileBusy || data.records.length === 0 ? styles.primaryCtaDisabled : null,
-                ]}>
+                ]}
+              >
                 <Text style={styles.morePanelButtonText}>
                   {fileBusy
                     ? copy.saving
                     : kind === 'export'
-                      ? language === 'en'
-                        ? 'Create CSV'
-                        : 'Tạo file CSV'
-                      : language === 'en'
-                        ? 'Create JSON backup'
-                        : 'Tạo bản sao JSON'}
+                      ? copy.createCsv
+                      : copy.createJsonBackup}
                 </Text>
               </Pressable>
               {fileMessage ? <Text style={styles.successTextInline}>{fileMessage}</Text> : null}
@@ -2912,19 +3483,27 @@ export function MoneyNoteMoreScreen() {
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const [backgroundOpen, setBackgroundOpen] = useState(false);
   const [backgroundError, setBackgroundError] = useState<string | null>(null);
-  const [backgroundStatus, setBackgroundStatus] = useState<'failed' | 'idle' | 'saved' | 'saving'>('idle');
-  const [languageStatus, setLanguageStatus] = useState<'failed' | 'idle' | 'saved' | 'saving'>('idle');
+  const [backgroundStatus, setBackgroundStatus] = useState<'failed' | 'idle' | 'saved' | 'saving'>(
+    'idle',
+  );
+  const [languageStatus, setLanguageStatus] = useState<'failed' | 'idle' | 'saved' | 'saving'>(
+    'idle',
+  );
   const [activePanel, setActivePanel] = useState<MoneyNoteMorePanelKind | null>(null);
   const [fileBusy, setFileBusy] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const [fileMessage, setFileMessage] = useState<string | null>(null);
-  const visibleCurrency = preferences.state.form.currencyCode || moneyNoteDefaultPreferences.currencyCode;
+  const visibleCurrency =
+    preferences.state.form.currencyCode || moneyNoteDefaultPreferences.currencyCode;
   const panelData = useMoneyNoteMorePanelData(activePanel);
   const visibleBackground =
     appBackground.kind === 'photo'
       ? copy.backgroundFromPhoto
-      : backgroundDisplayName(appBackground.id === 'photo' ? 'mint' : appBackground.id, appLanguage);
-  const contentBackgroundColor = appBackground.photoUri ? 'transparent' : appBackground.colors.appBackground;
+      : backgroundDisplayName(
+          appBackground.id === 'photo' ? 'mint' : appBackground.id,
+          appLanguage,
+        );
+  const contentBackgroundColor = 'transparent';
 
   const changeLanguage = useCallback(
     (language: AppLanguage) => {
@@ -3096,169 +3675,224 @@ export function MoneyNoteMoreScreen() {
     ) : null;
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}>
+    <SafeAreaView
+      edges={['top']}
+      style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}
+    >
       <AppBackgroundFrame>
         <ScrollView
-          contentContainerStyle={[
-            styles.moreContent,
-            { backgroundColor: contentBackgroundColor },
-          ]}
+          contentContainerStyle={[styles.moreContent, { backgroundColor: contentBackgroundColor }]}
         >
-        <ScreenHeader title={copy.more} />
-        <MoreDivider />
-        <MoreRow icon="cog-outline" onPress={() => router.push('/preferences')} title={copy.basicSettings} />
-        <MoreDivider />
-        <MoreRow icon="chart-box-outline" onPress={() => router.push('/report-year')} title={copy.reportYear} />
-        <MoreRow icon="chart-pie" onPress={() => router.push('/report-category-year')} title={copy.categoryYearReport} />
-        <MoreRow icon="chart-box-outline" onPress={() => router.push('/report-all-time')} title={copy.reportAllTime} />
-        <MoreRow
-          icon="chart-pie"
-          onPress={() => router.push('/report-category-all-time')}
-          title={copy.categoryAllTimeReport}
-        />
-        <MoreDivider />
-        <MoreRow icon="download-outline" onPress={() => togglePanel('export')} title={copy.exportData} />
-        {renderActivePanel('export')}
-        <MoreRow icon="archive-arrow-down-outline" onPress={() => togglePanel('backup')} title={copy.backupData} />
-        {renderActivePanel('backup')}
-        <MoreDivider />
-        <MoreRow icon="help-circle-outline" title={copy.help} />
-        <MoreRow icon="information-outline" title={copy.appInfo} />
-        <MoreRow
-          icon="web"
-          onPress={() => setLanguageOpen((current) => !current)}
-          right={languageDisplayName(appLanguage, appLanguage)}
-          title={copy.changeLanguage}
-        />
-        {languageOpen ? (
-          <View style={styles.languagePanel}>
-            {appLanguageOptions.map((option) => (
-              <Pressable
-                key={option.value}
-                onPress={() => changeLanguage(option.value)}
-                style={[
-                  styles.languageOption,
-                  option.value === appLanguage ? styles.languageOptionSelected : null,
-                ]}>
-                <Text
-                  style={[
-                    styles.languageOptionText,
-                    option.value === appLanguage ? styles.languageOptionTextSelected : null,
-                  ]}>
-                  {languageDisplayName(option.value, appLanguage)}
-                </Text>
-              </Pressable>
-            ))}
-            {languageStatus === 'saving' ? <Text style={styles.mutedText}>{copy.saving}</Text> : null}
-            {languageStatus === 'saved' ? <Text style={styles.successTextInline}>{copy.languageSaved}</Text> : null}
-            {languageStatus === 'failed' ? (
-              <Text style={styles.warningText}>{copy.languageFailed}</Text>
-            ) : null}
-          </View>
-        ) : null}
-        <MoreRow
-          icon="palette-outline"
-          onPress={() => setBackgroundOpen((current) => !current)}
-          right={visibleBackground}
-          title={copy.background}
-        />
-        {backgroundOpen ? (
-          <View style={styles.backgroundPanel}>
-            <Pressable
-              accessibilityRole="button"
-              disabled={backgroundStatus === 'saving'}
-              onPress={choosePhotoBackground}
-              style={styles.backgroundPhotoButton}
-            >
-              <MaterialCommunityIcons color="#FFFFFF" name="image-plus" size={24} />
-              <Text style={styles.backgroundPhotoButtonText}>
-                {backgroundStatus === 'saving' ? copy.saving : copy.backgroundChoosePhoto}
-              </Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              disabled={backgroundStatus === 'saving'}
-              onPress={() => changeBackground('mint')}
-              style={styles.backgroundDefaultButton}
-            >
-              <Text style={styles.backgroundDefaultButtonText}>{copy.backgroundDefault}</Text>
-            </Pressable>
-            {appBackgroundOptions.map((option) => {
-              const selected = appBackground.kind === 'preset' && option.id === appBackground.id;
-
-              return (
+          <ScreenHeader title={copy.more} />
+          <MoreDivider />
+          <MoreRow
+            icon="cog-outline"
+            onPress={() => router.push('/preferences')}
+            title={copy.basicSettings}
+          />
+          <MoreDivider />
+          <MoreRow
+            icon="chart-box-outline"
+            onPress={() => router.push('/report-year')}
+            title={copy.reportYear}
+          />
+          <MoreRow
+            icon="chart-pie"
+            onPress={() => router.push('/report-category-year')}
+            title={copy.categoryYearReport}
+          />
+          <MoreRow
+            icon="chart-box-outline"
+            onPress={() => router.push('/report-all-time')}
+            title={copy.reportAllTime}
+          />
+          <MoreRow
+            icon="chart-pie"
+            onPress={() => router.push('/report-category-all-time')}
+            title={copy.categoryAllTimeReport}
+          />
+          <MoreDivider />
+          <MoreRow
+            icon="download-outline"
+            onPress={() => togglePanel('export')}
+            title={copy.exportData}
+          />
+          {renderActivePanel('export')}
+          <MoreRow
+            icon="archive-arrow-down-outline"
+            onPress={() => togglePanel('backup')}
+            title={copy.backupData}
+          />
+          {renderActivePanel('backup')}
+          <MoreDivider />
+          <MoreRow icon="help-circle-outline" title={copy.help} />
+          <MoreRow icon="information-outline" title={copy.appInfo} />
+          <MoreRow
+            icon="web"
+            onPress={() => setLanguageOpen((current) => !current)}
+            right={languageDisplayName(appLanguage, appLanguage)}
+            title={copy.changeLanguage}
+          />
+          {languageOpen ? (
+            <View style={styles.languagePanel}>
+              {appLanguageOptions.map((option) => (
                 <Pressable
-                  accessibilityRole="button"
-                  key={option.id}
-                  onPress={() => changeBackground(option.id)}
-                  style={[styles.backgroundOption, selected ? styles.backgroundOptionSelected : null]}
+                  key={option.value}
+                  onPress={() => changeLanguage(option.value)}
+                  style={[
+                    styles.languageOption,
+                    option.value === appLanguage ? styles.languageOptionSelected : null,
+                  ]}
                 >
-                  <View
-                    style={[
-                      styles.backgroundSwatch,
-                      { backgroundColor: option.colors.appBackground },
-                    ]}
-                  />
                   <Text
                     style={[
-                      styles.backgroundOptionText,
-                      selected ? styles.backgroundOptionTextSelected : null,
+                      styles.languageOptionText,
+                      option.value === appLanguage ? styles.languageOptionTextSelected : null,
                     ]}
                   >
-                    {backgroundDisplayName(option.id, appLanguage)}
+                    {languageDisplayName(option.value, appLanguage)}
                   </Text>
                 </Pressable>
-              );
-            })}
-            {backgroundStatus === 'saving' ? <Text style={styles.mutedText}>{copy.saving}</Text> : null}
-            {backgroundStatus === 'saved' ? <Text style={styles.successTextInline}>{copy.backgroundSaved}</Text> : null}
-            {backgroundStatus === 'failed' ? (
-              <Text style={styles.warningText}>{backgroundError ?? copy.backgroundFailed}</Text>
-            ) : null}
-          </View>
-        ) : null}
-        <MoreRow
-          icon="cash-multiple"
-          right={visibleCurrency}
-          title={copy.changeCurrency}
-          onPress={() => setCurrencyOpen((current) => !current)}
-        />
-        {currencyOpen ? (
-          <View style={styles.currencyPanel}>
-            <Text style={styles.preferenceHelper}>{copy.currencyHelper}</Text>
-            <View style={styles.currencyOptionRow}>
-              {quickCurrencyOptions.map((option) => {
-                const selected = preferences.state.form.currencyCode.toUpperCase() === option.code;
+              ))}
+              {languageStatus === 'saving' ? (
+                <Text style={styles.mutedText}>{copy.saving}</Text>
+              ) : null}
+              {languageStatus === 'saved' ? (
+                <Text style={styles.successTextInline}>{copy.languageSaved}</Text>
+              ) : null}
+              {languageStatus === 'failed' ? (
+                <Text style={styles.warningText}>{copy.languageFailed}</Text>
+              ) : null}
+            </View>
+          ) : null}
+          <MoreRow
+            icon="palette-outline"
+            onPress={() => setBackgroundOpen((current) => !current)}
+            right={visibleBackground}
+            title={copy.background}
+          />
+          {backgroundOpen ? (
+            <View style={styles.backgroundPanel}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={backgroundStatus === 'saving'}
+                onPress={choosePhotoBackground}
+                style={styles.backgroundPhotoButton}
+              >
+                <MaterialCommunityIcons color="#FFFFFF" name="image-plus" size={24} />
+                <Text style={styles.backgroundPhotoButtonText}>
+                  {backgroundStatus === 'saving' ? copy.saving : copy.backgroundChoosePhoto}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                disabled={backgroundStatus === 'saving'}
+                onPress={() => changeBackground('mint')}
+                style={styles.backgroundDefaultButton}
+              >
+                <Text style={styles.backgroundDefaultButtonText}>{copy.backgroundDefault}</Text>
+              </Pressable>
+              {appBackgroundOptions.map((option) => {
+                const selected = appBackground.kind === 'preset' && option.id === appBackground.id;
 
                 return (
                   <Pressable
                     accessibilityRole="button"
-                    key={option.code}
-                    onPress={() => selectQuickCurrency(option)}
-                    style={[styles.currencyOption, selected ? styles.currencyOptionSelected : null]}>
-                    <Text style={[styles.currencyOptionText, selected ? styles.currencyOptionTextSelected : null]}>
-                      {option.label}
+                    key={option.id}
+                    onPress={() => changeBackground(option.id)}
+                    style={[
+                      styles.backgroundOption,
+                      selected ? styles.backgroundOptionSelected : null,
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.backgroundSwatch,
+                        { backgroundColor: option.colors.appBackground },
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles.backgroundOptionText,
+                        selected ? styles.backgroundOptionTextSelected : null,
+                      ]}
+                    >
+                      {backgroundDisplayName(option.id, appLanguage)}
                     </Text>
                   </Pressable>
                 );
               })}
+              {backgroundStatus === 'saving' ? (
+                <Text style={styles.mutedText}>{copy.saving}</Text>
+              ) : null}
+              {backgroundStatus === 'saved' ? (
+                <Text style={styles.successTextInline}>{copy.backgroundSaved}</Text>
+              ) : null}
+              {backgroundStatus === 'failed' ? (
+                <Text style={styles.warningText}>{backgroundError ?? copy.backgroundFailed}</Text>
+              ) : null}
             </View>
-            <Pressable
-              accessibilityRole="button"
-              disabled={preferences.state.status === 'saving'}
-              onPress={preferences.save}
-              style={[styles.inlineSaveButton, preferences.state.status === 'saving' ? styles.primaryCtaDisabled : null]}>
-              <Text style={styles.inlineSaveButtonText}>
-                {preferences.state.status === 'saving' ? copy.saving : copy.saveCurrency}
-              </Text>
-            </Pressable>
-            {preferences.state.status === 'saved' ? <Text style={styles.successTextInline}>{copy.currencySaved}</Text> : null}
-            {preferences.state.saveError ? <Text style={styles.warningText}>{copy.saveFailed}</Text> : null}
-            {Object.keys(preferences.state.fieldErrors).length > 0 ? (
-              <Text style={styles.warningText}>{copy.saveFailed}</Text>
-            ) : null}
-          </View>
-        ) : null}
+          ) : null}
+          <MoreRow
+            icon="cash-multiple"
+            right={visibleCurrency}
+            title={copy.changeCurrency}
+            onPress={() => setCurrencyOpen((current) => !current)}
+          />
+          {currencyOpen ? (
+            <View style={styles.currencyPanel}>
+              <Text style={styles.preferenceHelper}>{copy.currencyHelper}</Text>
+              <View style={styles.currencyOptionRow}>
+                {quickCurrencyOptions.map((option) => {
+                  const selected =
+                    preferences.state.form.currencyCode.toUpperCase() === option.code;
+
+                  return (
+                    <Pressable
+                      accessibilityRole="button"
+                      key={option.code}
+                      onPress={() => selectQuickCurrency(option)}
+                      style={[
+                        styles.currencyOption,
+                        selected ? styles.currencyOptionSelected : null,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.currencyOptionText,
+                          selected ? styles.currencyOptionTextSelected : null,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                disabled={preferences.state.status === 'saving'}
+                onPress={preferences.save}
+                style={[
+                  styles.inlineSaveButton,
+                  preferences.state.status === 'saving' ? styles.primaryCtaDisabled : null,
+                ]}
+              >
+                <Text style={styles.inlineSaveButtonText}>
+                  {preferences.state.status === 'saving' ? copy.saving : copy.saveCurrency}
+                </Text>
+              </Pressable>
+              {preferences.state.status === 'saved' ? (
+                <Text style={styles.successTextInline}>{copy.currencySaved}</Text>
+              ) : null}
+              {preferences.state.saveError ? (
+                <Text style={styles.warningText}>{copy.saveFailed}</Text>
+              ) : null}
+              {Object.keys(preferences.state.fieldErrors).length > 0 ? (
+                <Text style={styles.warningText}>{copy.saveFailed}</Text>
+              ) : null}
+            </View>
+          ) : null}
         </ScrollView>
       </AppBackgroundFrame>
     </SafeAreaView>
@@ -3299,13 +3933,18 @@ export function MoneyNotePreferencesScreen() {
   const { save, state, updateField } = usePreferenceSettings();
   const { copy, language: appLanguage } = useMoneyNoteCopy();
   const appBackground = useAppBackground();
-  const [languageStatus, setLanguageStatus] = useState<'failed' | 'idle' | 'saved' | 'saving'>('idle');
+  const [languageStatus, setLanguageStatus] = useState<'failed' | 'idle' | 'saved' | 'saving'>(
+    'idle',
+  );
   const saving = state.status === 'saving';
   const usesWholeUnitCurrency = state.form.currencyCode.toUpperCase() === 'VND';
-  const contentBackgroundColor = appBackground.photoUri ? 'transparent' : appBackground.colors.appBackground;
+  const contentBackgroundColor = 'transparent';
 
   const updateCurrency = (value: string) => {
-    const normalized = value.replace(/[^a-z]/gi, '').toUpperCase().slice(0, 3);
+    const normalized = value
+      .replace(/[^a-z]/gi, '')
+      .toUpperCase()
+      .slice(0, 3);
     updateField('currencyCode', normalized);
 
     if (normalized === 'TWD') {
@@ -3333,7 +3972,10 @@ export function MoneyNotePreferencesScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}>
+    <SafeAreaView
+      edges={['top']}
+      style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}
+    >
       <AppBackgroundFrame>
         <ScrollView
           contentContainerStyle={[
@@ -3342,95 +3984,127 @@ export function MoneyNotePreferencesScreen() {
           ]}
           keyboardShouldPersistTaps="handled"
         >
-        <View style={styles.categoryHeader}>
-          <IconButton label="<" onPress={() => router.back()} />
-          <Text numberOfLines={1} style={styles.categoryHeaderTitle}>
-            {copy.basicSettings}
-          </Text>
-        </View>
-
-        <View style={styles.preferenceSection}>
-          <Text style={styles.preferenceSectionTitle}>{copy.display}</Text>
-          <View style={styles.preferenceSegment}>
-            {appLanguageOptions.map((option) => {
-              const selected = option.value === appLanguage;
-
-              return (
-                <Pressable
-                  key={option.value}
-                  onPress={() => updateLanguage(option.value)}
-                  style={[styles.preferenceSegmentOption, selected ? styles.preferenceSegmentOptionActive : null]}>
-                  <Text
-                    style={[
-                      styles.preferenceSegmentLabel,
-                      selected ? styles.preferenceSegmentLabelActive : null,
-                    ]}>
-                    {languageDisplayName(option.value, appLanguage)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          {languageStatus === 'saving' ? <Text style={styles.preferenceHelper}>{copy.saving}</Text> : null}
-          {languageStatus === 'saved' ? <Text style={styles.successTextInline}>{copy.languageSaved}</Text> : null}
-          {languageStatus === 'failed' ? <Text style={styles.warningText}>{copy.languageFailed}</Text> : null}
-        </View>
-
-        <View style={styles.preferenceSection}>
-          <Text style={styles.preferenceSectionTitle}>{copy.currency}</Text>
-          <PreferenceField
-            helper={appLanguage === 'en' ? 'Recommended default: TWD.' : 'Mặc định khuyến nghị: TWD.'}
-            label={copy.currencyCode}
-            onChangeText={updateCurrency}
-            value={state.form.currencyCode}
-          />
-          <PreferenceField
-            helper={appLanguage === 'en' ? 'Use zh-TW to display NT$ and Taiwan currency style.' : 'Dùng zh-TW để hiển thị NT$ đúng kiểu Đài Loan.'}
-            label={copy.locale}
-            onChangeText={(value) => updateField('locale', value)}
-            value={state.form.locale}
-          />
-          <PreferenceField
-            helper={appLanguage === 'en' ? 'First day of the monthly reporting cycle.' : 'Ngày bắt đầu chu kỳ báo cáo tháng.'}
-            keyboardType="number-pad"
-            label={appLanguage === 'en' ? 'Monthly reset day' : 'Ngày chốt tháng'}
-            onChangeText={(value) => updateField('monthlyBudgetResetDay', value.replace(/[^\d]/g, ''))}
-            value={state.form.monthlyBudgetResetDay}
-          />
-          <PreferenceField
-            helper={appLanguage === 'en' ? 'Leave 0 if you do not use wage tracking.' : 'Có thể để 0 nếu không dùng tính lương.'}
-            keyboardType="number-pad"
-            label={appLanguage === 'en' ? 'Hourly wage' : 'Lương giờ'}
-            onChangeText={(value) =>
-              updateField(
-                'defaultHourlyWage',
-                usesWholeUnitCurrency ? parseMoneyNoteAmountInput(value) || '0' : value,
-              )
-            }
-            value={
-              usesWholeUnitCurrency
-                ? formatMoneyNoteAmountInput(state.form.defaultHourlyWage)
-                : state.form.defaultHourlyWage
-            }
-          />
-          {Object.keys(state.fieldErrors).length > 0 ? (
-            <Text style={styles.warningText}>
-              {appLanguage === 'en'
-                ? 'Check currency, locale, or monthly reset day.'
-                : 'Kiểm tra lại tiền tệ, khu vực hoặc ngày chốt tháng.'}
+          <View style={styles.categoryHeader}>
+            <IconButton label="<" onPress={() => router.back()} />
+            <Text numberOfLines={1} style={styles.categoryHeaderTitle}>
+              {copy.basicSettings}
             </Text>
-          ) : null}
-          {state.saveError ? <Text style={styles.warningText}>{state.saveError.message}</Text> : null}
-          {state.status === 'saved' ? <Text style={styles.successText}>{copy.settingsSaved}</Text> : null}
+          </View>
 
-          <Pressable
-            accessibilityRole="button"
-            disabled={saving}
-            onPress={save}
-            style={[styles.primaryCta, saving ? styles.primaryCtaDisabled : null]}>
-            <Text style={styles.primaryCtaText}>{saving ? copy.saving : copy.saveSettings}</Text>
-          </Pressable>
-        </View>
+          <View style={styles.preferenceSection}>
+            <Text style={styles.preferenceSectionTitle}>{copy.display}</Text>
+            <View style={styles.preferenceSegment}>
+              {appLanguageOptions.map((option) => {
+                const selected = option.value === appLanguage;
+
+                return (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => updateLanguage(option.value)}
+                    style={[
+                      styles.preferenceSegmentOption,
+                      selected ? styles.preferenceSegmentOptionActive : null,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.preferenceSegmentLabel,
+                        selected ? styles.preferenceSegmentLabelActive : null,
+                      ]}
+                    >
+                      {languageDisplayName(option.value, appLanguage)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {languageStatus === 'saving' ? (
+              <Text style={styles.preferenceHelper}>{copy.saving}</Text>
+            ) : null}
+            {languageStatus === 'saved' ? (
+              <Text style={styles.successTextInline}>{copy.languageSaved}</Text>
+            ) : null}
+            {languageStatus === 'failed' ? (
+              <Text style={styles.warningText}>{copy.languageFailed}</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.preferenceSection}>
+            <Text style={styles.preferenceSectionTitle}>{copy.currency}</Text>
+            <PreferenceField
+              helper={
+                appLanguage === 'en' ? 'Recommended default: TWD.' : 'Mặc định khuyến nghị: TWD.'
+              }
+              label={copy.currencyCode}
+              onChangeText={updateCurrency}
+              value={state.form.currencyCode}
+            />
+            <PreferenceField
+              helper={
+                appLanguage === 'en'
+                  ? 'Use zh-TW to display NT$ and Taiwan currency style.'
+                  : 'Dùng zh-TW để hiển thị NT$ đúng kiểu Đài Loan.'
+              }
+              label={copy.locale}
+              onChangeText={(value) => updateField('locale', value)}
+              value={state.form.locale}
+            />
+            <PreferenceField
+              helper={
+                appLanguage === 'en'
+                  ? 'First day of the monthly reporting cycle.'
+                  : 'Ngày bắt đầu chu kỳ báo cáo tháng.'
+              }
+              keyboardType="number-pad"
+              label={appLanguage === 'en' ? 'Monthly reset day' : 'Ngày chốt tháng'}
+              onChangeText={(value) =>
+                updateField('monthlyBudgetResetDay', value.replace(/[^\d]/g, ''))
+              }
+              value={state.form.monthlyBudgetResetDay}
+            />
+            <PreferenceField
+              helper={
+                appLanguage === 'en'
+                  ? 'Leave 0 if you do not use wage tracking.'
+                  : 'Có thể để 0 nếu không dùng tính lương.'
+              }
+              keyboardType="number-pad"
+              label={appLanguage === 'en' ? 'Hourly wage' : 'Lương giờ'}
+              onChangeText={(value) =>
+                updateField(
+                  'defaultHourlyWage',
+                  usesWholeUnitCurrency ? parseMoneyNoteAmountInput(value) || '0' : value,
+                )
+              }
+              value={
+                usesWholeUnitCurrency
+                  ? formatMoneyNoteAmountInput(state.form.defaultHourlyWage)
+                  : state.form.defaultHourlyWage
+              }
+            />
+            {Object.keys(state.fieldErrors).length > 0 ? (
+              <Text style={styles.warningText}>
+                {appLanguage === 'en'
+                  ? 'Check currency, locale, or monthly reset day.'
+                  : 'Kiểm tra lại tiền tệ, khu vực hoặc ngày chốt tháng.'}
+              </Text>
+            ) : null}
+            {state.saveError ? (
+              <Text style={styles.warningText}>{state.saveError.message}</Text>
+            ) : null}
+            {state.status === 'saved' ? (
+              <Text style={styles.successText}>{copy.settingsSaved}</Text>
+            ) : null}
+
+            <Pressable
+              accessibilityRole="button"
+              disabled={saving}
+              onPress={save}
+              style={[styles.primaryCta, saving ? styles.primaryCtaDisabled : null]}
+            >
+              <Text style={styles.primaryCtaText}>{saving ? copy.saving : copy.saveSettings}</Text>
+            </Pressable>
+          </View>
         </ScrollView>
       </AppBackgroundFrame>
     </SafeAreaView>
@@ -3447,7 +4121,8 @@ export function MoneyNoteRecordEditScreen() {
   const [recordLoadError, setRecordLoadError] = useState<AppError | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const editStartedFor = useRef<string | null>(null);
-  const baseTemplates = state.draft.kind === 'expense' ? expenseCategoryTemplates : incomeCategoryTemplates;
+  const baseTemplates =
+    state.draft.kind === 'expense' ? expenseCategoryTemplates : incomeCategoryTemplates;
   const templates = useMemo(
     () => categoryOptionsForKind(baseTemplates, state.categories, state.draft.kind),
     [baseTemplates, state.categories, state.draft.kind],
@@ -3457,9 +4132,13 @@ export function MoneyNoteRecordEditScreen() {
     state.draft.categoryId,
     state.draft.merchantOrSource,
   );
-  const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
+  const selectedTemplate =
+    templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
   const saving = state.status === 'saving';
-  const currencyCode = state.preferences?.currencyCode ?? recordToEdit?.currencyCode ?? moneyNoteDefaultPreferences.currencyCode;
+  const currencyCode =
+    state.preferences?.currencyCode ??
+    recordToEdit?.currencyCode ??
+    moneyNoteDefaultPreferences.currencyCode;
   const currencySuffix = currencySuffixForCode(currencyCode);
   const currencyUsesPrefix = currencyCode.toUpperCase() !== 'VND';
 
@@ -3514,14 +4193,17 @@ export function MoneyNoteRecordEditScreen() {
   }, [router, state.lastMutation, state.status]);
 
   const changeKind = (kind: 'expense' | 'income') => {
-    const nextTemplate = kind === 'expense' ? expenseCategoryTemplates[0] : incomeCategoryTemplates[0];
+    const nextTemplate =
+      kind === 'expense' ? expenseCategoryTemplates[0] : incomeCategoryTemplates[0];
     setKind(kind);
     selectCategory(findCategoryByTemplate(state.categories, nextTemplate)?.id ?? null);
     updateField('merchantOrSource', nextTemplate.label);
   };
 
   const selectTemplate = (template: MoneyNoteCategoryOption) => {
-    const category = template.categoryId ? null : findCategoryByTemplate(state.categories, template);
+    const category = template.categoryId
+      ? null
+      : findCategoryByTemplate(state.categories, template);
     selectCategory(template.categoryId ?? category?.id ?? null);
     updateField('merchantOrSource', template.label);
   };
@@ -3538,7 +4220,7 @@ export function MoneyNoteRecordEditScreen() {
         <View style={styles.categoryHeader}>
           <IconButton label="<" onPress={() => router.back()} />
           <Text numberOfLines={1} style={styles.categoryHeaderTitle}>
-            {language === 'en' ? 'Edit' : 'Chỉnh sửa'}
+            {copy.editTitle}
           </Text>
         </View>
 
@@ -3554,9 +4236,10 @@ export function MoneyNoteRecordEditScreen() {
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => setDatePickerOpen((current) => !current)}
-                  style={styles.datePill}>
+                  style={styles.datePill}
+                >
                   <Text numberOfLines={1} style={styles.datePillText}>
-                    {formatMoneyNoteDate(state.draft.localDate)}
+                    {formatMoneyNoteDate(state.draft.localDate, language)}
                   </Text>
                   <MaterialCommunityIcons color={skyBlue} name="calendar-month-outline" size={18} />
                 </Pressable>
@@ -3576,14 +4259,19 @@ export function MoneyNoteRecordEditScreen() {
                 <TextInput
                   onChangeText={(value) => updateField('note', value)}
                   placeholder={copy.notePlaceholder}
-                  placeholderTextColor="#BBBBBB"
+                  placeholderTextColor="#AAAAB5"
                   style={styles.textInput}
                   value={state.draft.note}
                 />
               </MoneyNoteRow>
 
-              <MoneyNoteRow label={state.draft.kind === 'expense' ? copy.expenseAmount : copy.incomeAmount}>
-                {currencyUsesPrefix ? <Text style={styles.currencyPrefix}>{currencySuffix}</Text> : null}
+              <View style={[styles.formRow, styles.formRowLast]}>
+                <Text style={styles.formRowLabel}>
+                  {state.draft.kind === 'expense' ? copy.expenseAmount : copy.incomeAmount}
+                </Text>
+                {currencyUsesPrefix ? (
+                  <Text style={styles.amountRowCurrency}>{currencySuffix}</Text>
+                ) : null}
                 <TextInput
                   keyboardType="number-pad"
                   onChangeText={(value) => updateField('amount', parseMoneyNoteAmountInput(value))}
@@ -3592,8 +4280,10 @@ export function MoneyNoteRecordEditScreen() {
                   style={styles.amountInput}
                   value={formatMoneyNoteAmountInput(state.draft.amount)}
                 />
-                {currencyUsesPrefix ? null : <Text style={styles.currencySuffix}>{currencySuffix}</Text>}
-              </MoneyNoteRow>
+                {currencyUsesPrefix ? null : (
+                  <Text style={styles.amountRowCurrency}>{currencySuffix}</Text>
+                )}
+              </View>
             </View>
 
             <View style={styles.categorySection}>
@@ -3607,15 +4297,22 @@ export function MoneyNoteRecordEditScreen() {
               />
             </View>
 
-            {state.fieldErrors.amount ? <Text style={styles.warningText}>{state.fieldErrors.amount}</Text> : null}
-            {state.actionError ? <Text style={styles.warningText}>{state.actionError.message}</Text> : null}
-            {state.status === 'saved' ? <Text style={styles.successText}>{copy.recordUpdated}</Text> : null}
+            {state.fieldErrors.amount ? (
+              <Text style={styles.warningText}>{state.fieldErrors.amount}</Text>
+            ) : null}
+            {state.actionError ? (
+              <Text style={styles.warningText}>{state.actionError.message}</Text>
+            ) : null}
+            {state.status === 'saved' ? (
+              <Text style={styles.successText}>{copy.recordUpdated}</Text>
+            ) : null}
 
             <Pressable
               accessibilityRole="button"
               disabled={saving}
               onPress={capture.save}
-              style={[styles.primaryCta, saving ? styles.primaryCtaDisabled : null]}>
+              style={[styles.primaryCta, saving ? styles.primaryCtaDisabled : null]}
+            >
               <Text style={styles.primaryCtaText}>{saving ? copy.saving : copy.overwrite}</Text>
             </Pressable>
             <View style={styles.editFooterActions}>
@@ -3641,7 +4338,8 @@ export function MoneyNoteCategoryScreen() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [categoryActionError, setCategoryActionError] = useState<AppError | null>(null);
   const [categoryActionStatus, setCategoryActionStatus] = useState<'idle' | 'saving'>('idle');
-  const baseTemplates = activeKind === 'expense' ? expenseCategoryTemplates : incomeCategoryTemplates;
+  const baseTemplates =
+    activeKind === 'expense' ? expenseCategoryTemplates : incomeCategoryTemplates;
   const templates = useMemo(
     () => categoryOptionsForKind(baseTemplates, state.categories, activeKind),
     [activeKind, baseTemplates, state.categories],
@@ -3730,14 +4428,17 @@ export function MoneyNoteCategoryScreen() {
                 categoryActionStatus === 'saving' || newCategoryName.trim().length === 0
                   ? styles.primaryCtaDisabled
                   : null,
-              ]}>
+              ]}
+            >
               <Text style={styles.inlineSaveButtonText}>
                 {categoryActionStatus === 'saving' ? copy.saving : copy.addCategory}
               </Text>
             </Pressable>
           </View>
         ) : null}
-        {categoryActionError ? <Text style={styles.warningText}>{categoryActionError.message}</Text> : null}
+        {categoryActionError ? (
+          <Text style={styles.warningText}>{categoryActionError.message}</Text>
+        ) : null}
         {templates.map((template) => (
           <View key={template.id} style={styles.categoryListRow}>
             <CategoryIcon color={template.color} icon={template.icon} />
@@ -3780,7 +4481,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderTopColor: line,
     borderTopWidth: 1,
-    height: 52,
+    height: 50,
   },
   allTimeTableLabel: {
     ...moneyType.titleSmall,
@@ -3814,16 +4515,33 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   amountInput: {
-    ...moneyType.title,
+    ...moneyType.body,
     backgroundColor: lightBlue,
-    borderRadius: 12,
+    borderRadius: 16,
     color: ink,
     flex: 1,
-    minHeight: 44,
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 18,
+    fontWeight: '600',
+    height: 38,
+    includeFontPadding: false,
+    lineHeight: 22,
     paddingHorizontal: 14,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
+  },
+  amountRowCurrency: {
+    color: ink,
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 20,
+    marginLeft: 4,
+    marginRight: 10,
   },
   calendarContent: {
     paddingBottom: 122,
+    paddingTop: 6,
   },
   calendarDayHeader: {
     alignItems: 'center',
@@ -4053,7 +4771,7 @@ const styles = StyleSheet.create({
   },
   calendarMonthIcon: {
     position: 'absolute',
-    right: 22,
+    right: 18,
   },
   calendarMonthPill: {
     alignItems: 'center',
@@ -4079,12 +4797,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 24,
+    paddingBottom: 2,
     paddingHorizontal: 24,
-    paddingTop: 0,
   },
   calendarMonthText: {
-    ...moneyType.titleSmall,
     color: '#18325C',
+    flex: 1,
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 23,
+    minWidth: 0,
+    textAlign: 'center',
   },
   calendarMoodPill: {
     alignItems: 'center',
@@ -4098,19 +4823,21 @@ const styles = StyleSheet.create({
     ...moneyType.labelSmall,
   },
   calendarPageHeader: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    minHeight: 58,
-    paddingHorizontal: 22,
-    paddingTop: 2,
+    minHeight: 78,
+    paddingBottom: 6,
+    paddingLeft: 22,
+    paddingRight: 14,
+    paddingTop: 6,
   },
   calendarPageTitle: {
     fontFamily: 'Montserrat_700Bold',
-    fontSize: 36,
+    fontSize: 24,
     fontWeight: '700',
     letterSpacing: 0,
-    lineHeight: 44,
+    lineHeight: 31,
     color: '#18325C',
   },
   calendarRecordDateText: {
@@ -4189,21 +4916,21 @@ const styles = StyleSheet.create({
     shadowRadius: 9,
     width: 48,
   },
-  calendarTitleAccent: {
-    backgroundColor: '#55D3CF',
-    borderRadius: 4,
-    height: 7,
-    marginTop: 8,
-    width: 31,
-  },
   categoryEditText: {
-    ...moneyType.labelSmall,
+    ...moneyType.caption,
     color: ink,
+    fontSize: 11,
+    includeFontPadding: false,
+    lineHeight: 15,
+    marginTop: 6,
+    textAlign: 'center',
+    width: '88%',
   },
   categoryGrid: {
+    columnGap: 8,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    rowGap: 12,
   },
   categoryHeader: {
     alignItems: 'center',
@@ -4237,43 +4964,74 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   categorySection: {
-    backgroundColor: '#FFFFFF',
-    gap: 10,
-    paddingHorizontal: 18,
-    paddingTop: 10,
+    backgroundColor: 'transparent',
+    gap: 12,
+    paddingHorizontal: 24,
+    paddingTop: 18,
   },
   categoryTile: {
     alignItems: 'center',
-    borderColor: '#CFCFCF',
-    borderRadius: 8,
-    borderWidth: 1,
+    aspectRatio: 1,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#EEF4F4',
+    borderRadius: 14,
+    borderWidth: 1.5,
     flexBasis: '22%',
-    flexGrow: 1,
-    height: 74,
+    flexGrow: 0,
+    flexShrink: 0,
     justifyContent: 'center',
-    minWidth: 74,
     paddingHorizontal: 6,
+    shadowColor: '#9AB4B4',
+    shadowOffset: {
+      height: 8,
+      width: 0,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 3,
+  },
+  categoryTileContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ translateY: -4 }],
+    width: '100%',
   },
   categoryTileLabel: {
     ...moneyType.caption,
     color: ink,
-    marginTop: 3,
+    fontSize: 11,
+    includeFontPadding: false,
+    lineHeight: 15,
+    marginTop: 6,
     textAlign: 'center',
+    width: '88%',
   },
   categoryTileSelected: {
+    backgroundColor: '#F3FFFF',
     borderColor: skyBlue,
-    borderWidth: 3,
+    elevation: 5,
+    shadowOpacity: 0.16,
+    transform: [{ scale: 1.025 }],
+    zIndex: 2,
   },
   currencySuffix: {
-    ...moneyType.titleSmall,
+    ...moneyType.body,
     color: ink,
-    marginLeft: 10,
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 20,
+    marginLeft: 4,
     textDecorationLine: 'underline',
   },
   currencyPrefix: {
-    ...moneyType.titleSmall,
+    ...moneyType.body,
     color: ink,
-    marginRight: 10,
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 20,
+    marginRight: 4,
   },
   currencyOption: {
     alignItems: 'center',
@@ -4308,23 +5066,29 @@ const styles = StyleSheet.create({
   datePill: {
     alignItems: 'center',
     backgroundColor: lightBlue,
-    borderRadius: 12,
+    borderColor: '#CBECEA',
+    borderRadius: 16,
+    borderWidth: 1,
     flex: 1,
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     justifyContent: 'space-between',
-    minHeight: 44,
-    paddingHorizontal: 14,
+    minHeight: 38,
+    paddingHorizontal: 12,
   },
   datePillIcon: {
     color: skyBlue,
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '400',
   },
   datePillText: {
-    ...moneyType.label,
+    ...moneyType.body,
     color: ink,
     flex: 1,
+    fontFamily: 'Montserrat_500Medium',
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 19,
   },
   deleteActionText: {
     ...moneyType.label,
@@ -4408,8 +5172,58 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   entryContent: {
+    backgroundColor: panel,
+    minHeight: '100%',
+  },
+  entryBackgroundDecor: {
+    bottom: 0,
+    left: 0,
+    opacity: 0.9,
+    position: 'absolute',
+    right: 0,
+  },
+  entryHeader: {
+    backgroundColor: 'transparent',
+    minHeight: 78,
+    paddingBottom: 6,
+    paddingLeft: 22,
+    paddingRight: 14,
+    paddingTop: 6,
+    position: 'relative',
+  },
+  entryHeaderDecor: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  entryHeaderTitle: {
+    fontSize: 24,
+    lineHeight: 31,
+  },
+  entryPrimaryCta: {
+    alignSelf: 'center',
+    borderRadius: 22,
+    marginHorizontal: 0,
+    marginTop: 16,
+    minHeight: 46,
+    width: '76%',
+  },
+  entryPrimaryCtaText: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 21,
+  },
+  entrySheet: {
     backgroundColor: '#FFFFFF',
-    paddingBottom: 112,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    minHeight: 680,
+    overflow: 'hidden',
+    paddingBottom: 34,
+    position: 'relative',
   },
   editFooterActions: {
     alignItems: 'center',
@@ -4423,25 +5237,45 @@ const styles = StyleSheet.create({
   },
   formPanel: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 18,
-    paddingTop: 10,
+    borderColor: '#EEF4F4',
+    borderRadius: 24,
+    borderWidth: 1,
+    elevation: 5,
+    marginHorizontal: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    shadowColor: '#94AFAF',
+    shadowOffset: {
+      height: 12,
+      width: 0,
+    },
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
   },
   formRow: {
     alignItems: 'center',
     borderBottomColor: line,
     borderBottomWidth: 1,
     flexDirection: 'row',
-    minHeight: 58,
+    minHeight: 52,
   },
   formRowBody: {
     alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
+    gap: 4,
   },
   formRowLabel: {
-    ...moneyType.label,
+    ...moneyType.body,
     color: ink,
-    width: 86,
+    fontFamily: 'Montserrat_500Medium',
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 19,
+    width: 82,
+  },
+  formRowLast: {
+    borderBottomWidth: 0,
   },
   header: {
     alignItems: 'center',
@@ -4451,16 +5285,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   headerRight: {
-    marginLeft: 12,
+    marginLeft: 10,
   },
   moreHeaderButton: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderColor: '#EEF3F5',
-    borderRadius: 25,
+    borderRadius: 20,
     borderWidth: 1,
-    elevation: 4,
-    height: 50,
+    elevation: 5,
+    height: 40,
     justifyContent: 'center',
     shadowColor: '#8BA7B0',
     shadowOffset: {
@@ -4469,7 +5303,16 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.18,
     shadowRadius: 11,
-    width: 50,
+    width: 40,
+  },
+  moreHeaderButtonInner: {
+    alignItems: 'center',
+    borderColor: '#EDF3F4',
+    borderRadius: 15,
+    borderWidth: 1,
+    height: 30,
+    justifyContent: 'center',
+    width: 30,
   },
   headerTitle: {
     ...moneyType.title,
@@ -4478,9 +5321,13 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E2ECEF',
+    borderRadius: 12,
+    borderWidth: 1,
+    height: 36,
     justifyContent: 'center',
-    minHeight: 40,
-    minWidth: 36,
+    minWidth: 30,
   },
   iconButtonText: {
     ...moneyType.title,
@@ -4530,15 +5377,20 @@ const styles = StyleSheet.create({
   },
   kindTabLine: {
     backgroundColor: 'transparent',
-    height: 4,
-    marginTop: 8,
+    borderRadius: 3,
+    height: 5,
+    marginTop: 10,
     width: '100%',
   },
   kindTabLineActive: {
     backgroundColor: skyBlue,
   },
   kindTabText: {
-    ...moneyType.titleSmall,
+    ...moneyType.body,
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 17,
+    fontWeight: '600',
+    lineHeight: 23,
     color: '#BBBBBB',
   },
   kindTabTextActive: {
@@ -4546,10 +5398,12 @@ const styles = StyleSheet.create({
   },
   kindTabs: {
     backgroundColor: '#FFFFFF',
-    borderBottomColor: line,
-    borderBottomWidth: 1,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
     flexDirection: 'row',
-    height: 50,
+    height: 60,
+    overflow: 'hidden',
+    paddingHorizontal: 26,
   },
   languageOption: {
     borderColor: line,
@@ -4861,21 +5715,25 @@ const styles = StyleSheet.create({
   primaryCta: {
     alignItems: 'center',
     backgroundColor: skyBlue,
-    borderRadius: 12,
-    elevation: 3,
+    borderRadius: 18,
+    elevation: 5,
     justifyContent: 'center',
     marginHorizontal: 28,
     marginTop: 16,
     minHeight: 46,
-    shadowColor: '#000000',
-    shadowOpacity: 0.18,
-    shadowRadius: 5,
+    shadowColor: '#26AFA9',
+    shadowOffset: {
+      height: 9,
+      width: 0,
+    },
+    shadowOpacity: 0.24,
+    shadowRadius: 12,
   },
   primaryCtaDisabled: {
     opacity: 0.55,
   },
   primaryCtaText: {
-    ...moneyType.button,
+    ...moneyType.body,
     color: '#FFFFFF',
   },
   recordRow: {
@@ -5174,21 +6032,23 @@ const styles = StyleSheet.create({
     lineHeight: 32,
   },
   reportPageHeader: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    minHeight: 58,
-    paddingHorizontal: 22,
-    paddingTop: 2,
+    minHeight: 78,
+    paddingBottom: 6,
+    paddingLeft: 22,
+    paddingRight: 14,
+    paddingTop: 6,
   },
   reportPageTitle: {
     color: '#0F2445',
     flex: 1,
-    fontFamily: 'Montserrat_800ExtraBold',
-    fontSize: 38,
-    fontWeight: '800',
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 24,
+    fontWeight: '700',
     letterSpacing: 0,
-    lineHeight: 46,
+    lineHeight: 31,
   },
   reportSummaryLabel: {
     color: ink,
@@ -5313,8 +6173,12 @@ const styles = StyleSheet.create({
     color: incomeColor,
   },
   sectionLabel: {
-    ...moneyType.label,
+    ...moneyType.body,
     color: ink,
+    fontFamily: 'Montserrat_500Medium',
+    fontSize: 15,
+    fontWeight: '500',
+    lineHeight: 21,
   },
   successText: {
     ...moneyType.caption,
@@ -5374,11 +6238,15 @@ const styles = StyleSheet.create({
   },
   textInput: {
     ...moneyType.body,
-    backgroundColor: lightBlue,
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#DCEFF0',
+    borderRadius: 16,
+    borderWidth: 1,
     color: ink,
     flex: 1,
-    minHeight: 44,
+    fontSize: 14,
+    lineHeight: 19,
+    minHeight: 38,
     paddingHorizontal: 14,
   },
   warningText: {

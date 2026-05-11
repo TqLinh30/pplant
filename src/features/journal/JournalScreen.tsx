@@ -30,6 +30,57 @@ const ink = '#253030';
 const muted = '#718282';
 const line = '#DDE7E7';
 
+const journalCopy = {
+  en: {
+    capturePhoto: 'Take photo',
+    dayEntriesTitle: 'Journal for the day',
+    emptyMonth: 'No data this month',
+    emptyNoteFallback: 'Moment from the day',
+    emptyTimelineText: 'Take one photo to save the moment with a mood.',
+    emptyTimelineTitle: 'No journal today',
+    heroText: 'Today is a good day to keep a small memory.',
+    heroTitle: 'Good morning!',
+    loadError: 'Could not load journal.',
+    openMore: 'Open More',
+    statsTitle: 'Stats',
+    times: 'times',
+    title: 'Journal',
+    weekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  },
+  vi: {
+    capturePhoto: 'Chụp ảnh',
+    dayEntriesTitle: 'Nhật ký trong ngày',
+    emptyMonth: 'Chưa có dữ liệu tháng này',
+    emptyNoteFallback: 'Khoảnh khắc trong ngày',
+    emptyTimelineText: 'Chụp một tấm ảnh để lưu lại khoảnh khắc kèm cảm xúc.',
+    emptyTimelineTitle: 'Chưa có nhật ký hôm nay',
+    heroText: 'Hôm nay là một ngày tuyệt vời để ghi lại khoảnh khắc đáng nhớ.',
+    heroTitle: 'Chào buổi sáng!',
+    loadError: 'Không thể tải nhật ký.',
+    openMore: 'Mở Khác',
+    statsTitle: 'Thống kê',
+    times: 'lần',
+    title: 'Nhật ký',
+    weekdays: ['T.2', 'T.3', 'T.4', 'T.5', 'T.6', 'T.7', 'CN'],
+  },
+  'zh-Hant': {
+    capturePhoto: '拍照',
+    dayEntriesTitle: '當日記錄',
+    emptyMonth: '本月尚無資料',
+    emptyNoteFallback: '今天的片刻',
+    emptyTimelineText: '拍一張照片，將片刻與心情一起保存。',
+    emptyTimelineTitle: '今天尚無日記',
+    heroText: '今天很適合留下值得記住的小片刻。',
+    heroTitle: '早安！',
+    loadError: '無法載入日記。',
+    openMore: '開啟更多',
+    statsTitle: '統計',
+    times: '次',
+    title: '日記',
+    weekdays: ['週一', '週二', '週三', '週四', '週五', '週六', '週日'],
+  },
+} as const;
+
 const journalType = {
   body: {
     fontFamily: 'Montserrat_400Regular',
@@ -84,14 +135,19 @@ function goToCapture() {
 }
 
 function HeaderMoreButton() {
+  const language = useAppLanguage();
+  const copy = journalCopy[language];
+
   return (
     <Pressable
-      accessibilityLabel="Mở Khác"
+      accessibilityLabel={copy.openMore}
       accessibilityRole="button"
       onPress={goToMore}
       style={styles.headerIconButton}
     >
-      <MaterialCommunityIcons color={ink} name="dots-horizontal" size={26} />
+      <View style={styles.headerIconButtonInner}>
+        <MaterialCommunityIcons color={skyBlue} name="dots-horizontal" size={18} />
+      </View>
     </Pressable>
   );
 }
@@ -119,10 +175,12 @@ function MoodSticker({ moodId, size = 42 }: { moodId: JournalMoodId; size?: numb
 }
 
 function DatePill({
+  language,
   onNext,
   onPrevious,
   value,
 }: {
+  language: keyof typeof journalCopy;
   onNext: () => void;
   onPrevious: () => void;
   value: string;
@@ -130,16 +188,26 @@ function DatePill({
   return (
     <View style={styles.dateRow}>
       <Pressable accessibilityRole="button" onPress={onPrevious} style={styles.stepButton}>
-        <MaterialCommunityIcons color={ink} name="chevron-left" size={26} />
+        <MaterialCommunityIcons color="#18325C" name="chevron-left" size={30} />
       </Pressable>
       <View style={styles.datePill}>
-        <MaterialCommunityIcons color={skyBlue} name="calendar-month-outline" size={18} />
-        <Text numberOfLines={1} style={styles.datePillText}>
-          {formatMoneyNoteDate(value)}
+        <Text
+          adjustsFontSizeToFit
+          minimumFontScale={0.78}
+          numberOfLines={1}
+          style={styles.datePillText}
+        >
+          {formatMoneyNoteDate(value, language)}
         </Text>
+        <MaterialCommunityIcons
+          color="#20C8C4"
+          name="calendar-month-outline"
+          size={24}
+          style={styles.datePillIcon}
+        />
       </View>
       <Pressable accessibilityRole="button" onPress={onNext} style={styles.stepButton}>
-        <MaterialCommunityIcons color={ink} name="chevron-right" size={26} />
+        <MaterialCommunityIcons color="#18325C" name="chevron-right" size={30} />
       </Pressable>
     </View>
   );
@@ -174,13 +242,19 @@ function DayMoodPill({ moodId }: { moodId: JournalMoodId }) {
   );
 }
 
-function JournalTimeline({ entries }: { entries: JournalEntry[] }) {
+function JournalTimeline({
+  copy,
+  entries,
+}: {
+  copy: (typeof journalCopy)[keyof typeof journalCopy];
+  entries: JournalEntry[];
+}) {
   if (entries.length === 0) {
     return (
       <View style={styles.emptyBlock}>
         <MaterialCommunityIcons color={skyBlue} name="camera-plus-outline" size={34} />
-        <Text style={styles.emptyTitle}>Chưa có nhật ký hôm nay</Text>
-        <Text style={styles.emptyText}>Chụp một tấm ảnh để lưu lại khoảnh khắc kèm cảm xúc.</Text>
+        <Text style={styles.emptyTitle}>{copy.emptyTimelineTitle}</Text>
+        <Text style={styles.emptyText}>{copy.emptyTimelineText}</Text>
       </View>
     );
   }
@@ -189,7 +263,7 @@ function JournalTimeline({ entries }: { entries: JournalEntry[] }) {
     <View style={styles.timeline}>
       <DayMoodPill moodId={entries[0].moodId} />
       {entries.map((entry, index) => {
-        const note = entry.note?.trim() || 'Khoảnh khắc trong ngày';
+        const note = entry.note?.trim() || copy.emptyNoteFallback;
 
         return (
           <View key={entry.id} style={styles.timelineRow}>
@@ -243,8 +317,10 @@ function MonthSwitcher({
 }
 
 function MoodDonut({
+  copy,
   rows,
 }: {
+  copy: (typeof journalCopy)[keyof typeof journalCopy];
   rows: { color: string; count: number; label: string; moodId: JournalMoodId; percent: number }[];
 }) {
   const size = 152;
@@ -257,7 +333,7 @@ function MoodDonut({
   if (rows.length === 0) {
     return (
       <View style={styles.donutEmpty}>
-        <Text style={styles.emptyText}>Chưa có dữ liệu tháng này</Text>
+        <Text style={styles.emptyText}>{copy.emptyMonth}</Text>
       </View>
     );
   }
@@ -298,20 +374,22 @@ function MoodDonut({
       </Svg>
       <View style={styles.donutCenter}>
         <Text style={styles.donutTotal}>{rows.reduce((total, row) => total + row.count, 0)}</Text>
-        <Text style={styles.donutLabel}>lần</Text>
+        <Text style={styles.donutLabel}>{copy.times}</Text>
       </View>
     </View>
   );
 }
 
 function MoodStats({
+  copy,
   rows,
 }: {
+  copy: (typeof journalCopy)[keyof typeof journalCopy];
   rows: { color: string; count: number; label: string; moodId: JournalMoodId; percent: number }[];
 }) {
   return (
     <View style={styles.statsPanel}>
-      <MoodDonut rows={rows} />
+      <MoodDonut copy={copy} rows={rows} />
       <View style={styles.legend}>
         {(rows.length > 0
           ? rows
@@ -338,11 +416,13 @@ function MoodStats({
 
 function MoodCalendar({
   dayMoods,
+  language,
   monthDate,
   selectedLocalDate,
   onSelect,
 }: {
   dayMoods: { color: string; localDate: string; moodId: JournalMoodId }[];
+  language: keyof typeof journalCopy;
   monthDate: Date;
   onSelect: (localDate: string) => void;
   selectedLocalDate: string;
@@ -352,7 +432,7 @@ function MoodCalendar({
     () => new Map(dayMoods.map((item) => [item.localDate, item])),
     [dayMoods],
   );
-  const weekdayLabels = ['T.2', 'T.3', 'T.4', 'T.5', 'T.6', 'T.7', 'CN'];
+  const weekdayLabels = journalCopy[language].weekdays;
 
   return (
     <View style={styles.moodCalendar}>
@@ -393,6 +473,7 @@ function MoodCalendar({
 
 export function JournalScreen() {
   const language = useAppLanguage();
+  const copy = journalCopy[language];
   const appBackground = useAppBackground();
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [monthDate, setMonthDate] = useState(() => new Date());
@@ -401,77 +482,80 @@ export function JournalScreen() {
   const data = overview.state.data;
   const statsRows = data?.monthSummary.moodBreakdown ?? [];
   const showCaptureHero = overview.state.status !== 'loading' && (data?.entries.length ?? 0) === 0;
-  const contentBackgroundColor = appBackground.photoUri ? 'transparent' : appBackground.colors.appBackground;
+  const contentBackgroundColor = 'transparent';
 
   const selectCalendarDate = (localDate: string) => {
     setSelectedDate(parseLocalDate(localDate));
   };
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}>
+    <SafeAreaView
+      edges={['top']}
+      style={[styles.safeArea, { backgroundColor: appBackground.colors.appBackground }]}
+    >
       <AppBackgroundFrame>
         <ScrollView
-          contentContainerStyle={[
-            styles.content,
-            { backgroundColor: contentBackgroundColor },
-          ]}
+          contentContainerStyle={[styles.content, { backgroundColor: contentBackgroundColor }]}
         >
-        <ScreenHeader
-          subtitle={language === 'en' ? 'Photo mood diary' : 'Ghi lại ngày bằng ảnh và cảm xúc'}
-          title={language === 'en' ? 'Journal' : 'Nhật ký'}
-        />
+          <ScreenHeader title={copy.title} />
 
-        {showCaptureHero ? (
-          <View style={styles.heroPanel}>
-            <View style={styles.heroCopy}>
-              <Text style={styles.heroTitle}>Chào buổi sáng!</Text>
-              <Text style={styles.heroText}>
-                Hôm nay là một ngày tuyệt vời để ghi lại khoảnh khắc đáng nhớ.
-              </Text>
+          <DatePill
+            language={language}
+            onNext={() => setSelectedDate(parseLocalDate(shiftLocalDate(selectedLocalDate, 1)))}
+            onPrevious={() =>
+              setSelectedDate(parseLocalDate(shiftLocalDate(selectedLocalDate, -1)))
+            }
+            value={selectedLocalDate}
+          />
+
+          {showCaptureHero ? (
+            <View style={styles.heroPanel}>
+              <View style={styles.heroCopy}>
+                <Text style={styles.heroTitle}>{copy.heroTitle}</Text>
+                <Text style={styles.heroText}>{copy.heroText}</Text>
+              </View>
+              <Pressable accessibilityRole="button" onPress={goToCapture} style={styles.heroButton}>
+                <MaterialCommunityIcons color="#FFFFFF" name="camera-plus-outline" size={20} />
+                <Text style={styles.heroButtonText}>{copy.capturePhoto}</Text>
+              </Pressable>
             </View>
-            <Pressable accessibilityRole="button" onPress={goToCapture} style={styles.heroButton}>
-              <MaterialCommunityIcons color="#FFFFFF" name="camera-plus-outline" size={20} />
-              <Text style={styles.heroButtonText}>Chụp ảnh</Text>
-            </Pressable>
+          ) : null}
+
+          {overview.state.status === 'loading' && !data ? (
+            <ActivityIndicator color={skyBlue} style={styles.loading} />
+          ) : null}
+
+          {overview.state.status === 'failed' ? (
+            <Text style={styles.warningText}>
+              {overview.state.error?.message ?? copy.loadError}
+            </Text>
+          ) : null}
+
+          <View style={styles.sectionGroup}>
+            <SectionTitleRow icon="book-open-variant-outline" title={copy.dayEntriesTitle} />
+            <View style={styles.sectionCard}>
+              <JournalTimeline copy={copy} entries={data?.entries ?? []} />
+            </View>
           </View>
-        ) : null}
 
-        <DatePill
-          onNext={() => setSelectedDate(parseLocalDate(shiftLocalDate(selectedLocalDate, 1)))}
-          onPrevious={() => setSelectedDate(parseLocalDate(shiftLocalDate(selectedLocalDate, -1)))}
-          value={selectedLocalDate}
-        />
-
-        {overview.state.status === 'loading' && !data ? (
-          <ActivityIndicator color={skyBlue} style={styles.loading} />
-        ) : null}
-
-        {overview.state.status === 'failed' ? (
-          <Text style={styles.warningText}>
-            {overview.state.error?.message ?? 'Không thể tải nhật ký.'}
-          </Text>
-        ) : null}
-
-        <View style={styles.sectionGroup}>
-          <SectionTitleRow icon="book-open-variant-outline" title="Nhật ký trong ngày" />
-          <View style={styles.sectionCard}>
-            <JournalTimeline entries={data?.entries ?? []} />
-          </View>
-        </View>
-
-        <View style={styles.sectionGroup}>
-          <SectionTitleRow icon="chart-box-outline" meta={monthLabel(monthDate)} title="Thống kê" />
-          <View style={styles.sectionCard}>
-            <MonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
-            <MoodStats rows={statsRows} />
-            <MoodCalendar
-              dayMoods={data?.monthSummary.dayMoods ?? []}
-              monthDate={monthDate}
-              onSelect={selectCalendarDate}
-              selectedLocalDate={selectedLocalDate}
+          <View style={styles.sectionGroup}>
+            <SectionTitleRow
+              icon="chart-box-outline"
+              meta={monthLabel(monthDate)}
+              title={copy.statsTitle}
             />
+            <View style={styles.sectionCard}>
+              <MonthSwitcher monthDate={monthDate} onChange={setMonthDate} />
+              <MoodStats copy={copy} rows={statsRows} />
+              <MoodCalendar
+                dayMoods={data?.monthSummary.dayMoods ?? []}
+                language={language}
+                monthDate={monthDate}
+                onSelect={selectCalendarDate}
+                selectedLocalDate={selectedLocalDate}
+              />
+            </View>
           </View>
-        </View>
         </ScrollView>
       </AppBackgroundFrame>
     </SafeAreaView>
@@ -509,26 +593,46 @@ const styles = StyleSheet.create({
   },
   datePill: {
     alignItems: 'center',
-    backgroundColor: lightBlue,
-    borderRadius: 12,
+    backgroundColor: '#E5F7F5',
+    borderColor: '#D8EEF0',
+    borderRadius: 24,
+    borderWidth: 1,
+    elevation: 2,
     flex: 1,
     flexDirection: 'row',
-    gap: 8,
-    minHeight: 48,
-    paddingHorizontal: 14,
+    justifyContent: 'center',
+    minHeight: 50,
+    paddingHorizontal: 44,
+    shadowColor: '#99D9DA',
+    shadowOffset: {
+      height: 5,
+      width: 0,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+  },
+  datePillIcon: {
+    position: 'absolute',
+    right: 18,
   },
   datePillText: {
-    ...journalType.label,
-    color: ink,
+    color: '#18325C',
     flex: 1,
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 23,
+    minWidth: 0,
+    textAlign: 'center',
   },
   dateRow: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: 24,
+    paddingBottom: 2,
+    paddingHorizontal: 24,
   },
   dayMuted: {
     color: '#B7B7B7',
@@ -599,20 +703,41 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     flexDirection: 'row',
-    gap: 12,
-    minHeight: 62,
-    paddingHorizontal: 18,
+    justifyContent: 'space-between',
+    minHeight: 78,
+    paddingBottom: 6,
+    paddingLeft: 22,
+    paddingRight: 14,
+    paddingTop: 6,
   },
   headerIconButton: {
     alignItems: 'center',
-    borderColor: line,
-    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#EEF3F5',
+    borderRadius: 20,
     borderWidth: 1,
-    height: 38,
+    elevation: 5,
+    height: 40,
     justifyContent: 'center',
-    width: 38,
+    shadowColor: '#8BA7B0',
+    shadowOffset: {
+      height: 6,
+      width: 0,
+    },
+    shadowOpacity: 0.18,
+    shadowRadius: 11,
+    width: 40,
+  },
+  headerIconButtonInner: {
+    alignItems: 'center',
+    borderColor: '#EDF3F4',
+    borderRadius: 15,
+    borderWidth: 1,
+    height: 30,
+    justifyContent: 'center',
+    width: 30,
   },
   headerSubtitle: {
     ...journalType.caption,
@@ -620,10 +745,15 @@ const styles = StyleSheet.create({
   },
   headerText: {
     flex: 1,
+    marginRight: 12,
   },
   headerTitle: {
-    ...journalType.title,
-    color: ink,
+    color: '#0F2445',
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 24,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 31,
   },
   heroButton: {
     alignItems: 'center',
@@ -695,20 +825,35 @@ const styles = StyleSheet.create({
   },
   monthPill: {
     alignItems: 'center',
-    backgroundColor: lightBlue,
-    borderRadius: 12,
+    backgroundColor: '#E5F7F5',
+    borderColor: '#D8EEF0',
+    borderRadius: 24,
+    borderWidth: 1,
+    elevation: 2,
     flex: 1,
-    minHeight: 46,
     justifyContent: 'center',
+    minHeight: 50,
+    paddingHorizontal: 20,
+    shadowColor: '#99D9DA',
+    shadowOffset: {
+      height: 5,
+      width: 0,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
   },
   monthSwitcher: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
   monthText: {
-    ...journalType.label,
-    color: ink,
+    color: '#18325C',
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 25,
   },
   safeArea: {
     flex: 1,
@@ -750,9 +895,21 @@ const styles = StyleSheet.create({
   },
   stepButton: {
     alignItems: 'center',
-    height: 42,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#EBF2F3',
+    borderRadius: 24,
+    borderWidth: 1,
+    elevation: 2,
+    height: 48,
     justifyContent: 'center',
-    width: 36,
+    shadowColor: '#8BA7B0',
+    shadowOffset: {
+      height: 5,
+      width: 0,
+    },
+    shadowOpacity: 0.14,
+    shadowRadius: 9,
+    width: 48,
   },
   thumbnail: {
     backgroundColor: '#E9EFEF',

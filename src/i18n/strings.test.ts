@@ -32,4 +32,14 @@ describe('translateText', () => {
       'Budget period 2026-05-01 to 2026-05-31.',
     );
   });
+
+  it('translates exact and dynamic UI strings to Traditional Chinese', () => {
+    setAppLanguage('zh-Hant');
+
+    expect(translateText('Settings')).toBe('設定');
+    expect(translateText('App language')).toBe('應用程式語言');
+    expect(translateText('Budget period 2026-05-01 to 2026-05-31.')).toBe(
+      '預算期間：2026-05-01 至 2026-05-31。',
+    );
+  });
 });

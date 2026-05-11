@@ -47,6 +47,8 @@ describe('MoneyNote model helpers', () => {
   it('formats Vietnamese calendar labels and shifts local dates', () => {
     expect(formatMoneyNoteDate('2026-05-09')).toBe('09/05/2026 (T.7)');
     expect(formatMoneyNoteShortDate('2026-05-09')).toBe('09/05 (T.7)');
+    expect(formatMoneyNoteDate('2026-05-09', 'zh-Hant')).toBe('09/05/2026 (週六)');
+    expect(formatMoneyNoteShortDate('2026-05-09', 'zh-Hant')).toBe('09/05 (週六)');
     expect(shiftLocalDate('2026-05-01', -1)).toBe('2026-04-30');
     expect(monthLabel(new Date(2026, 4, 1))).toBe('05/2026');
     expect(shiftMonth(new Date(2026, 4, 9), 1)).toEqual(new Date(2026, 5, 1));
@@ -56,7 +58,11 @@ describe('MoneyNote model helpers', () => {
     const days = buildMoneyNoteCalendarMonth(new Date(2026, 4, 1), new Date(2026, 4, 9));
 
     expect(days).toHaveLength(42);
-    expect(days[0]).toMatchObject({ dayOfMonth: 27, inCurrentMonth: false, localDate: '2026-04-27' });
+    expect(days[0]).toMatchObject({
+      dayOfMonth: 27,
+      inCurrentMonth: false,
+      localDate: '2026-04-27',
+    });
     expect(days[4]).toMatchObject({ dayOfMonth: 1, inCurrentMonth: true, localDate: '2026-05-01' });
     expect(days.find((day) => day.localDate === '2026-05-09')?.isToday).toBe(true);
     expect(getMonthBounds(new Date(2026, 4, 9))).toEqual({
@@ -69,7 +75,11 @@ describe('MoneyNote model helpers', () => {
     const totals = calculateMoneyNoteTotals([
       createRecord({ amountMinor: 12000, kind: 'expense' }),
       createRecord({ amountMinor: 50000, id: 'money-income' as never, kind: 'income' }),
-      createRecord({ amountMinor: 9000, deletedAt: '2026-05-10T00:00:00.000Z', id: 'deleted' as never }),
+      createRecord({
+        amountMinor: 9000,
+        deletedAt: '2026-05-10T00:00:00.000Z',
+        id: 'deleted' as never,
+      }),
     ]);
 
     expect(totals).toEqual({
@@ -79,10 +89,16 @@ describe('MoneyNote model helpers', () => {
     });
     expect(formatDong(totals.netMinor)).toBe('38.000đ');
     expect(formatMoneyNoteAmount(1250, { currencyCode: 'USD', locale: 'en-US' })).toBe('$12.50');
-    expect(formatMoneyNoteAmountMagnitude(1250, { currencyCode: 'USD', locale: 'en-US' })).toBe('12.5');
+    expect(formatMoneyNoteAmountMagnitude(1250, { currencyCode: 'USD', locale: 'en-US' })).toBe(
+      '12.5',
+    );
     expect(formatMoneyNoteAmount(29100, { currencyCode: 'TWD', locale: 'zh-TW' })).toBe('NT$291');
-    expect(formatMoneyNoteAmount(1000000, { currencyCode: 'TWD', locale: 'vi-VN' })).toBe('NT$10,000');
-    expect(formatMoneyNoteAmountMagnitude(1000000, { currencyCode: 'TWD', locale: 'vi-VN' })).toBe('10,000');
+    expect(formatMoneyNoteAmount(1000000, { currencyCode: 'TWD', locale: 'vi-VN' })).toBe(
+      'NT$10,000',
+    );
+    expect(formatMoneyNoteAmountMagnitude(1000000, { currencyCode: 'TWD', locale: 'vi-VN' })).toBe(
+      '10,000',
+    );
     expect(currencySuffixForCode('VND')).toBe('đ');
     expect(currencySuffixForCode('TWD')).toBe('NT$');
   });
@@ -91,7 +107,11 @@ describe('MoneyNote model helpers', () => {
     expect(
       calculateMoneyNoteDailyTotals([
         createRecord({ amountMinor: 9000, id: 'food' as never, localDate: '2026-05-09' as never }),
-        createRecord({ amountMinor: 20100, id: 'train' as never, localDate: '2026-05-09' as never }),
+        createRecord({
+          amountMinor: 20100,
+          id: 'train' as never,
+          localDate: '2026-05-09' as never,
+        }),
         createRecord({
           amountMinor: 50000,
           id: 'income' as never,

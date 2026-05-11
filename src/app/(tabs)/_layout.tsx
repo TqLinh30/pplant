@@ -1,6 +1,7 @@
 import { Tabs, router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppBackground } from '@/features/settings/app-background';
@@ -48,6 +49,31 @@ function MoneyNoteTabIcon({ color, name }: { color: string; name: MoneyNoteTabIc
   );
 }
 
+function CaptureCameraIcon() {
+  return (
+    <Svg height={66} viewBox="0 0 96 96" width={66}>
+      <Defs>
+        <LinearGradient id="captureIconBg" x1="15" x2="81" y1="12" y2="86">
+          <Stop offset="0" stopColor="#68E7D8" />
+          <Stop offset="1" stopColor="#44C7BB" />
+        </LinearGradient>
+      </Defs>
+      <Circle cx={48} cy={48} fill="url(#captureIconBg)" r={46} />
+      <Circle cx={48} cy={48} fill="none" opacity={0.18} r={42} stroke="#1FAFA5" strokeWidth={2} />
+      <Path
+        d="M21 45C21 40.1 25.1 36 30 36h9.5l3-5.4c1-1.9 3-3 5.1-3h9c2.1 0 4.1 1.1 5.1 3l3 5.4H66c4.9 0 9 4.1 9 9v18c0 4.9-4.1 9-9 9H30c-4.9 0-9-4.1-9-9V45Z"
+        fill="#FFFFFF"
+      />
+      <Circle cx={48} cy={55} fill="url(#captureIconBg)" r={12.5} />
+      <Path d="M48 47.5v15M40.5 55h15" stroke="#FFFFFF" strokeLinecap="round" strokeWidth={6} />
+      <Path
+        d="M65.6 43.5h4.1c1.8 0 3.3 1.5 3.3 3.3s-1.5 3.3-3.3 3.3h-4.1c-1.8 0-3.3-1.5-3.3-3.3s1.5-3.3 3.3-3.3Z"
+        fill="url(#captureIconBg)"
+      />
+    </Svg>
+  );
+}
+
 function FloatingCameraTabButton() {
   return (
     <Pressable
@@ -58,8 +84,7 @@ function FloatingCameraTabButton() {
       style={tabIconStyles.captureButton}
     >
       <View style={tabIconStyles.captureButtonInner}>
-        <MaterialCommunityIcons color="#FFFFFF" name="camera" size={31} style={tabIconStyles.captureCamera} />
-        <MaterialCommunityIcons color="#FFFFFF" name="plus" size={23} style={tabIconStyles.capturePlus} />
+        <CaptureCameraIcon />
       </View>
     </Pressable>
   );
@@ -69,25 +94,33 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const appLanguage = useAppLanguage();
   const appBackground = useAppBackground();
-  const titles =
-    appLanguage === 'en'
-      ? {
-          calendar: 'Calendar',
-          entry: 'Entry',
-          journal: 'Journal',
-          more: 'More',
-          report: 'Report',
-        }
-      : {
-          calendar: 'Lịch',
-          entry: 'Nhập vào',
-          more: 'Khác',
-          report: 'Báo cáo',
-        };
+  const titles = {
+    en: {
+      calendar: 'Calendar',
+      entry: 'Entry',
+      journal: 'Journal',
+      more: 'More',
+      report: 'Report',
+    },
+    vi: {
+      calendar: 'Lịch',
+      entry: 'Nhập vào',
+      journal: 'Nhật ký',
+      more: 'Khác',
+      report: 'Báo cáo',
+    },
+    'zh-Hant': {
+      calendar: '日曆',
+      entry: '輸入',
+      journal: '日記',
+      more: '更多',
+      report: '報告',
+    },
+  }[appLanguage];
 
   const bottomPadding = Math.max(insets.bottom, 6);
   const tabBarHeight = 58 + bottomPadding;
-  const journalTitle = appLanguage === 'en' ? 'Journal' : 'Nhật ký';
+  const journalTitle = titles.journal;
   const tabBarBackgroundColor = appBackground.photoUri
     ? 'rgba(255, 255, 255, 0.88)'
     : appBackground.colors.appBackground;
@@ -191,38 +224,30 @@ const tabIconStyles = StyleSheet.create({
   captureButton: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderColor: '#E6F2F1',
-    borderRadius: 38,
-    borderWidth: 2,
-    elevation: 9,
-    height: 74,
+    borderColor: '#EEF8F7',
+    borderRadius: 44,
+    borderWidth: 6,
+    elevation: 10,
+    height: 88,
     justifyContent: 'center',
-    marginTop: -34,
-    shadowColor: '#253030',
+    marginTop: -43,
+    shadowColor: '#5CC4BA',
     shadowOffset: {
-      height: 8,
+      height: 10,
       width: 0,
     },
-    shadowOpacity: 0.22,
-    shadowRadius: 13,
-    width: 74,
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    width: 88,
   },
   captureButtonInner: {
     alignItems: 'center',
-    backgroundColor: '#5CC4BA',
-    borderRadius: 31,
-    height: 62,
+    backgroundColor: 'transparent',
+    borderRadius: 36,
+    height: 72,
     justifyContent: 'center',
-    width: 62,
-  },
-  captureCamera: {
-    marginLeft: 6,
-    marginTop: 18,
-  },
-  capturePlus: {
-    left: 14,
-    position: 'absolute',
-    top: 5,
+    overflow: 'hidden',
+    width: 72,
   },
   moreDot: {
     borderRadius: 4,
