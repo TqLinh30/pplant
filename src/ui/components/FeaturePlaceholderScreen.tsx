@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { translateText } from '@/i18n/strings';
 import { Chip } from '@/ui/primitives/Chip';
 import { ListRow } from '@/ui/primitives/ListRow';
 import { StatusBanner } from '@/ui/primitives/StatusBanner';
@@ -31,8 +32,8 @@ export function FeaturePlaceholderScreen({
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Chip label={eyebrow} />
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.description}>{description}</Text>
+          <Text style={styles.title}>{translateText(title)}</Text>
+          <Text style={styles.description}>{translateText(description)}</Text>
         </View>
 
         <StatusBanner
@@ -66,7 +67,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   safeArea: {
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.appBackground,
     flex: 1,
   },
   title: {

@@ -1,6 +1,7 @@
 import { Link } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { translateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
@@ -8,10 +9,10 @@ import { typography } from '@/ui/tokens/typography';
 export default function NotFoundRoute() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Screen unavailable</Text>
-      <Text style={styles.body}>This Pplant surface has not been connected yet.</Text>
+      <Text style={styles.title}>{translateText('Screen unavailable')}</Text>
+      <Text style={styles.body}>{translateText('This Pplant surface has not been connected yet.')}</Text>
       <Link href="/" style={styles.link}>
-        Return to Today
+        {translateText('Return to Today')}
       </Link>
     </View>
   );
@@ -25,7 +26,7 @@ const styles = StyleSheet.create({
   },
   container: {
     alignItems: 'center',
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.appBackground,
     flex: 1,
     gap: spacing.md,
     justifyContent: 'center',

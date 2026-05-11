@@ -1,6 +1,7 @@
 import type { PressableProps } from 'react-native';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
+import { useTranslateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
 import { typography } from '@/ui/tokens/typography';
@@ -10,12 +11,15 @@ type IconButtonProps = PressableProps & {
   label: string;
 };
 
-export function IconButton({ icon, label, ...pressableProps }: IconButtonProps) {
+export function IconButton({ icon, label, disabled, ...pressableProps }: IconButtonProps) {
+  const translateText = useTranslateText();
+
   return (
     <Pressable
-      accessibilityLabel={label}
+      accessibilityLabel={translateText(label)}
       accessibilityRole="button"
-      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+      disabled={disabled}
+      style={({ pressed }) => [styles.button, pressed && styles.pressed, disabled && styles.disabled]}
       {...pressableProps}>
       <Text style={styles.icon}>{icon}</Text>
     </Pressable>
@@ -25,17 +29,20 @@ export function IconButton({ icon, label, ...pressableProps }: IconButtonProps) 
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
-    backgroundColor: colors.canvas,
-    borderColor: colors.hairline,
+    backgroundColor: colors.primaryPale,
+    borderColor: colors.borderSoft,
     borderRadius: radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    height: 44,
+    borderWidth: 1,
+    height: 48,
     justifyContent: 'center',
-    width: 44,
+    width: 48,
+  },
+  disabled: {
+    opacity: 0.5,
   },
   icon: {
     ...typography.label,
-    color: colors.ink,
+    color: colors.primary,
   },
   pressed: {
     opacity: 0.78,

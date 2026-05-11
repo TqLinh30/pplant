@@ -1,1 +1,1 @@
-export { TodayScreen as default } from '@/features/today/TodayScreen';
+export { MoneyNoteEntryScreen as default } from '@/features/moneynote/MoneyNoteScreens';

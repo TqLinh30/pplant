@@ -1,21 +1,33 @@
-import { useLocalSearchParams } from 'expo-router';
+import { ScrollView, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { FeaturePlaceholderScreen } from '@/ui/components/FeaturePlaceholderScreen';
+import { colors } from '@/ui/tokens/colors';
+import { spacing } from '@/ui/tokens/spacing';
+
+import { RecoveryPanel } from '../recovery/RecoveryPanel';
+import { RecoveryHandoffProvider } from '../recovery/recovery-handoff';
+import { TaskForm } from './TaskForm';
 
 export function TaskRouteScreen() {
-  const { taskId } = useLocalSearchParams<{ taskId: string }>();
-
   return (
-    <FeaturePlaceholderScreen
-      title="Task"
-      eyebrow="Daily planning"
-      description="Task details will support To Do, Doing, Done, priority, deadlines, recurrence, and reminder recovery."
-      sections={[
-        {
-          title: 'Task reference',
-          description: taskId ? `Task: ${taskId}` : 'Task id is not available yet.',
-        },
-      ]}
-    />
+    <RecoveryHandoffProvider>
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <RecoveryPanel />
+          <TaskForm />
+        </ScrollView>
+      </SafeAreaView>
+    </RecoveryHandoffProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  content: {
+    gap: spacing.lg,
+    padding: spacing.lg,
+  },
+  safeArea: {
+    backgroundColor: colors.appBackground,
+    flex: 1,
+  },
+});

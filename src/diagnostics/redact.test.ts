@@ -64,4 +64,68 @@ describe('diagnostic redaction', () => {
 
     expect(redactDiagnosticEvent(event)).toEqual(baseEvent);
   });
+
+  it('keeps only safe reminder scheduling failure metadata', () => {
+    const event = {
+      appVersion: '1.0.0',
+      errorCategory: 'unavailable',
+      metadata: {
+        deliveryState: 'unavailable',
+        permissionStatus: 'denied',
+        offline: false,
+        reminderTitle: 'Study biology',
+        reminderNotes: 'Bring workbook',
+        scheduledNotificationId: 'platform-secret',
+        occurrenceLocalDate: '2026-05-08',
+      },
+      name: 'reminder_scheduling_failed',
+      occurredAt: '2026-05-08T00:00:00.000Z',
+    } as unknown as DiagnosticEvent;
+
+    expect(redactDiagnosticEvent(event)).toEqual({
+      appVersion: '1.0.0',
+      errorCategory: 'unavailable',
+      metadata: {
+        deliveryState: 'unavailable',
+        offline: false,
+        permissionStatus: 'denied',
+      },
+      name: 'reminder_scheduling_failed',
+      occurredAt: '2026-05-08T00:00:00.000Z',
+    });
+  });
+
+  it('keeps only safe receipt recovery failure metadata', () => {
+    const event = {
+      appVersion: '1.0.0',
+      errorCategory: 'unavailable',
+      metadata: {
+        actionId: 'retry_parsing',
+        amountMinor: 1200,
+        draftPayload: '{"amount":"12.00","merchantOrSource":"Campus Store"}',
+        jobState: 'retry_exhausted',
+        lineItems: ['Coffee'],
+        merchant: 'Campus Store',
+        note: 'Bought coffee',
+        ocrText: 'Campus Store total 12.00',
+        receiptImageUri: 'file:///private/receipts/abc.jpg',
+        retryCount: 3,
+        savedRecordId: 'money-1',
+      },
+      name: 'receipt_recovery_action_failed',
+      occurredAt: '2026-05-08T00:00:00.000Z',
+    } as unknown as DiagnosticEvent;
+
+    expect(redactDiagnosticEvent(event)).toEqual({
+      appVersion: '1.0.0',
+      errorCategory: 'unavailable',
+      metadata: {
+        actionId: 'retry_parsing',
+        jobState: 'retry_exhausted',
+        retryCount: 3,
+      },
+      name: 'receipt_recovery_action_failed',
+      occurredAt: '2026-05-08T00:00:00.000Z',
+    });
+  });
 });

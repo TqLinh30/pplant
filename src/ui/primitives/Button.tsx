@@ -1,6 +1,7 @@
 import type { PressableProps, StyleProp, ViewStyle } from 'react-native';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
+import { useTranslateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
 import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
@@ -15,10 +16,19 @@ type ButtonProps = Omit<PressableProps, 'style'> & {
 };
 
 export function Button({ label, variant = 'primary', disabled, style, ...pressableProps }: ButtonProps) {
+  const translateText = useTranslateText();
+  const labelStyle =
+    variant === 'primary'
+      ? styles.primaryLabel
+      : variant === 'danger'
+        ? styles.dangerLabel
+        : styles.secondaryLabel;
+  const translatedLabel = translateText(label);
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={pressableProps.accessibilityLabel ?? label}
+      accessibilityLabel={pressableProps.accessibilityLabel ?? translatedLabel}
       disabled={disabled}
       style={({ pressed }) => [
         styles.base,
@@ -28,9 +38,7 @@ export function Button({ label, variant = 'primary', disabled, style, ...pressab
         style,
       ]}
       {...pressableProps}>
-      <Text style={[styles.label, variant === 'primary' ? styles.primaryLabel : styles.secondaryLabel]}>
-        {label}
-      </Text>
+      <Text style={[styles.label, labelStyle]}>{translatedLabel}</Text>
     </Pressable>
   );
 }
@@ -38,16 +46,19 @@ export function Button({ label, variant = 'primary', disabled, style, ...pressab
 const styles = StyleSheet.create({
   base: {
     alignItems: 'center',
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     justifyContent: 'center',
-    minHeight: 44,
+    minHeight: 48,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    paddingVertical: 14,
   },
   danger: {
     backgroundColor: colors.canvas,
-    borderColor: colors.signatureCoral,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.danger,
+    borderWidth: 1,
+  },
+  dangerLabel: {
+    color: colors.danger,
   },
   disabled: {
     opacity: 0.5,
@@ -60,16 +71,24 @@ const styles = StyleSheet.create({
   },
   primary: {
     backgroundColor: colors.primary,
+    elevation: 3,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      height: 8,
+      width: 0,
+    },
+    shadowOpacity: 0.24,
+    shadowRadius: 18,
   },
   primaryLabel: {
     color: colors.onPrimary,
   },
   secondary: {
     backgroundColor: colors.canvas,
-    borderColor: colors.hairline,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.primary,
+    borderWidth: 1,
   },
   secondaryLabel: {
-    color: colors.ink,
+    color: colors.primary,
   },
 });

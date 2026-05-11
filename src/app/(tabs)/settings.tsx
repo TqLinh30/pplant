@@ -1,1 +1,1 @@
-export { SettingsScreen as default } from '@/features/settings/SettingsScreen';
+export { MoneyNoteMoreScreen as default } from '@/features/moneynote/MoneyNoteScreens';

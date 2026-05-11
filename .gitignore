@@ -21,6 +21,9 @@ expo-env.d.ts
 # Metro
 .metro-health-check*
 
+# Local Codex/Claude worktrees
+.claude/worktrees/
+
 # debug
 npm-debug.*
 yarn-debug.*

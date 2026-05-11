@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useTranslateText } from '@/i18n/strings';
 import { colors } from '@/ui/tokens/colors';
+import { radius } from '@/ui/tokens/radius';
 import { spacing } from '@/ui/tokens/spacing';
 import { typography } from '@/ui/tokens/typography';
 
@@ -11,15 +13,20 @@ type ListRowProps = {
   meta?: string;
   right?: ReactNode;
   onPress?: () => void;
+  accessibilityLabel?: string;
 };
 
-export function ListRow({ title, description, meta, right, onPress }: ListRowProps) {
+export function ListRow({ title, description, meta, right, onPress, accessibilityLabel }: ListRowProps) {
+  const translateText = useTranslateText();
+  const translatedDescription = description ? translateText(description) : undefined;
+  const translatedMeta = meta ? translateText(meta) : undefined;
+  const translatedTitle = translateText(title);
   const content = (
     <>
       <View style={styles.textGroup}>
-        <Text style={styles.title}>{title}</Text>
-        {description ? <Text style={styles.description}>{description}</Text> : null}
-        {meta ? <Text style={styles.meta}>{meta}</Text> : null}
+        <Text style={styles.title}>{translatedTitle}</Text>
+        {translatedDescription ? <Text style={styles.description}>{translatedDescription}</Text> : null}
+        {translatedMeta ? <Text style={styles.meta}>{translatedMeta}</Text> : null}
       </View>
       {right}
     </>
@@ -29,7 +36,7 @@ export function ListRow({ title, description, meta, right, onPress }: ListRowPro
     return (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={title}
+        accessibilityLabel={accessibilityLabel ?? translatedTitle}
         style={({ pressed }) => [styles.row, pressed && styles.pressed]}
         onPress={onPress}>
         {content}
@@ -37,7 +44,14 @@ export function ListRow({ title, description, meta, right, onPress }: ListRowPro
     );
   }
 
-  return <View style={styles.row}>{content}</View>;
+  return (
+    <View
+      accessible={Boolean(accessibilityLabel) && !right}
+      accessibilityLabel={accessibilityLabel}
+      style={styles.row}>
+      {content}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -53,13 +67,16 @@ const styles = StyleSheet.create({
     opacity: 0.78,
   },
   row: {
+    backgroundColor: colors.canvas,
     borderColor: colors.hairline,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     gap: spacing.md,
     justifyContent: 'space-between',
-    minHeight: 44,
-    paddingVertical: spacing.md,
+    minHeight: 56,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   textGroup: {
     flex: 1,

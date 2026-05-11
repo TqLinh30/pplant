@@ -1,1 +1,1 @@
-export { CaptureScreen as default } from '@/features/capture/CaptureScreen';
+export { MoneyNoteCalendarScreen as default } from '@/features/moneynote/MoneyNoteScreens';
