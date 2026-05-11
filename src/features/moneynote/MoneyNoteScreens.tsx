@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -32,12 +33,18 @@ import {
   deleteCategoryTopicItem,
 } from '@/services/categories/category-topic.service';
 import { loadMoneyHistory } from '@/services/money/money-history.service';
-import { loadManualMoneyRecordForEdit } from '@/services/money/money-record.service';
+import {
+  deleteMoneyRecord,
+  loadManualMoneyRecordForEdit,
+} from '@/services/money/money-record.service';
 import { saveUserPreferences } from '@/services/preferences/preferences.service';
 import { saveStoredAppLanguage } from '@/i18n/language-storage';
 import { appLanguageOptions, useAppLanguage, type AppLanguage } from '@/i18n/strings';
 import { useManualMoneyCapture } from '@/features/capture/useManualMoneyCapture';
-import { subscribeMoneyRecordsChanged } from '@/features/money/money-record-change-events';
+import {
+  notifyMoneyRecordsChanged,
+  subscribeMoneyRecordsChanged,
+} from '@/features/money/money-record-change-events';
 import {
   appBackgroundOptions,
   saveStoredAppBackground,
@@ -318,6 +325,24 @@ const moneyNoteCopy = {
     uncategorized: '未分類',
   },
 } satisfies Record<AppLanguage, Record<string, string>>;
+
+const moneyNoteDeleteConfirmCopy = {
+  vi: {
+    cancel: 'Hủy',
+    message: 'Khoản này sẽ bị xóa khỏi sổ thu chi. Bạn có chắc muốn tiếp tục không?',
+    title: 'Xóa khoản này?',
+  },
+  en: {
+    cancel: 'Cancel',
+    message: 'This record will be removed from your ledger. Are you sure you want to continue?',
+    title: 'Delete this record?',
+  },
+  'zh-Hant': {
+    cancel: '取消',
+    message: '這筆紀錄將會從收支簿中刪除。確定要繼續嗎？',
+    title: '刪除這筆紀錄？',
+  },
+} satisfies Record<AppLanguage, { cancel: string; message: string; title: string }>;
 
 const englishCategoryLabels: Record<string, string> = {
   'expense-clothes': 'Clothes',
@@ -4649,8 +4674,11 @@ export function MoneyNoteRecordEditScreen() {
   const { state, selectCategory, setKind, updateField } = capture;
   const [recordToEdit, setRecordToEdit] = useState<MoneyRecord | null>(null);
   const [recordLoadError, setRecordLoadError] = useState<AppError | null>(null);
+  const [deleteError, setDeleteError] = useState<AppError | null>(null);
+  const [deletingRecord, setDeletingRecord] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const editStartedFor = useRef<string | null>(null);
+  const editScreenMounted = useRef(false);
   const baseTemplates =
     state.draft.kind === 'expense' ? expenseCategoryTemplates : incomeCategoryTemplates;
   const templates = useMemo(
@@ -4664,7 +4692,7 @@ export function MoneyNoteRecordEditScreen() {
   );
   const selectedTemplate =
     templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
-  const saving = state.status === 'saving';
+  const saving = state.status === 'saving' || deletingRecord;
   const currencyCode =
     state.preferences?.currencyCode ??
     recordToEdit?.currencyCode ??
@@ -4675,12 +4703,21 @@ export function MoneyNoteRecordEditScreen() {
   useEnsureMoneyNoteDefaults(state.status, state.categories, capture.reload);
 
   useEffect(() => {
+    editScreenMounted.current = true;
+
+    return () => {
+      editScreenMounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!moneyRecordId) {
       return;
     }
 
     let cancelled = false;
     setRecordLoadError(null);
+    setDeleteError(null);
     editStartedFor.current = null;
 
     void loadManualMoneyRecordForEdit({ id: moneyRecordId }).then((result) => {
@@ -4712,8 +4749,14 @@ export function MoneyNoteRecordEditScreen() {
 
   useEffect(() => {
     if (state.status === 'deleted') {
-      router.back();
+      const timeout = setTimeout(() => {
+        router.back();
+      }, 0);
+
+      return () => clearTimeout(timeout);
     }
+
+    return undefined;
   }, [router, state.status]);
 
   useEffect(() => {
@@ -4736,6 +4779,53 @@ export function MoneyNoteRecordEditScreen() {
       : findCategoryByTemplate(state.categories, template);
     selectCategory(template.categoryId ?? category?.id ?? null);
     updateField('merchantOrSource', template.label);
+  };
+
+  const deleteRecord = () => {
+    if (!moneyRecordId || deletingRecord) {
+      return;
+    }
+
+    setDeleteError(null);
+    setDeletingRecord(true);
+
+    void deleteMoneyRecord({ id: moneyRecordId }).then((result) => {
+      if (!editScreenMounted.current) {
+        return;
+      }
+
+      if (!result.ok) {
+        setDeleteError(result.error);
+        setDeletingRecord(false);
+        return;
+      }
+
+      router.back();
+
+      setTimeout(() => {
+        notifyMoneyRecordsChanged('deleted', result.value.record);
+      }, 80);
+    });
+  };
+
+  const confirmDeleteRecord = () => {
+    if (deletingRecord) {
+      return;
+    }
+
+    const confirmation = moneyNoteDeleteConfirmCopy[language];
+
+    Alert.alert(confirmation.title, confirmation.message, [
+      {
+        style: 'cancel',
+        text: confirmation.cancel,
+      },
+      {
+        onPress: deleteRecord,
+        style: 'destructive',
+        text: copy.delete,
+      },
+    ]);
   };
 
   const changeDateBy = (days: number) => {
@@ -4833,6 +4923,7 @@ export function MoneyNoteRecordEditScreen() {
             {state.actionError ? (
               <Text style={styles.warningText}>{state.actionError.message}</Text>
             ) : null}
+            {deleteError ? <Text style={styles.warningText}>{deleteError.message}</Text> : null}
             {state.status === 'saved' ? (
               <Text style={styles.successText}>{copy.recordUpdated}</Text>
             ) : null}
@@ -4847,7 +4938,11 @@ export function MoneyNoteRecordEditScreen() {
             </Pressable>
             <View style={styles.editFooterActions}>
               <View />
-              <Pressable accessibilityRole="button" onPress={capture.deleteEditingRecord}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={deletingRecord}
+                onPress={confirmDeleteRecord}
+              >
                 <Text style={styles.deleteActionText}>{copy.delete}</Text>
               </Pressable>
             </View>
