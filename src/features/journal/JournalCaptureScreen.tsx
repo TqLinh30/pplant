@@ -13,7 +13,12 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { CameraView, useCameraPermissions, type CameraCapturedPicture } from 'expo-camera';
+import {
+  CameraView,
+  useCameraPermissions,
+  type CameraCapturedPicture,
+  type CameraType,
+} from 'expo-camera';
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -301,6 +306,7 @@ export function JournalCaptureScreen() {
   const [noteEditorVisible, setNoteEditorVisible] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraFacing, setCameraFacing] = useState<CameraType>('back');
   const [pictureSize, setPictureSize] = useState<string | undefined>();
   const [takingPhoto, setTakingPhoto] = useState(false);
   const pictureSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -427,6 +433,17 @@ export function JournalCaptureScreen() {
     capture.retakePhoto();
   }, [capture, clearPictureSaveTimeout]);
 
+  const switchInlineCamera = useCallback(() => {
+    if (working || previewUri) {
+      return;
+    }
+
+    setCameraError(null);
+    setCameraReady(false);
+    setPictureSize(undefined);
+    setCameraFacing((currentFacing) => (currentFacing === 'back' ? 'front' : 'back'));
+  }, [previewUri, working]);
+
   const handleCameraControlPress = useCallback(() => {
     if (previewUri) {
       retakeInlinePhoto();
@@ -436,14 +453,14 @@ export function JournalCaptureScreen() {
     void takeInlinePhoto();
   }, [previewUri, retakeInlinePhoto, takeInlinePhoto]);
 
-  const handleCloseControlPress = useCallback(() => {
+  const handleAuxiliaryControlPress = useCallback(() => {
     if (previewUri) {
       retakeInlinePhoto();
       return;
     }
 
-    router.back();
-  }, [previewUri, retakeInlinePhoto]);
+    switchInlineCamera();
+  }, [previewUri, retakeInlinePhoto, switchInlineCamera]);
 
   useEffect(() => {
     return clearPictureSaveTimeout;
@@ -580,7 +597,8 @@ export function JournalCaptureScreen() {
                       <CameraView
                         active
                         animateShutter={false}
-                        facing="back"
+                        facing={cameraFacing}
+                        mirror={cameraFacing === 'front'}
                         mode="picture"
                         onCameraReady={handleCameraReady}
                         onMountError={() => setCameraError(copy.cameraMountError)}
@@ -615,10 +633,10 @@ export function JournalCaptureScreen() {
                 <View style={styles.cameraControlRow}>
                   <Pressable
                     accessibilityRole="button"
-                    onPress={handleCloseControlPress}
+                    disabled
                     style={styles.sideCircleButton}
                   >
-                    <MaterialCommunityIcons color={skyBlue} name="close" size={34} />
+                    <MaterialCommunityIcons color={skyBlue} name="download-outline" size={34} />
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
@@ -637,10 +655,15 @@ export function JournalCaptureScreen() {
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
-                    disabled
+                    disabled={!previewUri && working}
+                    onPress={handleAuxiliaryControlPress}
                     style={styles.sideCircleButton}
                   >
-                    <MaterialCommunityIcons color={skyBlue} name="download-outline" size={34} />
+                    <MaterialCommunityIcons
+                      color={skyBlue}
+                      name={previewUri ? 'close' : 'camera-flip-outline'}
+                      size={34}
+                    />
                   </Pressable>
                 </View>
               ) : null}
