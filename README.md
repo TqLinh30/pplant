@@ -1,442 +1,319 @@
 # Pplant
 
-Pplant là ứng dụng mobile-first, local-first để quản lý đời sống hằng ngày của sinh viên và người đi làm tự do: ghi thu chi, xem lịch chi tiêu, báo cáo theo danh mục, lưu nhật ký ảnh theo cảm xúc, theo dõi công việc, nhiệm vụ, nhắc nhở, ngân sách, tiết kiệm và các luồng hồi phục dữ liệu cục bộ.
+Pplant is a mobile-first, local-first personal life management app built with Expo and React Native. The current product experience is centered around **MoneyNote**, a soft, visual money journal for recording daily income and expenses, reviewing spending patterns, and keeping photo-based mood journals.
 
-Ở giao diện hiện tại, sản phẩm đang được đóng gói dưới trải nghiệm **MoneyNote**: một sổ thu chi dễ nhìn, có phong cách minh họa mềm, thao tác nhanh, phù hợp với người cần nhập tiền ngay trên điện thoại mà không muốn đi qua nhiều bước kế toán nặng nề.
+The app is designed for people who want a private, lightweight daily companion without account setup, cloud sync, or heavy accounting workflows. Core data is stored locally on the device.
 
-## Mục Tiêu Sản Phẩm
+## Product Scope
 
-Pplant tập trung vào 4 nguyên tắc:
+Pplant combines several daily-life workflows in one mobile app:
 
-- **Local-first**: dữ liệu chính nằm trên thiết bị. MVP không yêu cầu tài khoản, cloud sync hay backend.
-- **Nhập nhanh**: người dùng có thể ghi một khoản chi, khoản thu hoặc nhật ký ảnh chỉ bằng vài thao tác.
-- **Dễ đọc lại**: lịch, báo cáo, nhật ký và màn tổng quan giúp nhìn lại ngày/tháng thay vì chỉ lưu dữ liệu thô.
-- **An toàn và riêng tư**: ảnh hóa đơn, ảnh nhật ký, ghi chú, chẩn đoán lỗi và dữ liệu cá nhân được xử lý theo chính sách lưu cục bộ, có lớp xóa dữ liệu riêng.
+- Personal finance tracking with income and expense records.
+- Calendar-based spending review.
+- Monthly, yearly, all-time, and category-level reports.
+- Photo journal entries with mood tracking.
+- Receipt draft capture and local image retention controls.
+- Tasks, reminders, work-hour entries, review flows, recovery flows, and privacy controls.
+- Local preferences for language, currency, locale, background, and app appearance.
 
-## Tính Năng Chính
+The newest UI direction uses the MoneyNote visual system: illustrated category icons, calm pastel surfaces, large mobile-friendly actions, and chart views designed for quick scanning on a phone.
 
-### 1. Sổ thu chi MoneyNote
+## Key Features
 
-Màn nhập thu chi là luồng trung tâm của app:
+### MoneyNote Entry
 
-- Chọn loại giao dịch: `Chi tiêu` hoặc `Thu nhập`.
-- Chọn ngày ghi nhận.
-- Nhập ghi chú ngắn.
-- Nhập số tiền theo đơn vị tiền đang lưu.
-- Chọn danh mục bằng lưới icon minh họa.
-- Lưu khoản chi hoặc khoản thu vào SQLite local.
-- Hỗ trợ chỉnh sửa và xóa bản ghi đã lưu.
+MoneyNote is the main finance workflow.
 
-Danh mục chi tiêu mặc định:
+- Create manual expense and income records.
+- Choose the record date.
+- Add a short note or merchant/source text.
+- Enter an amount using the selected currency.
+- Pick from illustrated expense and income categories.
+- Save records into the local SQLite database.
+- Edit or delete existing records.
+- Keep finance screens synchronized through local change events.
 
-- Ăn uống
-- Chi tiêu hằng ngày
-- Quần áo
-- Mỹ phẩm
-- Phí giao lưu
-- Y tế
-- Giáo dục
-- Tiền điện
-- Đi lại
-- Phí liên lạc
-- Tiền nhà
+Default expense categories include food, daily spending, clothing, cosmetics, social fees, health, education, electricity, transport, phone, and rent.
 
-Danh mục thu nhập mặc định:
+Default income categories include salary, allowance, bonus, side income, investment, and temporary income.
 
-- Tiền lương
-- Tiền phụ cấp
-- Tiền thưởng
-- Thu nhập phụ
-- Đầu tư
-- Thu nhập tạm thời
+### Calendar Review
 
-Người dùng cũng có thể thêm danh mục tùy chỉnh trong màn danh mục.
+The calendar tab helps the user review records by day.
 
-### 2. Lịch thu chi
+- Month grid with daily income and expense totals.
+- Previous and next month navigation.
+- Selected-day transaction list.
+- Daily journal preview alongside money records.
+- Locale-aware date formatting.
+- Local month summary calculations.
 
-Màn lịch hiển thị dữ liệu theo tháng:
+### Reports
 
-- Lưới ngày theo thứ tự tuần.
-- Tổng thu/chi theo từng ngày.
-- Chọn ngày để xem danh sách giao dịch.
-- Tab chi tiêu và nhật ký trong ngày.
-- Điều hướng tháng trước/tháng sau.
-- Định dạng ngày thay đổi theo ngôn ngữ app.
+The report area focuses on visual spending and income breakdowns.
 
-Luồng dữ liệu:
+- Monthly report summary for income, expense, and net balance.
+- Donut chart by category.
+- Matching color markers in the category list so chart colors can be read clearly.
+- Category rows that open a category detail screen.
+- Category detail screen with monthly bar trend and grouped transactions.
+- Yearly, all-time, and category report routes.
+- Chart scaling fixes so bars align with the Y axis and baseline markers.
 
-1. Màn lịch lấy tháng hiện tại.
-2. Gọi service lịch sử tiền để đọc money records từ SQLite.
-3. Tính tổng thu, chi, net theo ngày.
-4. Hiển thị summary và danh sách bản ghi tương ứng với ngày được chọn.
+### Journal
 
-### 3. Báo cáo
+The journal feature records a moment from the day with a mood.
 
-Màn báo cáo giúp người dùng nhìn lại chi tiêu và thu nhập:
+- Floating camera action in the bottom tab bar.
+- Inline `CameraView` capture screen.
+- Fast photo preview after capture.
+- Reduced capture latency through faster camera options.
+- Optional note after taking the photo.
+- Mood selection with custom illustrated mood faces.
+- Local image persistence for journal photos.
+- Daily timeline with time, mood, note, and photo thumbnail.
+- Mood statistics with a true SVG pie chart.
 
-- Tổng thu nhập.
-- Tổng chi tiêu.
-- Tổng net.
-- Biểu đồ donut theo danh mục.
-- Hiển thị tối đa 4 danh mục có tỷ lệ cao nhất.
-- Danh sách breakdown theo danh mục.
-- Báo cáo tháng, năm, toàn kỳ và danh mục.
+### Receipt Drafts
 
-Biểu đồ báo cáo hiện được thiết kế theo hướng dễ đọc trên mobile: các nhãn quan trọng được tách khỏi chart, nối bằng đường callout, tránh nhồi quá nhiều nhãn vào vòng tròn.
+Receipt capture is built as a safe draft workflow.
 
-### 4. Nhật ký ảnh theo cảm xúc
+- Capture or choose a receipt image.
+- Store the image locally as a draft.
+- Keep parsing and expense creation separate from image capture.
+- Let the user review and confirm before saving final expense data.
+- Support image retention choices.
 
-Màn nhật ký hỗ trợ lưu một khoảnh khắc trong ngày kèm cảm xúc:
+### Settings And Privacy
 
-- Nút camera ở bottom navigation mở thẳng màn tạo nhật ký.
-- Camera được nhúng trực tiếp trong vùng ảnh của màn tạo nhật ký.
-- Người dùng bấm chụp, ảnh preview hiện ngay trong vùng đó.
-- Ảnh được persist local trong nền.
-- Người dùng chọn cảm xúc, nhập ghi chú và lưu nhật ký.
-- Màn nhật ký hiển thị timeline theo ngày và thống kê cảm xúc theo tháng.
+The app includes local user controls for:
 
-Luồng mới của camera nhật ký:
+- Language selection.
+- Currency and locale preferences.
+- App background presets and custom background photos.
+- Budget-related preferences.
+- Category management.
+- CSV export and JSON backup flows.
+- Data deletion previews for local records, drafts, receipt images, diagnostics, and workspace data.
 
-1. Người dùng bấm nút camera ở bottom navigation.
-2. App điều hướng tới `journal/new`.
-3. `JournalCaptureScreen` mở `CameraView` inline trong khung ảnh.
-4. Khi bấm chụp, `previewUri` được đưa vào state ngay lập tức để ảnh hiện nhanh.
-5. Hook `useJournalCapture` persist ảnh bằng `persistJournalImageReference`.
-6. Khi ảnh đã persist và người dùng đã chọn mood, nút lưu nhật ký được bật.
-7. `saveJournalEntry` lưu record vào SQLite.
+## Languages
 
-### 5. Cài đặt
+The app currently supports:
 
-Màn cài đặt/khác hiện hỗ trợ:
+- Vietnamese (`vi`)
+- English (`en`)
+- Traditional Chinese (`zh-Hant`)
 
-- Đổi ngôn ngữ ứng dụng.
-- Đổi tiền tệ nhanh.
-- Đổi locale.
-- Đổi background preset hoặc chọn ảnh nền từ máy.
-- Xem các entry báo cáo phụ như báo cáo năm, báo cáo toàn kỳ, báo cáo danh mục.
-- Export CSV.
-- Tạo backup JSON.
+Global app strings live under `src/i18n`. Some feature screens also keep local copy maps when they need highly specific UI text.
 
-### 6. Đa ngôn ngữ
+## Tech Stack
 
-App hiện hỗ trợ:
+### Runtime
 
-- Tiếng Việt: `vi`
-- English: `en`
-- Traditional Chinese: `zh-Hant`
+- Expo SDK 55
+- React Native 0.83
+- React 19
+- Expo Router
+- TypeScript
 
-Cơ chế i18n gồm 2 lớp:
+### UI
 
-- `src/i18n/strings.ts`: store ngôn ngữ global, danh sách ngôn ngữ, exact translations và dynamic translations.
-- `src/i18n/language-storage.ts`: lưu lựa chọn ngôn ngữ vào file local trong document directory.
+- React Navigation bottom tabs
+- React Native SVG
+- Expo Image
+- Expo Camera
+- Expo Image Picker
+- Expo Status Bar and System UI
+- Montserrat through `@expo-google-fonts/montserrat`
 
-MoneyNote có thêm copy riêng trong `src/features/moneynote/MoneyNoteScreens.tsx` vì màn này có phong cách UI riêng, nhiều nhãn đặc thù và cần dịch danh mục, tab, CTA, thông báo lưu, báo cáo, ngày tháng.
+### Data
 
-## Công Nghệ
+- Expo SQLite
+- Drizzle ORM and drizzle-kit
+- Zod validation
+- App-private file storage for photos, receipts, settings, and backups
 
-### Runtime và framework
+### Quality
 
-- **Expo SDK 55**: nền tảng build và chạy app React Native.
-- **React Native 0.83**: UI native mobile.
-- **React 19.2**: component runtime.
-- **Expo Router 55**: file-based routing trong `src/app`.
-- **TypeScript 5.9**: type safety toàn dự án.
+- TypeScript type checking
+- ESLint with Expo config
+- Jest and jest-expo
+- Prettier
 
-### UI và trải nghiệm
-
-- **React Navigation Bottom Tabs**: bottom navigation.
-- **React Native SVG**: icon/chart custom và vector UI.
-- **Expo Image**: hiển thị ảnh local, ảnh nhật ký và asset.
-- **Expo Camera**: camera inline cho nhật ký.
-- **Expo Image Picker**: chọn ảnh nền hoặc luồng ảnh cần lấy từ thư viện.
-- **Expo Status Bar/System UI**: status bar và hệ màu hệ thống.
-- **Montserrat** qua `@expo-google-fonts/montserrat`: font chính của giao diện MoneyNote.
-
-### Dữ liệu
-
-- **Expo SQLite**: database local trên thiết bị.
-- **Drizzle ORM / drizzle-kit**: schema và migration hỗ trợ typed database.
-- **Zod**: validate boundary data, row parsing và form/domain input.
-- **Local file store**: lưu reference ảnh hóa đơn, ảnh nhật ký, background và file setting.
-
-### Kiểm thử và chất lượng
-
-- **Jest + jest-expo**: unit test cho domain, service, repository và hook logic.
-- **ESLint + eslint-config-expo**: lint TypeScript/React Native.
-- **Prettier**: format code.
-- **tsc --noEmit**: typecheck toàn dự án.
-
-## Kiến Trúc Dự Án
+## Project Structure
 
 ```text
 src/
-  app/                 Route files của Expo Router
+  app/                 Expo Router route files
   data/                SQLite client, schema, migrations, repositories
-  diagnostics/         Diagnostic event, redaction và validation
-  domain/              Business rules thuần, schema, type, calculations
-  features/            UI screen, hook và orchestration theo feature
-  i18n/                Ngôn ngữ app và lưu lựa chọn ngôn ngữ
-  services/            Use-case/application services
-  ui/                  Primitive UI và design tokens
+  diagnostics/         Diagnostic events, redaction, validation
+  domain/              Pure business rules, schemas, types, calculations
+  features/            Screens, hooks, and feature orchestration
+  i18n/                Language state, translations, language persistence
+  services/            Application services and use-case boundaries
+  ui/                  Shared primitives and design tokens
 ```
 
-### Quy tắc phân lớp
+Main feature folders:
 
-- `src/app` chỉ nên mỏng: route file import screen từ `src/features`.
-- `src/features` điều phối UI, hook và state cục bộ của màn hình.
-- `src/services` là tầng use-case: mở database, gọi repository, xử lý AppResult/AppError.
-- `src/domain` chứa business logic thuần, không phụ thuộc React Native.
-- `src/data` chứa repository và SQLite access. UI không import SQLite trực tiếp.
-- `src/i18n` quản lý ngôn ngữ, nhưng các màn có copy đặc thù có thể có copy map riêng miễn vẫn dùng `AppLanguage`.
+```text
+src/features/capture           Manual money capture and quick capture
+src/features/history           Money history views
+src/features/journal           Photo journal and mood statistics
+src/features/moneynote         MoneyNote entry, calendar, reports, settings UI
+src/features/receipts          Receipt draft and receipt review flows
+src/features/review            End-of-day and period review screens
+src/features/settings          Preferences, app background, privacy settings
+src/features/tasks             Task capture and recurrence
+src/features/work              Work-hour entries and work history
+```
 
-## Luồng Chương Trình Chính
+## Architecture Notes
 
-### App boot
+- `src/app` should stay thin and route to feature screens.
+- `src/features` owns screen state, hooks, and presentation logic.
+- `src/services` coordinates use cases and repository calls.
+- `src/domain` contains pure business logic and validation rules.
+- `src/data` owns SQLite access and repository implementations.
+- UI should not import SQLite directly.
+- Local events keep related screens up to date after records change.
 
-1. Expo khởi động từ `expo-router/entry`.
-2. Root layout trong `src/app/_layout.tsx` load font, theme, status bar và stored language.
-3. Workspace gate đảm bảo local workspace tồn tại.
-4. Bottom tabs trong `src/app/(tabs)/_layout.tsx` render các màn chính.
+## Getting Started
 
-### Nhập khoản chi/thu
+### Prerequisites
 
-1. Người dùng vào tab nhập.
-2. `MoneyNoteEntryScreen` dùng `useManualMoneyCapture`.
-3. Người dùng chọn kind, ngày, danh mục, nhập amount/note.
-4. Hook validate amount và draft.
-5. Service `createManualMoneyRecord` lưu record.
-6. Event `subscribeMoneyRecordsChanged` thông báo các màn lịch/báo cáo reload.
+- Node.js LTS
+- npm
+- Android Studio and Android SDK for Android builds
+- A configured Android emulator or physical Android device
 
-### Xem lịch
+### Install Dependencies
 
-1. `MoneyNoteCalendarScreen` xác định tháng đang xem.
-2. Gọi `loadMoneyHistory`.
-3. `moneyNoteModel` tính daily totals.
-4. UI render month grid và detail panel theo ngày được chọn.
-
-### Xem báo cáo
-
-1. `MoneyNoteReportScreen` lấy records theo tháng.
-2. `calculateMoneyNoteTotals` tính tổng.
-3. `buildReportBreakdownRows` gom record theo danh mục.
-4. Donut chart chỉ dùng các category có tỷ lệ cao nhất để tránh loạn nhãn.
-
-### Tạo nhật ký ảnh
-
-1. Bottom nav camera push `/journal/new`.
-2. Màn tạo nhật ký request camera permission nếu cần.
-3. `CameraView` chạy inline trong `cameraPanel`.
-4. Bấm chụp tạo `CameraCapturedPicture`.
-5. `acceptInlinePhoto` set preview ngay bằng URI tạm.
-6. File store persist ảnh và trả `PersistedJournalImageReference`.
-7. Người dùng chọn mood/note rồi lưu entry.
-
-### Đổi ngôn ngữ
-
-1. Người dùng chọn ngôn ngữ trong màn Khác hoặc Settings.
-2. `saveStoredAppLanguage` ghi `{ language }` vào document directory.
-3. `setAppLanguage` cập nhật external store.
-4. Các component dùng `useAppLanguage` hoặc `useTranslateText` tự render lại.
-
-## Database Và Local Storage
-
-Database local nằm sau `src/data/db`:
-
-- `client.ts`: mở database.
-- `schema.ts`: định nghĩa bảng.
-- `migrations/migrate.ts`: migrate schema.
-- `repositories/*`: thao tác từng aggregate.
-
-Các nhóm dữ liệu chính:
-
-- Workspace cục bộ.
-- Preferences người dùng.
-- Money records.
-- Category/topic.
-- Budget rules và savings goals.
-- Capture drafts.
-- Receipt parse jobs.
-- Journal entries.
-- Tasks, reminders, recurrence.
-- Work entries.
-- Reflection prompts/history.
-- Diagnostics đã redact.
-- Recovery events.
-
-Ảnh và file phụ trợ:
-
-- Ảnh hóa đơn: `src/services/files/receipt-file-store.ts`.
-- Ảnh nhật ký: `src/services/files/journal-file-store.ts`.
-- Ảnh nền và lựa chọn background: `src/features/settings/app-background.ts`.
-- Ngôn ngữ app: `src/i18n/language-storage.ts`.
-
-## Quy Ước Dữ Liệu Tiền
-
-Pplant không lưu tiền dạng float. Tất cả amount chính được lưu bằng **minor units**:
-
-- `amountMinor = 1250` với `USD` nghĩa là `$12.50`.
-- `amountMinor = 29100` với `TWD` nghĩa là `NT$291`.
-- Tiền Việt và các định dạng không có decimal vẫn dùng minor units theo quy tắc domain.
-
-Lý do:
-
-- Tránh lỗi làm tròn số thập phân.
-- Dễ tổng hợp thu/chi/net.
-- Dễ tính lương theo giờ và work-time equivalent.
-
-## Quy Ước Lỗi
-
-Expected failures dùng:
-
-- `AppResult<T>`
-- `AppError`
-- `ok(...)`
-- `err(...)`
-
-UI không nên throw lỗi nghiệp vụ thông thường. Service trả `AppResult`; feature hook quyết định hiển thị warning, retry, disabled state hoặc fallback.
-
-## Quyền Ứng Dụng
-
-Android hiện dùng:
-
-- `android.permission.CAMERA`: camera inline cho nhật ký và các luồng chụp ảnh.
-- Các quyền ảnh/media do Expo Image Picker và Android target xử lý theo cấu hình native.
-
-`app.json` cấu hình plugin:
-
-- `expo-camera`
-- `expo-image-picker`
-- `expo-splash-screen`
-- `expo-sqlite`
-- `expo-router`
-
-## Cài Đặt Môi Trường
-
-Yêu cầu:
-
-- Node.js 22 hoặc tương thích với Expo SDK 55.
-- npm.
-- Android Studio hoặc thiết bị Android thật nếu chạy Android.
-- Expo CLI qua `npx`.
-
-Cài dependencies:
-
-```bash
+```powershell
 npm install
 ```
 
-Chạy Metro:
+### Start The Expo Dev Server
 
-```bash
+```powershell
 npm start
 ```
 
-Chạy Android qua Expo:
+### Run On Android
 
-```bash
+```powershell
 npm run android
 ```
 
-Nếu thêm native module mới, cần rebuild native app:
+### Run On Web
 
-```bash
-npx expo run:android
+```powershell
+npm run web
 ```
 
-## Lệnh Kiểm Tra
+## Quality Checks
 
-Typecheck:
+Run type checking:
 
-```bash
+```powershell
 npm run typecheck
 ```
 
-Lint:
+Run lint:
 
-```bash
+```powershell
 npm run lint
 ```
 
-Test:
+Run tests:
 
-```bash
+```powershell
 npm test
 ```
 
-Chạy test theo file:
+## Android Release Builds
 
-```bash
-npx jest --runInBand --runTestsByPath src/i18n/strings.test.ts
+The native Android folder is generated output and is normally ignored by git. If a fresh clone does not have an `android/` folder, generate it first:
+
+```powershell
+npx expo prebuild --platform android
 ```
 
-Kiểm tra whitespace trong diff:
+Build a release APK:
 
-```bash
-git diff --check
+```powershell
+cd android
+.\gradlew assembleRelease
 ```
 
-## Git Flow Đề Xuất
+APK output:
 
-Quy trình chuẩn cho repo này:
-
-1. Không làm trực tiếp trên `main`.
-2. Tạo nhánh theo format:
-
-```bash
-git checkout -b codex/<short-feature-name>
+```text
+android/app/build/outputs/apk/release/app-release.apk
 ```
 
-3. Commit theo scope rõ:
+Build a release Android App Bundle:
 
-```bash
-git add <files>
-git commit -m "Add Traditional Chinese localization and journal camera flow"
+```powershell
+cd android
+.\gradlew bundleRelease
 ```
 
-4. Push branch:
+AAB output:
 
-```bash
-git push -u origin codex/<short-feature-name>
+```text
+android/app/build/outputs/bundle/release/app-release.aab
 ```
 
-5. Mở draft pull request để review.
-6. Chỉ merge vào `main` sau khi typecheck, lint và test quan trọng đã pass.
+## GitHub Releases
 
-## Các File Quan Trọng
+Do not commit APK or AAB files directly into the source repository. Treat them as release artifacts.
 
-- `src/app/_layout.tsx`: root app layout, theme, status bar, font, language load.
-- `src/app/(tabs)/_layout.tsx`: bottom navigation.
-- `src/features/moneynote/MoneyNoteScreens.tsx`: các màn MoneyNote chính.
-- `src/features/moneynote/moneyNoteModel.ts`: helper tính toán, format ngày, format tiền.
-- `src/features/journal/JournalScreen.tsx`: màn nhật ký.
-- `src/features/journal/JournalCaptureScreen.tsx`: màn tạo nhật ký bằng camera inline.
-- `src/features/journal/useJournalCapture.ts`: state machine cho chụp/lưu nhật ký.
-- `src/i18n/strings.ts`: ngôn ngữ global.
-- `src/i18n/language-storage.ts`: persist language preference.
-- `src/services/journal/journal.service.ts`: service lưu/xóa/tải nhật ký.
-- `src/services/money/money-record.service.ts`: service tạo/sửa/xóa money record.
-- `src/services/money/money-history.service.ts`: service tải lịch sử tiền.
-- `src/data/db/schema.ts`: database schema.
-- `src/data/db/migrations/migrate.ts`: migration runner.
+Recommended release flow:
 
-## Trạng Thái Hiện Tại
+1. Push source code to `main`.
+2. Build the APK or AAB locally or in CI.
+3. Create a GitHub Release with a semantic tag such as `v1.0.0`.
+4. Upload `app-release.apk` or `app-release.aab` as a release asset.
+5. Add release notes describing user-facing changes.
 
-Đã có:
+Example with GitHub CLI:
 
-- App Expo React Native local-first.
-- MoneyNote nhập thu/chi.
-- Lịch thu chi.
-- Báo cáo thu/chi theo danh mục.
-- Nhật ký ảnh bằng camera inline.
-- Cài đặt ngôn ngữ, tiền tệ, locale và background.
-- Hỗ trợ `vi`, `en`, `zh-Hant`.
-- SQLite repository/service architecture.
-- Unit test cho domain/service/repository/hook quan trọng.
+```powershell
+gh release create v1.0.0 `
+  android/app/build/outputs/apk/release/app-release.apk `
+  --target main `
+  --title "Pplant v1.0.0" `
+  --notes "MoneyNote reports, journal camera, app icon, and UI polish."
+```
 
-Định hướng tiếp theo:
+## Data And Privacy
 
-- Hoàn thiện dịch toàn bộ những màn legacy còn ít xuất hiện.
-- Chuẩn hóa mood label theo từng ngôn ngữ.
-- Bổ sung e2e test cho luồng nhập thu chi và tạo nhật ký ảnh.
-- Tối ưu export/backup để có restore flow rõ ràng hơn.
-- Tách MoneyNote copy ra file riêng khi số lượng chuỗi tiếp tục tăng.
+Pplant is local-first. The current app does not require a backend account for its core workflows.
+
+Local data includes:
+
+- Money records
+- Categories and topics
+- Preferences
+- Receipt drafts and retained receipt image references
+- Journal entries and journal photo references
+- Tasks and reminders
+- Work entries
+- Review and recovery state
+- Diagnostics and deletion previews
+
+Photos and user-generated records are handled through local storage and SQLite-backed services. Data deletion flows are modeled explicitly so the user can preview affected data before removal.
+
+## Development Guidelines
+
+- Keep feature changes close to the existing architecture.
+- Prefer domain and service logic over putting business rules directly in UI components.
+- Keep route files small.
+- Do not commit generated native build folders or release binaries.
+- Use GitHub Releases for APK/AAB distribution.
+- Run typecheck and lint before pushing meaningful code changes.
+
+## Repository Status
+
+This repository is currently an Expo/React Native mobile app with a local-first MVP architecture. The active product surface is MoneyNote plus photo journaling, with additional daily-life modules present in the codebase for tasks, reminders, work, receipts, reviews, privacy, and recovery.
